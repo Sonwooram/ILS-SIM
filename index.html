@@ -5,39 +5,114 @@
   <title>항공 시뮬레이터 메인</title>
   <style>
     body {
-      font-family: sans-serif;
-      background: #f4f4f4;
-      text-align: center;
-      padding: 60px;
+      margin: 0;
+      padding: 0;
+      font-family: 'Segoe UI', sans-serif;
+      background: #ecf0f1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      min-height: 100vh;
     }
-    h1 {
-      margin-bottom: 40px;
-    }
-    .sim-button {
-      display: inline-block;
-      margin: 20px;
-      padding: 20px 40px;
-      font-size: 18px;
-      background-color: #34495e;
+
+    header {
+      background-color: #2c3e50;
       color: white;
-      border: none;
-      border-radius: 10px;
+      width: 100%;
+      padding: 30px 0;
+      text-align: center;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    }
+
+    h1 {
+      margin: 0;
+      font-size: 32px;
+    }
+
+    .sim-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 20px;
+      padding: 40px;
+      width: 100%;
+      max-width: 1000px;
+      box-sizing: border-box;
+    }
+
+    .sim-card {
+      background: white;
+      padding: 30px 20px;
+      border-radius: 12px;
+      box-shadow: 0 4px 10px rgba(0,0,0,0.08);
+      text-align: center;
+      transition: transform 0.3s;
+    }
+
+    .sim-card:hover {
+      transform: translateY(-5px);
+    }
+
+    .sim-card img {
+      width: 100%;
+      height: auto;
+      border-radius: 8px;
+      margin-bottom: 15px;
+    }
+
+    .sim-card a {
+      display: inline-block;
+      margin-top: 15px;
+      padding: 10px 20px;
+      background-color: #3498db;
+      color: white;
       text-decoration: none;
+      font-weight: bold;
+      border-radius: 8px;
       transition: background-color 0.3s;
     }
-    .sim-button:hover {
-      background-color: #1abc9c;
+
+    .sim-card a:hover {
+      background-color: #2980b9;
     }
   </style>
 </head>
 <body>
 
-  <h1>항공 시뮬레이터 실습 메인</h1>
+  <header>
+    <h1>CATC ILS COURSE</h1>
+  </header>
 
-  <a class="sim-button" href="ANTSIM.HTML">시뮬레이터 1: 안테나 방사패턴 시뮬레이터</a><br>
-  <a class="sim-button" href="GPSIM.html">시뮬레이터 2: GP 신호 시뮬레이터</a><br>
-  <a class="sim-button" href="ILSSIM1.HTML">시뮬레이터 3: ILS 오디오신호 시뮬레이터</a><br>
-  <a class="sim-button" href="ILSNEEDLESIM.HTML">시뮬레이터 3: ILS 계기 시뮬레이터</a><br>
+  <section class="sim-grid">
+
+    <div class="sim-card">
+      <img src="images/ant_thumb.png" alt="안테나 시뮬레이터 썸네일">
+      <h2>안테나 시뮬레이터</h2>
+      <p>등방성 안테나의 방사패턴 변화 기초에 대한 실습</p>
+      <a href="ANTSIM.HTML">실행하기</a>
+    </div>
+
+    <div class="sim-card">
+      <img src="images/gp_thumb.png" alt="GP 안테나 시뮬레이터 썸네일">
+      <h2>GP 안테나 시뮬레이터</h2>
+      <p>GP 안테나 높이 변화에 따른 신호변화 확인</p>
+      <a href="GPSIM.html">실행하기</a>
+    </div>
+
+    <div class="sim-card">
+      <img src="images/audio_thumb.png" alt="오디오 신호 시뮬레이터 썸네일">
+      <h2>오디오신호 시뮬레이터</h2>
+      <p>90, 150 신호 변화에 따른 파형 확인</p>
+      <a href="ILSSIM1.HTML">실행하기</a>
+    </div>
+
+    <div class="sim-card">
+      <img src="images/needle_thumb.png" alt="ILS 계기 시뮬레이터 썸네일">
+      <h2>ILS 계기 시뮬레이터</h2>
+      <p>항공기의 위치별 계기표시 확인</p>
+      <a href="ILSNEEDLESIM.HTML">실행하기</a>
+    </div>
+
+  </section>
 
 </body>
 </html>
