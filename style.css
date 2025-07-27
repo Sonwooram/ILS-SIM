@@ -1,0 +1,279 @@
+/* 전체적인 색상 팔레트 및 폰트 */
+body {
+    font-family: 'Segoe UI', 'Roboto Mono', monospace, sans-serif; /* Roboto Mono is optional, uncomment link in HTML */
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 100vh;
+    background: linear-gradient(to bottom right, #1a252f, #0d1217); /* Darker, gradient background */
+    color: #e0e6e9; /* Lighter text color */
+    margin: 0;
+    padding: 20px;
+    box-sizing: border-box;
+}
+
+.container {
+    background-color: #2c3e50; /* Slightly lighter than body for contrast */
+    border-radius: 15px;
+    padding: 35px;
+    box-shadow: 0 15px 30px rgba(0, 0, 0, 0.5), inset 0 0 10px rgba(255, 255, 255, 0.05); /* Deeper shadow */
+    text-align: center;
+    width: 90%;
+    max-width: 1200px;
+}
+
+h1 {
+    color: #00bcd4; /* Cyan/Turquoise for main title */
+    margin-bottom: 30px;
+    font-size: 2.5em;
+    text-shadow: 0 0 10px rgba(0, 188, 212, 0.5); /* Glowing effect */
+    letter-spacing: 1px;
+}
+
+.simulator-areas-group {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 30px;
+    justify-content: center;
+    /* --- 이 부분 수정: 캔버스 높이 통일에 맞춰 중앙 정렬 --- */
+    align-items: center; 
+    margin-bottom: 30px;
+}
+
+.simulator-area {
+    background: linear-gradient(to bottom, #1a252f, #111a21); /* Darker gradient for areas */
+    border: 1px solid #4a637d; /* Subtle border */
+    border-radius: 10px;
+    padding: 20px;
+    box-shadow: inset 0 0 15px rgba(0,0,0,0.7), 0 5px 15px rgba(0,0,0,0.4); /* Inner and outer shadow */
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+.simulator-area h2 {
+    color: #81d4fa; /* Lighter blue for sub-titles */
+    margin-bottom: 15px;
+    font-size: 1.3em;
+    font-weight: normal;
+}
+
+canvas {
+    display: block;
+    border: 1px solid #5a7d9f; /* Canvas border */
+    border-radius: 5px;
+    background-color: #1a252f; /* Dark canvas background */
+    box-shadow: inset 0 0 8px rgba(0,0,0,0.7);
+}
+
+/* --- 이 부분 수정: gp-area 높이 고정 (loc-area와 맞춤) --- */
+.loc-area {
+    height: 330px; /* 200px canvas + padding + h2 + ddm panel + buttons */
+}
+
+.gp-area {
+    height: 330px; /* 200px canvas + padding + h2 + ddm panel + buttons, same as loc-area */
+    /* Remove min-height if it was there to ensure consistent sizing */
+}
+
+/* DDM 디스플레이 패널 스타일 */
+.ddm-display-panel {
+    background-color: #0a0a0a; /* Very dark background for display */
+    border: 1px solid #4a637d;
+    border-radius: 5px;
+    padding: 8px 15px;
+    margin-top: 15px;
+    box-shadow: inset 0 0 10px rgba(0, 255, 0, 0.2), 0 0 5px rgba(0, 255, 0, 0.1); /* Subtle green glow */
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.ddm-label {
+    color: #b0bec5;
+    font-size: 0.9em;
+}
+
+.ddm-value {
+    font-family: 'Orbitron', monospace; /* Digital font */
+    font-size: 1.8em; /* Large digital numbers */
+    color: #00ff00; /* Bright green for display values */
+    text-shadow: 0 0 8px rgba(0, 255, 0, 0.6); /* Glow effect for numbers */
+    
+    font-variant-numeric: tabular-nums; /* 숫자 문자 폭 고정 */
+    min-width: 140px; /* '+0.1550'을 포함할 수 있는 충분한 너비, 필요에 따라 조정 */
+    text-align: right;
+    letter-spacing: -1px; /* 세그먼트 느낌을 위해 글자 간격 조정 */
+}
+
+/* 제어 버튼 스타일 */
+.control-buttons {
+    margin-top: 15px;
+    display: flex;
+    flex-wrap: wrap; /* 작은 화면에서 줄바꿈 */
+    justify-content: center;
+    gap: 8px; /* 버튼 사이 간격 */
+}
+
+.control-btn {
+    background-color: #4a637d; /* Muted blue-grey */
+    color: #e0e6e9;
+    border: none;
+    padding: 8px 12px;
+    border-radius: 5px;
+    cursor: pointer;
+    font-size: 0.9em;
+    transition: background-color 0.2s ease, transform 0.1s ease;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.3);
+    flex-grow: 1; /* 가용한 공간을 채우도록 성장 */
+    min-width: 80px; /* 최소 너비 */
+}
+
+.control-btn:hover {
+    background-color: #5a7d9f; /* Lighter on hover */
+    transform: translateY(-1px);
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.4);
+}
+
+.control-btn:active {
+    background-color: #3d5a73; /* Darker on click */
+    transform: translateY(0);
+    box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.5);
+}
+
+/* 통합 ILS 계기판 스타일 */
+.ils-indicator-panel {
+    background: linear-gradient(to bottom, #1a252f, #111a21);
+    border: 1px solid #4a637d;
+    border-radius: 10px;
+    padding: 25px; /* Increased padding */
+    box-shadow: inset 0 0 15px rgba(0,0,0,0.7), 0 5px 15px rgba(0,0,0,0.4);
+    align-self: center; /* --- 이 부분 수정: 그룹 내에서 중앙 정렬 --- */
+    margin-top: 0;
+}
+
+.instrument-bezel {
+    background: linear-gradient(to bottom right, #0d1217, #06090c); /* Even darker bezel gradient */
+    border: 2px solid #556c7d;
+    border-radius: 8px;
+    padding: 15px;
+    position: relative;
+    box-shadow: inset 0 0 12px rgba(0,0,0,0.9), 0 0 15px rgba(0,0,0,0.6);
+    width: 220px; /* Slightly larger instrument */
+    height: 220px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+}
+
+.instrument-title {
+    color: #b0bec5; /* Muted light blue */
+    font-size: 1.2em;
+    margin-bottom: 12px;
+    font-weight: normal;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.ils-display-area {
+    width: 160px; /* Larger display area inside instrument */
+    height: 160px;
+    background-color: #1a252f; /* Dark internal background */
+    border: 1px solid #3d5a73;
+    border-radius: 3px;
+    position: relative;
+    overflow: hidden;
+    box-shadow: inset 0 0 8px rgba(0,0,0,0.8);
+    margin: auto;
+}
+
+/* DDM 점 스타일 */
+.loc-dot, .gp-dot {
+    position: absolute;
+    width: 5px; /* Slightly smaller dots */
+    height: 5px;
+    background-color: #81d4fa; /* Light blue dots */
+    border-radius: 50%;
+    transform: translate(-50%, -50%);
+    box-shadow: 0 0 5px rgba(129, 212, 250, 0.7); /* Subtle glow */
+}
+
+/* 로컬라이저 점 (가로 중앙) */
+.loc-dot.dot-left-2 { left: 10%; top: 50%; } /* Adjusted positions for 160px width */
+.loc-dot.dot-left-1 { left: 30%; top: 50%; }
+.loc-dot.dot-center { left: 50%; top: 50%; background-color: transparent; }
+.loc-dot.dot-right-1 { left: 70%; top: 50%; }
+.loc-dot.dot-right-2 { left: 90%; top: 50%; }
+
+/* 글라이드패스 점 (세로 중앙) */
+.gp-dot.dot-top-2 { top: 10%; left: 50%; } /* Adjusted positions for 160px height */
+.gp-dot.dot-top-1 { top: 30%; left: 50%; }
+/* .gp-dot.dot-center is common, so it's transparent and aligned to 50% for both */
+.gp-dot.dot-bottom-1 { top: 70%; left: 50%; }
+.gp-dot.dot-bottom-2 { top: 90%; left: 50%; }
+
+
+/* 십자 니들 스타일 */
+.ils-needle {
+    position: absolute;
+    background-color: #fdd835; /* Brighter yellow for needles */
+    box-shadow: 0 0 10px rgba(253, 216, 53, 0.8); /* Stronger glow */
+    transition: left 0.1s ease-out, top 0.1s ease-out;
+    z-index: 10; /* Ensure needles are on top */
+}
+
+.horizontal-needle { /* 로컬라이저 (수직선 바늘) */
+    width: 3px; /* Slightly thinner needle */
+    height: 100%;
+    left: 50%;
+    top: 0;
+    transform: translateX(-50%);
+}
+
+.vertical-needle { /* 글라이드패스 (수평선 바늘) */
+    width: 100%;
+    height: 3px; /* Slightly thinner needle */
+    top: 50%;
+    left: 0;
+    transform: translateY(-50%);
+}
+
+/* 계기판 스케일 라벨 */
+.scale-labels-ils {
+    position: absolute;
+    width: 100%;
+    height: 100%;
+    top: 0;
+    left: 0;
+    pointer-events: none;
+    font-size: 0.75em; /* Slightly smaller labels */
+    color: #a7b2b7; /* Muted label color */
+}
+
+.scale-labels-ils .label {
+    position: absolute;
+    transform: translate(-50%, -50%);
+}
+
+.loc-label-left { top: 50%; left: calc(50% - 90px); } /* Positioning relative to center */
+.loc-label-right { top: 50%; left: calc(50% + 90px); }
+.gp-label-top { top: calc(50% - 90px); left: 50%; }
+.gp-label-bottom { top: calc(50% + 90px); left: 50%; }
+
+
+.info {
+    margin-top: 30px;
+    font-size: 0.9em;
+    color: #b0bec5;
+    text-align: left;
+    background-color: #1a252f;
+    padding: 20px;
+    border-radius: 10px;
+    border-left: 5px solid #00bcd4; /* Accent color border */
+    box-shadow: inset 0 0 10px rgba(0,0,0,0.5);
+}
+
+.info p {
+    margin: 8px 0;
+}

@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Advanced ILS Simulator</title>
+    <link rel="stylesheet" href="style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&display=swap" rel="stylesheet">
+</head>
+<body>
+    <div class="container">
+        <h1>고급 ILS 시뮬레이터</h1>
+
+        <div class="simulator-areas-group">
+            <div class="simulator-area loc-area">
+                <h2>로컬라이저 (횡방향)</h2>
+                <canvas id="locCanvas" width="500" height="200"></canvas>
+                <div class="ddm-display-panel">
+                    <span class="ddm-label">LOC DDM:</span>
+                    <span class="ddm-value" id="locDdmDisplay">0.0000</span>
+                </div>
+                <div class="control-buttons">
+                    <button class="control-btn" id="locZeroBtn">0 DDM</button>
+                    <button class="control-btn" id="locNegWidthBtn">-0.155 DDM</button>
+                    <button class="control-btn" id="locPosWidthBtn">+0.155 DDM</button>
+                    <button class="control-btn" id="locNeg300Btn">-0.300 DDM</button>
+                    <button class="control-btn" id="locPos300Btn">+0.300 DDM</button>
+                </div>
+            </div>
+            
+            <div class="simulator-area gp-area">
+                <h2>글라이드 패스 (수직)</h2>
+                <canvas id="gpCanvas" width="200" height="200"></canvas> <div class="ddm-display-panel">
+                    <span class="ddm-label">GP DDM:</span>
+                    <span class="ddm-value" id="gpDdmDisplay">0.0000</span>
+                </div>
+                <div class="control-buttons">
+                    <button class="control-btn" id="gpZeroBtn">0 DDM</button>
+                    <button class="control-btn" id="gpNegWidthBtn">-0.155 DDM</button>
+                    <button class="control-btn" id="gpPosWidthBtn">+0.155 DDM</button>
+                    <button class="control-btn" id="gpNeg300Btn">-0.300 DDM</button>
+                    <button class="control-btn" id="gpPos300Btn">+0.300 DDM</button>
+                </div>
+            </div>
+
+            <div class="instrument-panel ils-indicator-panel">
+                <div class="instrument-bezel">
+                    <div class="instrument-title">ILS INDICATOR</div>
+                    <div class="ils-display-area">
+                        <div class="loc-dot dot-left-2"></div>
+                        <div class="loc-dot dot-left-1"></div>
+                        <div class="loc-dot dot-center"></div>
+                        <div class="loc-dot dot-right-1"></div>
+                        <div class="loc-dot dot-right-2"></div>
+
+                        <div class="gp-dot dot-top-2"></div>
+                        <div class="gp-dot dot-top-1"></div>
+                        <div class="gp-dot dot-center"></div>
+                        <div class="gp-dot dot-bottom-1"></div>
+                        <div class="gp-dot dot-bottom-2"></div>
+
+                        <div class="ils-needle horizontal-needle" id="locNeedle"></div>
+                        <div class="ils-needle vertical-needle" id="gpNeedle"></div>
+                    </div>
+                    <div class="scale-labels-ils">
+                        <span class="label loc-label-left">L</span>
+                        <span class="label loc-label-right">R</span>
+                        <span class="label gp-label-top">UP</span>
+                        <span class="label gp-label-bottom">DN</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="info">
+            <p>좌측 상단 박스에서 **로컬라이저(횡방향) 항공기**를 드래그하여 좌우 편차를 조절하거나, 버튼을 사용해 특정 DDM 위치로 이동하세요.</p>
+            <p>좌측 하단 박스에서 **글라이드 패스(수직) 항공기**를 드래그하여 상하 편차를 조절하거나, 버튼을 사용해 특정 DDM 위치로 이동하세요.</p>
+            <p>우측의 통합 ILS 계기가 두 편차를 십자 바늘로 동시에 보여줍니다.</p>
+        </div>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>
