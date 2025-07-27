@@ -1,0 +1,617 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GP 안테나 시뮬레이션 (높이 및 변조 균형 변화)</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 20px;
+            background-color: #f4f7f6;
+            color: #333;
+        }
+        .container {
+            max-width: 900px;
+            margin: auto;
+            background-color: #fff;
+            padding: 25px;
+            border-radius: 10px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+        }
+        h1 {
+            color: #2c3e50;
+            text-align: center;
+            margin-bottom: 20px;
+        }
+        .info-section {
+            text-align: center;
+            font-size: 1.1em;
+            color: #555;
+            margin-bottom: 30px;
+            font-weight: bold;
+        }
+        .controls {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 20px;
+            margin-bottom: 30px;
+            padding: 20px;
+            background-color: #e8f5e9;
+            border-radius: 8px;
+            box-shadow: inset 0 1px 5px rgba(0, 0, 0, 0.05);
+        }
+        .control-group {
+            flex: 1;
+            min-width: 250px;
+        }
+        label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: bold;
+            color: #4CAF50;
+        }
+        input[type="range"] {
+            width: 100%;
+            -webkit-appearance: none;
+            height: 8px;
+            background: #dcdcdc;
+            border-radius: 5px;
+            outline: none;
+            opacity: 0.9;
+            transition: opacity .2s;
+        }
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 20px;
+            height: 20px;
+            background: #4CAF50;
+            cursor: pointer;
+            border-radius: 50%;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+        }
+        input[type="range"]:hover {
+            opacity: 1;
+        }
+        .value-display {
+            font-weight: bold;
+            color: #333;
+            margin-left: 10px;
+        }
+        #chart-area {
+            background-color: #fcfcfc;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            padding: 15px;
+            margin-bottom: 30px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            position: relative; 
+        }
+        #results {
+            text-align: center;
+            padding: 20px;
+            background-color: #e3f2fd;
+            border-radius: 8px;
+            font-size: 1.1em;
+            color: #2196F3;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.08);
+        }
+        #results p {
+            margin: 8px 0;
+        }
+        #results span {
+            font-weight: bold;
+            color: #1976D2;
+        }
+        svg {
+            width: 100%;
+            height: 400px;
+            border: 1px solid #eee;
+            background-color: #fff;
+            box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.05);
+            border-radius: 5px;
+        }
+        .axis-line {
+            stroke: #ccc;
+            stroke-width: 1;
+        }
+        .grid-line {
+            stroke: #eee;
+            stroke-width: 0.5;
+        }
+        .ddm-line {
+            stroke: #4CAF50;
+            stroke-width: 2.5;
+            fill: none;
+        }
+        .threshold-line {
+            stroke: #FF5722;
+            stroke-width: 1.5;
+            stroke-dasharray: 4 2;
+        }
+        .center-line {
+            stroke: #2196F3;
+            stroke-width: 1.5;
+            stroke-dasharray: 2 2;
+        }
+        text {
+            font-size: 12px;
+            fill: #555;
+        }
+        .label-text {
+            font-size: 14px;
+            font-weight: bold;
+            fill: #333;
+        }
+        /* 툴팁 스타일 */
+        #tooltip {
+            position: absolute;
+            background-color: rgba(0, 0, 0, 0.75);
+            color: #fff;
+            padding: 8px 12px;
+            border-radius: 5px;
+            font-size: 0.9em;
+            pointer-events: none; 
+            opacity: 0;
+            transition: opacity 0.2s ease-in-out;
+            white-space: nowrap;
+            z-index: 10;
+        }
+        #tooltip.active {
+            opacity: 1;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <h1>GP 안테나 시뮬레이션: 높이 및 변조 균형 조절</h1>
+        <p class="info-section">
+            시뮬레이션 주파수: <span id="displayFrequency"></span> MHz
+            <br>
+            <span style="font-size:0.9em; color:#777;">(안테나 높이 디폴트 값은 이 주파수와 3도 패스를 기준으로 계산됩니다.)</span>
+        </p>
+
+        <div class="controls">
+            <div class="control-group">
+                <label for="uppHeight">UPP 안테나 높이: <span id="uppHeightVal"></span>m</label>
+                <input type="range" id="uppHeight" min="1.0" max="15.0" value="0" step="0.05" oninput="updateSimulation()">
+            </div>
+            <div class="control-group">
+                <label for="midHeight">MID 안테나 높이: <span id="midHeightVal"></span>m</label>
+                <input type="range" id="midHeight" min="1.0" max="10.0" value="0" step="0.05" oninput="updateSimulation()">
+            </div>
+            <div class="control-group">
+                <label for="lwrHeight">LWR 안테나 높이: <span id="lwrHeightVal"></span>m</label>
+                <input type="range" id="lwrHeight" min="0.5" max="5.0" value="0" step="0.05" oninput="updateSimulation()">
+            </div>
+            <div class="control-group">
+                <label for="modBalance">150Hz 변조 균형: <span id="modBalanceVal"></span></label>
+                <input type="range" id="modBalance" min="0.0" max="2.0" value="1.0" step="0.01" oninput="updateSimulation()">
+                <p style="font-size:0.85em; color:#666; margin-top:5px;">
+                    (1.0은 기본 보정 상태, 0에 가까우면 150Hz 영향 감소. 0일 때 DDM -1)
+                </p>
+            </div>
+        </div>
+
+        <div id="chart-area">
+            <svg id="ddmChart" viewBox="0 0 800 400"></svg>
+            <div id="tooltip" style="display: none;"></div>
+        </div>
+
+        <div id="results">
+            <p>계산된 글라이드 패스 각도: <span id="gpAngle">N/A</span> 도</p>
+            <p>계산된 글라이드 패스 폭: <span id="gpWidth">N/A</span> 도</p>
+            <p style="font-size:0.9em; color:#777;">(폭은 0 DDM 중심에서 DDM $\pm 0.175$까지의 각도 차이입니다.)</p>
+        </div>
+    </div>
+
+    <script>
+        // --- 시뮬레이션 파라미터 ---
+        const FREQUENCY_HZ = 330 * 10**6; // GP 주파수 (330 MHz)
+        const C = 299792458; // 광속
+        const WAVELENGTH_M = C / FREQUENCY_HZ; // 파장 (미터)
+
+        // 패스폭 계산 기준 DDM 값 (교수님 요청에 따라 0.175로 설정)
+        const DDM_THRESHOLD = 0.175; 
+        
+        const GLIDE_PATH_TARGET_ANGLE_DEG = 3.0; // 글라이드 패스 중심 각도 (3도)
+        const GLIDE_PATH_HALF_WIDTH_TARGET_DEG = 0.7; // 0 DDM 중심에서 0.7도 떨어졌을 때 DDM_THRESHOLD에 도달하도록 목표
+
+        // --- SVG 차트 관련 설정 ---
+        const SVG_WIDTH = 800;
+        const SVG_HEIGHT = 400;
+        const PADDING = 50; 
+        const CHART_WIDTH = SVG_WIDTH - 2 * PADDING;
+        const CHART_HEIGHT = SVG_HEIGHT - 2 * PADDING;
+        const MIN_ANGLE = 0.1; 
+        const MAX_ANGLE = 9.0; 
+        const ANGLE_STEP = 0.01; 
+
+        // --- HTML 요소 참조 ---
+        const displayFrequency = document.getElementById('displayFrequency');
+        const ddmChart = document.getElementById('ddmChart');
+        const uppHeightInput = document.getElementById('uppHeight');
+        const midHeightInput = document.getElementById('midHeight');
+        const lwrHeightInput = document.getElementById('lwrHeight');
+        const modBalanceInput = document.getElementById('modBalance'); 
+        const uppHeightVal = document.getElementById('uppHeightVal');
+        const midHeightVal = document.getElementById('midHeightVal');
+        const lwrHeightVal = document.getElementById('lwrHeightVal');
+        const modBalanceVal = document.getElementById('modBalanceVal'); 
+        const gpAngleDisplay = document.getElementById('gpAngle');
+        const gpWidthDisplay = document.getElementById('gpWidth');
+        const tooltip = document.getElementById('tooltip'); 
+
+        // 시뮬레이션 결과 데이터를 저장할 전역 변수 (툴팁에 사용)
+        let simulationAngles = [];
+        let simulationDDMs = [];
+
+        // 150Hz 성분의 교정 계수 (초기 로드 시 한 번 계산됨)
+        // 이 계수는 기본 안테나 높이에서 GLIDE_PATH_TARGET_ANGLE_DEG 일 때 0 DDM이 되도록 보정합니다.
+        let CALIBRATION_FACTOR_150 = 1.0; 
+        let isCalibrationDone = false; // 보정 완료 여부 플래그
+
+        // DDM 곡선의 기울기를 보정하는 인자
+        // 3도에서 +-0.7도 떨어진 곳에서 DDM이 +-0.175가 되도록 조절
+        let DDM_SLOPE_FACTOR = 1.0; 
+        let isSlopeCalibrationDone = false; // 기울기 보정 완료 여부 플래그
+
+        // --- 페이지 로드 시 초기화 및 시뮬레이션 실행 ---
+        document.addEventListener('DOMContentLoaded', () => {
+            displayFrequency.textContent = (FREQUENCY_HZ / 10**6).toFixed(0); // 주파수 표시
+
+            // 주파수 기준으로 안테나 디폴트 높이 계산 (Null Reference System의 1H, 2H, 3H 모델)
+            // H = (3 * lambda) / (4 * PI * sin(theta_0)) - ICAO Doc. 8071 Table A-I, simplified for demonstration
+            // 이 H 값은 3도에서 DDM이 0이 되도록 하는 이상적인 H를 근사합니다.
+            const targetAngleRad = GLIDE_PATH_TARGET_ANGLE_DEG * Math.PI / 180;
+            const H_calculated = (3 * WAVELENGTH_M) / (4 * Math.PI * Math.sin(targetAngleRad));
+            
+            // 디폴트 높이 설정 (소수점 2자리로 반올림)
+            const default_h_lwr = H_calculated;
+            const default_h_mid = 2 * H_calculated;
+            const default_h_upp = 3 * H_calculated;
+
+            lwrHeightInput.value = default_h_lwr.toFixed(2);
+            midHeightInput.value = default_h_mid.toFixed(2);
+            uppHeightInput.value = default_h_upp.toFixed(2);
+            
+            // 변조 균형 슬라이더 초기값 설정 
+            modBalanceInput.value = 1.0; 
+
+            // 슬라이더의 현재 값을 읽어와 span에 표시 (초기값)
+            uppHeightVal.textContent = parseFloat(uppHeightInput.value).toFixed(2);
+            midHeightVal.textContent = parseFloat(midHeightInput.value).toFixed(2);
+            lwrHeightVal.textContent = parseFloat(lwrHeightInput.value).toFixed(2);
+            modBalanceVal.textContent = parseFloat(modBalanceInput.value).toFixed(2);
+            
+            updateSimulation(); // 초기 시뮬레이션 실행
+            
+            // 툴팁 이벤트 리스너 추가
+            ddmChart.addEventListener('mousemove', showTooltip);
+            ddmChart.addEventListener('mouseout', hideTooltip);
+        });
+
+        // Helper to calculate the sin component of the field for a single antenna over ground
+        function calculateSinComponent(h, angleRad) {
+            if (h < 0.01) return 0; 
+            return Math.sin((2 * Math.PI / WAVELENGTH_M) * h * Math.sin(angleRad));
+        }
+
+        // --- 주 함수: 시뮬레이션 업데이트 및 차트 그리기 ---
+        function updateSimulation() {
+            // 슬라이더의 현재 값을 가져오고 span에 표시
+            const h_upp = parseFloat(uppHeightInput.value);
+            const h_mid = parseFloat(midHeightInput.value);
+            const h_lwr = parseFloat(lwrHeightInput.value);
+            const mod_balance_factor = parseFloat(modBalanceInput.value); 
+
+            // 소수점 2자리까지 표시
+            uppHeightVal.textContent = h_upp.toFixed(2);
+            midHeightVal.textContent = h_mid.toFixed(2);
+            lwrHeightVal.textContent = h_lwr.toFixed(2);
+            modBalanceVal.textContent = mod_balance_factor.toFixed(2); 
+
+            // 시뮬레이션 데이터 초기화
+            simulationAngles = [];
+            simulationDDMs = [];
+            let gpCenterAngle = null;
+            let gpLowerAngle = null;
+            let gpUpperAngle = null;
+
+            // --- 초기 보정 계수 계산 (첫 실행 시 한 번만) ---
+            if (!isCalibrationDone) {
+                // 현재 슬라이더의 디폴트 값을 가져옴 (DOMContentLoaded에서 설정된 값)
+                const h_upp_current_default = parseFloat(uppHeightInput.value);
+                const h_mid_current_default = parseFloat(midHeightInput.value);
+                const h_lwr_current_default = parseFloat(lwrHeightInput.value);
+
+                const angleRad_target = GLIDE_PATH_TARGET_ANGLE_DEG * Math.PI / 180;
+
+                const E_upp_target = calculateSinComponent(h_upp_current_default, angleRad_target);
+                const E_mid_target = calculateSinComponent(h_mid_current_default, angleRad_target);
+                const E_lwr_target = calculateSinComponent(h_lwr_current_default, angleRad_target);
+
+                const M150_target_raw = Math.abs(E_upp_target + E_lwr_target); 
+                const M90_target_raw = Math.abs(E_mid_target);                 
+
+                if (M150_target_raw > 1e-6) { 
+                    CALIBRATION_FACTOR_150 = M90_target_raw / M150_target_raw;
+                } else {
+                    CALIBRATION_FACTOR_150 = 1.0; 
+                }
+                isCalibrationDone = true; 
+            }
+
+            // --- DDM 기울기 보정 (첫 실행 시 한 번만) ---
+            if (!isSlopeCalibrationDone) {
+                 // DDM_SLOPE_FACTOR 계산을 위한 가상의 DDM 시뮬레이션
+                const h_upp_default = parseFloat(uppHeightInput.value);
+                const h_mid_default = parseFloat(midHeightInput.value);
+                const h_lwr_default = parseFloat(lwrHeightInput.value);
+                
+                // 목표 DDM_THRESHOLD에 도달해야 하는 각도 (예: 3도 + 0.7도 = 3.7도)
+                const angle_at_threshold = GLIDE_PATH_TARGET_ANGLE_DEG + GLIDE_PATH_HALF_WIDTH_TARGET_DEG; 
+                const angleRad_at_threshold = angle_at_threshold * Math.PI / 180;
+
+                const E_upp_at_threshold = calculateSinComponent(h_upp_default, angleRad_at_threshold);
+                const E_mid_at_threshold = calculateSinComponent(h_mid_default, angleRad_at_threshold);
+                const E_lwr_at_threshold = calculateSinComponent(h_lwr_default, angleRad_at_threshold);
+
+                const M150_at_threshold_raw = Math.abs(E_upp_at_threshold + E_lwr_at_threshold);
+                const M90_at_threshold_raw = Math.abs(E_mid_at_threshold);
+
+                const M150_at_threshold_calibrated = M150_at_threshold_raw * CALIBRATION_FACTOR_150;
+                const M90_at_threshold_calibrated = M90_at_threshold_raw;
+
+                let ddm_at_threshold_raw = 0;
+                if ((M150_at_threshold_calibrated + M90_at_threshold_calibrated) !== 0) {
+                    ddm_at_threshold_raw = (M150_at_threshold_calibrated - M90_at_threshold_calibrated) / (M150_at_threshold_calibrated + M90_at_threshold_calibrated);
+                }
+
+                // 목표 DDM_THRESHOLD(0.175)와 현재 DDM_at_threshold_raw 사이의 비율을 계산하여 기울기 보정
+                // ddm_at_threshold_raw의 절대값을 사용하여 기울기 방향 반전 방지
+                if (Math.abs(ddm_at_threshold_raw) > 1e-6) { 
+                    DDM_SLOPE_FACTOR = DDM_THRESHOLD / Math.abs(ddm_at_threshold_raw); 
+                } else {
+                    DDM_SLOPE_FACTOR = 1.0; 
+                }
+                isSlopeCalibrationDone = true;
+            }
+
+
+            // --- 고도각 스캔 및 DDM 계산 ---
+            for (let angleDeg = MIN_ANGLE; angleDeg <= MAX_ANGLE; angleDeg += ANGLE_STEP) {
+                const angleRad = angleDeg * Math.PI / 180;
+                simulationAngles.push(angleDeg);
+
+                const E_upp_component = calculateSinComponent(h_upp, angleRad);
+                const E_mid_component = calculateSinComponent(h_mid, angleRad);
+                const E_lwr_component = calculateSinComponent(h_lwr, angleRad);
+
+                let M150_raw = Math.abs(E_upp_component + E_lwr_component);
+                let M90_raw = Math.abs(E_mid_component);
+
+                // 보정 계수 및 '변조 균형' 인자 적용
+                const M150 = M150_raw * CALIBRATION_FACTOR_150 * mod_balance_factor;
+                const M90 = M90_raw; 
+
+                let ddm_unscaled = 0;
+                if ((M150 + M90) !== 0) {
+                    ddm_unscaled = (M150 - M90) / (M150 + M90);
+                } else {
+                    ddm_unscaled = 0; 
+                }
+                
+                // DDM 기울기 보정 인자 적용
+                let ddm = ddm_unscaled * DDM_SLOPE_FACTOR;
+                // DDM 값이 -1과 1 사이를 벗어나지 않도록 클램핑
+                ddm = Math.max(-1, Math.min(1, ddm)); 
+
+                simulationDDMs.push(ddm);
+
+                // 글라이드 패스 각도 및 폭 계산 (선형 보간)
+                // DDM이 0이 되는 지점 (글라이드 패스 중심)
+                if (simulationDDMs.length > 1 && gpCenterAngle === null) {
+                    const prevDdm = simulationDDMs[simulationDDMs.length - 2];
+                    // 0을 교차하는 지점 감지
+                    if ((prevDdm > 0 && ddm <= 0) || (prevDdm < 0 && ddm >= 0)) {
+                        const prevAngle = simulationAngles[simulationAngles.length - 2];
+                        const currentAngle = angleDeg;
+                        const currentDdm = ddm;
+                        gpCenterAngle = prevAngle + (0 - prevDdm) * (currentAngle - prevAngle) / (currentDdm - prevDdm);
+                    }
+                }
+
+                // DDM이 -DDM_THRESHOLD에 근접하는 지점 (하단 폭)
+                if (simulationDDMs.length > 1 && gpLowerAngle === null) {
+                    const prevDdm = simulationDDMs[simulationDDMs.length - 2];
+                    // 임계값 -DDM_THRESHOLD를 교차하는 지점 감지 (어느 방향이든)
+                    if ((prevDdm > -DDM_THRESHOLD && ddm <= -DDM_THRESHOLD) || 
+                        (prevDdm < -DDM_THRESHOLD && ddm >= -DDM_THRESHOLD)) {
+                        const prevAngle = simulationAngles[simulationAngles.length - 2];
+                        const currentAngle = angleDeg;
+                        const currentDdm = ddm;
+                        gpLowerAngle = prevAngle + (-DDM_THRESHOLD - prevDdm) * (currentAngle - prevAngle) / (currentDdm - prevDdm);
+                    }
+                }
+                
+                // DDM이 +DDM_THRESHOLD에 근접하는 지점 (상단 폭)
+                if (simulationDDMs.length > 1 && gpUpperAngle === null) {
+                    const prevDdm = simulationDDMs[simulationDDMs.length - 2];
+                    // 임계값 +DDM_THRESHOLD를 교차하는 지점 감지 (어느 방향이든)
+                    if ((prevDdm < DDM_THRESHOLD && ddm >= DDM_THRESHOLD) || 
+                        (prevDdm > DDM_THRESHOLD && ddm <= DDM_THRESHOLD)) {
+                        const prevAngle = simulationAngles[simulationAngles.length - 2];
+                        const currentAngle = angleDeg;
+                        const currentDdm = ddm;
+                        gpUpperAngle = prevAngle + (DDM_THRESHOLD - prevDdm) * (currentAngle - prevAngle) / (currentDdm - prevDdm);
+                    }
+                }
+            }
+
+            // DDM 그래프 그리기
+            drawDdmChart(simulationAngles, simulationDDMs, gpCenterAngle, gpLowerAngle, gpUpperAngle);
+
+            // 결과 표시
+            if (gpCenterAngle !== null) {
+                gpAngleDisplay.textContent = gpCenterAngle.toFixed(2);
+            } else {
+                gpAngleDisplay.textContent = "N/A";
+            }
+
+            if (gpUpperAngle !== null && gpLowerAngle !== null) {
+                const calculatedWidth = gpUpperAngle - gpLowerAngle;
+                // 패스 폭이 0보다 크고, 최대 앵글 범위의 합리적인 비율 내에 있을 경우에만 표시
+                // 이 조건은 비정상적으로 큰 폭이 계산되는 것을 방지합니다.
+                if (calculatedWidth > 0 && calculatedWidth < (MAX_ANGLE - MIN_ANGLE)) { // 이전보다 더 넓은 범위 허용
+                    gpWidthDisplay.textContent = calculatedWidth.toFixed(2);
+                } else {
+                    gpWidthDisplay.textContent = "N/A";
+                }
+            } else {
+                gpWidthDisplay.textContent = "N/A";
+            }
+        }
+
+        // --- 차트 그리기 함수 (X축 범위 및 눈금 조정) ---
+        function drawChartAxes() {
+            let svgContent = ''; 
+
+            const xAxisY = PADDING + CHART_HEIGHT / 2; 
+            svgContent += `<line x1="${PADDING}" y1="${xAxisY}" x2="${PADDING + CHART_WIDTH}" y2="${xAxisY}" class="axis-line" />`;
+            svgContent += `<text x="${PADDING + CHART_WIDTH / 2}" y="${SVG_HEIGHT - PADDING / 4}" text-anchor="middle" class="label-text">고도각 (Degrees)</text>`;
+
+            svgContent += `<line x1="${PADDING}" y1="${PADDING}" x2="${PADDING}" y2="${PADDING + CHART_HEIGHT}" class="axis-line" />`;
+            svgContent += `<text x="${PADDING / 2}" y="${PADDING + CHART_HEIGHT / 2}" text-anchor="middle" transform="rotate(-90 ${PADDING/2} ${PADDING + CHART_HEIGHT/2})" class="label-text">DDM</text>`;
+
+            for (let i = 0; i <= MAX_ANGLE; i++) { 
+                const x = PADDING + (i / MAX_ANGLE) * CHART_WIDTH; 
+                svgContent += `<line x1="${x}" y1="${xAxisY - 5}" x2="${x}" y2="${xAxisY + 5}" class="axis-line" />`;
+                svgContent += `<text x="${x}" y="${xAxisY + 20}" text-anchor="middle">${i}</text>`;
+                if (i > 0) svgContent += `<line x1="${x}" y1="${PADDING}" x2="${x}" y2="${PADDING + CHART_HEIGHT}" class="grid-line" />`; 
+            }
+
+            const ddmTicks = [-1, -0.5, 0, 0.5, 1];
+            ddmTicks.forEach(tick => {
+                const y = PADDING + CHART_HEIGHT * (1 - (tick + 1) / 2); 
+                svgContent += `<line x1="${PADDING - 5}" y1="${y}" x2="${PADDING + 5}" y2="${y}" class="axis-line" />`;
+                svgContent += `<text x="${PADDING - 20}" y="${y + 4}" text-anchor="end">${tick.toFixed(1)}</text>`;
+                if (tick !== 0) svgContent += `<line x1="${PADDING}" y1="${y}" x2="${PADDING + CHART_WIDTH}" y2="${y}" class="grid-line" />`; 
+            });
+
+            const y_pos_threshold = PADDING + CHART_HEIGHT * (1 - (DDM_THRESHOLD + 1) / 2);
+            const y_neg_threshold = PADDING + CHART_HEIGHT * (1 - (-DDM_THRESHOLD + 1) / 2);
+            svgContent += `<line x1="${PADDING}" y1="${y_pos_threshold}" x2="${PADDING + CHART_WIDTH}" y2="${y_pos_threshold}" class="threshold-line" />`;
+            svgContent += `<line x1="${PADDING}" y1="${y_neg_threshold}" x2="${PADDING + CHART_WIDTH}" y2="${y_neg_threshold}" class="threshold-line" />`;
+
+            return svgContent; 
+        }
+
+        function drawDdmChart(angles, ddms, gpCenterAngle, gpLowerAngle, gpUpperAngle) {
+            ddmChart.innerHTML = ''; 
+
+            ddmChart.innerHTML += drawChartAxes();
+
+            let points = "";
+            for (let i = 0; i < angles.length; i++) {
+                const x = PADDING + ((angles[i] - MIN_ANGLE) / (MAX_ANGLE - MIN_ANGLE)) * CHART_WIDTH;
+                const y = PADDING + CHART_HEIGHT * (1 - (ddms[i] + 1) / 2);
+
+                const clampedY = Math.max(PADDING, Math.min(PADDING + CHART_HEIGHT, y));
+                points += `${x},${clampedY} `;
+            }
+
+            ddmChart.innerHTML += `<polyline points="${points}" class="ddm-line" />`;
+
+            if (gpCenterAngle !== null) {
+                const x_center = PADDING + ((gpCenterAngle - MIN_ANGLE) / (MAX_ANGLE - MIN_ANGLE)) * CHART_WIDTH;
+                ddmChart.innerHTML += `<line x1="${x_center}" y1="${PADDING}" x2="${x_center}" y2="${PADDING + CHART_HEIGHT}" class="center-line" />`;
+                ddmChart.innerHTML += `<circle cx="${x_center}" cy="${PADDING + CHART_HEIGHT/2}" r="5" fill="#2196F3" />`;
+                ddmChart.innerHTML += `<text x="${x_center}" y="${PADDING + CHART_HEIGHT + 35}" text-anchor="middle" fill="#2196F3" font-weight="bold">${gpCenterAngle.toFixed(2)}°</text>`; 
+            }
+
+            if (gpLowerAngle !== null && gpUpperAngle !== null) {
+                const x_lower = PADDING + ((gpLowerAngle - MIN_ANGLE) / (MAX_ANGLE - MIN_ANGLE)) * CHART_WIDTH;
+                const x_upper = PADDING + ((gpUpperAngle - MIN_ANGLE) / (MAX_ANGLE - MIN_ANGLE)) * CHART_WIDTH;
+                ddmChart.innerHTML += `<line x1="${x_lower}" y1="${PADDING}" x2="${x_lower}" y2="${PADDING + CHART_HEIGHT}" class="threshold-line" />`;
+                ddmChart.innerHTML += `<line x1="${x_upper}" y1="${PADDING}" x2="${x_upper}" y2="${PADDING + CHART_HEIGHT}" class="threshold-line" />`;
+                ddmChart.innerHTML += `<text x="${x_lower}" y="${PADDING + CHART_HEIGHT + 35}" text-anchor="middle" fill="#FF5722" font-weight="bold">${gpLowerAngle.toFixed(2)}°</text>`;
+                ddmChart.innerHTML += `<text x="${x_upper}" y="${PADDING + CHART_HEIGHT + 35}" text-anchor="middle" fill="#FF5722" font-weight="bold">${gpUpperAngle.toFixed(2)}°</text>`;
+            }
+        }
+
+        // --- 툴팁 관련 함수 (이전과 동일) ---
+        function getSvgCoordinates(event) {
+            const CTM = ddmChart.getScreenCTM(); 
+            return {
+                x: (event.clientX - CTM.e) / CTM.a,
+                y: (event.clientY - CTM.f) / CTM.d
+            };
+        }
+
+        function svgXToAngle(svgX) {
+            const chartX = svgX - PADDING;
+            const angle = MIN_ANGLE + (chartX / CHART_WIDTH) * (MAX_ANGLE - MIN_ANGLE);
+            return angle;
+        }
+
+        function getDdmForAngle(angle) {
+            const index = Math.round((angle - MIN_ANGLE) / ANGLE_STEP);
+            if (index >= 0 && index < simulationDDMs.length) {
+                return simulationDDMs[index];
+            }
+            return null;
+        }
+
+        function showTooltip(event) {
+            const svgCoords = getSvgCoordinates(event);
+            const mouseX = svgCoords.x;
+            const mouseY = svgCoords.y;
+
+            if (mouseX < PADDING || mouseX > PADDING + CHART_WIDTH || 
+                mouseY < PADDING || mouseY > PADDING + CHART_HEIGHT) {
+                hideTooltip();
+                return;
+            }
+
+            const angle = svgXToAngle(mouseX);
+            const ddmValue = getDdmForAngle(angle);
+
+            if (ddmValue !== null) {
+                tooltip.classList.add('active');
+                tooltip.style.display = 'block';
+                tooltip.innerHTML = `Angle: ${angle.toFixed(2)}°<br>DDM: ${ddmValue.toFixed(3)}`;
+                
+                const tooltipWidth = tooltip.offsetWidth;
+                const tooltipHeight = tooltip.offsetHeight;
+                
+                let posX = event.clientX + 10; 
+                let posY = event.clientY + 10; 
+
+                if (posX + tooltipWidth > window.innerWidth - 20) {
+                    posX = event.clientX - tooltipWidth - 10; 
+                }
+                if (posY + tooltipHeight > window.innerHeight - 20) {
+                    posY = event.clientY - tooltipHeight - 10; 
+                }
+                
+                tooltip.style.left = `${posX}px`;
+                tooltip.style.top = `${posY}px`;
+
+            } else {
+                hideTooltip();
+            }
+        }
+
+        function hideTooltip() {
+            tooltip.classList.remove('active');
+            tooltip.style.display = 'none'; 
+        }
+    </script>
+</body>
+</html>
