@@ -32,54 +32,90 @@
     .sim-grid {
       display: grid;
       grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-      gap: 20px;
+      gap: 24px;
       padding: 40px;
       width: 100%;
-      max-width: 1000px;
+      max-width: 1100px;
       box-sizing: border-box;
     }
 
     .sim-card {
       background: white;
       padding: 30px 20px;
-      border-radius: 12px;
-      box-shadow: 0 4px 10px rgba(0,0,0,0.08);
+      border-radius: 16px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.08);
       text-align: center;
-      transition: transform 0.3s;
+      transition: all 0.35s ease;
+      cursor: pointer;
     }
 
     .sim-card:hover {
-      transform: translateY(-5px);
+      transform: translateY(-6px);
+      box-shadow: 0 10px 24px rgba(0,0,0,0.15);
+      background-color: #e6f2fb;
     }
 
     .sim-card img {
       width: 100%;
       height: auto;
-      border-radius: 8px;
-      margin-bottom: 15px;
+      border-radius: 10px;
+      margin-bottom: 18px;
+      transition: transform 0.4s ease;
+    }
+
+    .sim-card:hover img {
+      transform: scale(1.05);
+    }
+
+    .sim-card h2 {
+      margin: 10px 0 8px;
+      font-size: 20px;
+      color: #2c3e50;
+    }
+
+    .sim-card p {
+      color: #555;
+      font-size: 15px;
+      margin-bottom: 16px;
     }
 
     .sim-card a {
       display: inline-block;
-      margin-top: 15px;
-      padding: 10px 20px;
+      padding: 10px 24px;
       background-color: #3498db;
       color: white;
       text-decoration: none;
       font-weight: bold;
       border-radius: 8px;
-      transition: background-color 0.3s;
+      transition: background-color 0.3s, box-shadow 0.3s;
     }
 
     .sim-card a:hover {
-      background-color: #2980b9;
+      background-color: #1d88d2;
+      box-shadow: 0 0 8px rgba(52, 152, 219, 0.5);
+    }
+
+    footer {
+      background-color: #2c3e50;
+      color: white;
+      width: 100%;
+      text-align: center;
+      padding: 20px 10px;
+      font-size: 13.5px;
+      line-height: 1.7;
+      margin-top: auto;
+    }
+
+    footer a {
+      color: #ffdd66;
+      text-decoration: underline;
     }
   </style>
 </head>
 <body>
 
   <header>
-    <h1>CATC Instructor SON'S ILS COURSE</h1>
+    <h1>CATC ILS COURSE</h1>
   </header>
 
   <section class="sim-grid">
@@ -114,5 +150,17 @@
 
   </section>
 
+  <footer>
+    <p>
+      본 웹사이트는 한국공항공사 항공기술훈련원의 교육용 시뮬레이터 실습을 위해 제작되었습니다.<br>
+      담당자: 계기착륙시설(ILS) 교수 / 과정: 초기·정기·국제과정<br>
+      Instructor: ILS Instructor, Korea Airports Corporation / Courses: Initial, Periodic, and International<br>
+      Instructor en español: Profesor del sistema de aterrizaje por instrumentos (ILS), Cursos: Inicial, Periódico, Internacional<br>
+      문의 이메일: <a href="mailto:sonwr1@airport.co.kr">sonwr1@airport.co.kr</a><br>
+      © 2025 Korea Airports Corporation. All rights reserved.
+    </p>
+  </footer>
+
 </body>
 </html>
+
