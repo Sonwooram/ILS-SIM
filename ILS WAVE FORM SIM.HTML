@@ -1,0 +1,762 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ILS Audio/Modulated Carrier Signal Simulator (CSB/SBO)</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 20px;
+            background-color: #f0f2f5;
+            color: #333;
+        }
+        h1 {
+            color: #2c3e50;
+            margin-bottom: 30px;
+        }
+        .container {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 30px;
+            width: 100%;
+            max-width: 1200px;
+            justify-content: center;
+        }
+        .controls, .display {
+            background-color: #ffffff;
+            padding: 25px;
+            border-radius: 10px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+        }
+        .controls {
+            flex: 1;
+            min-width: 300px;
+        }
+        .display {
+            flex: 2;
+            min-width: 400px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        .control-group {
+            margin-bottom: 20px;
+            border-bottom: 1px solid #eee;
+            padding-bottom: 15px;
+        }
+        .control-group:last-child {
+            border-bottom: none;
+            margin-bottom: 0;
+            padding-bottom: 0;
+        }
+        label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: bold;
+            color: #555;
+        }
+        input[type="number"] {
+            width: calc(100% - 20px);
+            padding: 8px 10px;
+            margin-top: 5px;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+            font-size: 16px;
+            box-sizing: border-box;
+        }
+        input[type="range"] {
+            width: 100%;
+            -webkit-appearance: none;
+            height: 8px;
+            background: #ddd;
+            border-radius: 5px;
+            outline: none;
+            opacity: 0.7;
+            transition: opacity .2s;
+        }
+        input[type="range"]:hover {
+            opacity: 1;
+        }
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background: #007bff;
+            cursor: pointer;
+            border: 2px solid #fff;
+            box-shadow: 0 0 5px rgba(0, 0, 0, 0.2);
+        }
+        input[type="range"]::-moz-range-thumb {
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background: #007bff;
+            cursor: pointer;
+            border: 2px solid #fff;
+            box-shadow: 0 0 5px rgba(0, 0, 0, 0.2);
+        }
+        output {
+            display: inline-block;
+            margin-left: 10px;
+            font-weight: normal;
+            color: #007bff;
+        }
+        .waveform-container, .indicator-container {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+            width: 100%;
+            align-items: center;
+            margin-top: 20px;
+        }
+        canvas {
+            border: 2px solid #34495e;
+            background-color: #ecf0f1;
+            margin-top: 10px;
+            border-radius: 5px;
+            box-shadow: inset 0 0 10px rgba(0, 0, 0, 0.1);
+        }
+        .canvas-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            width: 600px;
+            margin-top: 10px;
+            margin-bottom: -5px;
+        }
+        .canvas-label {
+            font-weight: bold;
+            color: #444;
+        }
+        .toggle-btn {
+            padding: 8px 15px;
+            border: none;
+            border-radius: 5px;
+            background-color: #007bff;
+            color: white;
+            font-size: 14px;
+            cursor: pointer;
+            transition: background-color 0.3s, transform 0.2s;
+        }
+        .toggle-btn:hover {
+            background-color: #0056b3;
+            transform: translateY(-1px);
+        }
+        .mode-selection {
+            display: flex;
+            justify-content: center;
+            gap: 15px;
+            margin-bottom: 25px;
+        }
+        .mode-selection button {
+            padding: 12px 25px;
+            border: none;
+            border-radius: 5px;
+            background-color: #ccc;
+            color: #333;
+            font-size: 16px;
+            cursor: pointer;
+            transition: background-color 0.3s, transform 0.2s;
+        }
+        .mode-selection button.active {
+            background-color: #28a745;
+            color: white;
+            box-shadow: 0 2px 8px rgba(40, 167, 69, 0.4);
+            transform: translateY(-2px);
+        }
+        .mode-selection button:hover:not(.active) {
+            background-color: #b0b0b0;
+        }
+
+        .signal-type-selection {
+            display: flex;
+            justify-content: center;
+            gap: 10px;
+            margin-bottom: 20px;
+            margin-top: -10px;
+        }
+        .signal-type-selection button {
+            padding: 10px 20px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            background-color: #f8f8f8;
+            color: #555;
+            font-size: 14px;
+            cursor: pointer;
+            transition: background-color 0.3s, border-color 0.3s;
+        }
+        .signal-type-selection button.active {
+            background-color: #007bff;
+            color: white;
+            border-color: #007bff;
+        }
+        .signal-type-selection button:hover:not(.active) {
+            background-color: #e9e9e9;
+        }
+
+
+        .description {
+            font-size: 14px;
+            color: #666;
+            margin-top: 15px;
+            text-align: center;
+        }
+        .ddm-display {
+            font-size: 20px;
+            font-weight: bold;
+            color: #e74c3c;
+            margin-top: 15px;
+            padding: 10px 20px;
+            border: 2px solid #e74c3c;
+            border-radius: 8px;
+            background-color: #fff;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.08);
+            text-align: center;
+        }
+        .ddm-display.on-path {
+            color: #28a745;
+            border-color: #28a745;
+        }
+        .ddm-display.on-positive {
+            color: #007bff;
+            border-color: #007bff;
+        }
+        .signature-text {
+            margin-top: 40px;
+            font-size: 12px;
+            color: #777;
+        }
+        .indicator-description {
+            font-size: 14px;
+            color: #666;
+            margin-top: 10px;
+            text-align: center;
+            width: 600px;
+        }
+    </style>
+</head>
+<body>
+    <h1>ILS Audio/Modulated Carrier Signal Simulator (CSB/SBO)</h1>
+
+    <div class="container">
+        <div class="controls">
+            <h2>Settings</h2>
+
+            <div class="mode-selection">
+                <button id="locModeBtn" class="active">Localizer (LOC)</button>
+                <button id="gpModeBtn">Glide Slope (GP)</button>
+            </div>
+
+            <div class="signal-type-selection">
+                <button id="csbModeBtn" class="active">CSB Signal</button>
+                <button id="sboModeBtn">SBO Signal</button>
+            </div>
+
+            <div class="control-group">
+                <label for="freq90">90Hz Signal Frequency: <output id="outputFreq90">90</output> Hz</label>
+                <input type="range" id="freq90" min="70" max="110" value="90" step="1">
+            </div>
+
+            <div class="control-group">
+                <label for="modDepth90">90Hz Signal Modulation Depth: <output id="outputModDepth90">20</output>%</label>
+                <input type="range" id="modDepth90" min="0" max="100" value="20" step="1">
+            </div>
+
+            <div class="control-group">
+                <label for="freq150">150Hz Signal Frequency: <output id="outputFreq150">150</output> Hz</label>
+                <input type="range" id="freq150" min="130" max="170" value="150" step="1">
+            </div>
+
+            <div class="control-group">
+                <label for="modDepth150">150Hz Signal Modulation Depth: <output id="outputModDepth150">20</output>%</label>
+                <input type="range" id="modDepth150" min="0" max="100" value="20" step="1">
+            </div>
+
+            <div class="control-group">
+                <label for="phaseOffset">150Hz Signal Relative Phase: <output id="outputPhaseOffset">0</output> °</label>
+                <input type="number" id="phaseOffset" min="-180" max="180" value="0" step="1">
+                <p class="description" style="margin-top: 5px;">(Adjusts the phase of the 150Hz signal relative to the 90Hz signal by entering a number.)</p>
+            </div>
+
+            <div class="control-group">
+                <label for="noiseStdDev">DDM Noise Standard Deviation: <output id="outputNoiseStdDev">0.002</output></label>
+                <input type="range" id="noiseStdDev" min="0.000" max="0.010" value="0.002" step="0.001">
+                <p class="description" style="margin-top: 5px;">(Adjusts the intensity of random Gaussian noise added to DDM.)</p>
+            </div>
+
+            <div class="control-group">
+                <label for="carrierFreq">Carrier Frequency: <output id="outputCarrierFreq">100.0</output> MHz</label>
+                <input type="range" id="carrierFreq" min="100" max="330" value="100" step="0.1">
+                <p class="description" style="margin-top: 5px;">(Actual ILS carrier frequencies range from 108.1 to 111.95 MHz for LOC, and 328.6 to 335.4 MHz for GP.)</p>
+                <p class="description" style="margin-top: 5px;">(Displayed waveform uses a scaled frequency for visualization purposes.)</p>
+            </div>
+
+            <div class="description">
+                <p>Adjust modulation depths to change the relative strength of 90Hz and 150Hz signals. You can also adjust frequencies directly.</p>
+                <p><b>LOC Mode:</b> 90Hz > 150Hz indicates left deviation. 150Hz > 90Hz indicates right deviation.</p>
+                <p><b>GP Mode:</b> 90Hz > 150Hz indicates above glideslope. 150Hz > 90Hz indicates below glideslope.</p>
+                <p>When both signal modulation depths are equal, you are on the correct ILS path.</p>
+                <p><b>CSB (Carrier and Sideband)</b> is the traditional ILS signal type. <b>SBO (Sideband Only)</b> removes the carrier, which can improve efficiency and reduce certain interferences. Observe the difference in carrier waveforms!</p>
+                <p>In SBO mode, the 90Hz signal is phase-reversed relative to the 150Hz signal for the combined waveform (similar to 150Hz minus 90Hz).</p>
+                <p>Note: The combined audio waveform always shows the sum of the 90Hz and 150Hz components, as these are the baseband signals recovered by the receiver, regardless of CSB/SBO.</p>
+            </div>
+        </div>
+
+        <div class="display">
+            <h2>Oscilloscope Waveforms</h2>
+            <div class="ddm-display" id="ddmDisplay">CenterLine DDM: 0.0000</div>
+            <div class="waveform-container">
+                <div class="canvas-header">
+                    <span class="canvas-label">Combined ILS Signal</span>
+                    <button class="toggle-btn" data-canvas-type="combined">Show Carrier Modulation</button>
+                </div>
+                <canvas id="combinedCanvas" width="600" height="150"></canvas>
+
+                <div class="canvas-header">
+                    <span class="canvas-label">90Hz Signal</span>
+                    <button class="toggle-btn" data-canvas-type="signal90">Show Carrier Modulation</button>
+                </div>
+                <canvas id="signal90Canvas" width="600" height="150"></canvas>
+
+                <div class="canvas-header">
+                    <span class="canvas-label">150Hz Signal</span>
+                    <button class="toggle-btn" data-canvas-type="signal150">Show Carrier Modulation</button>
+                </div>
+                <canvas id="signal150Canvas" width="600" height="150"></canvas>
+            </div>
+            <div class="description">
+                <p>Observe the real-time waveforms of the combined ILS audio signal, and its individual 90Hz and 150Hz components.</p>
+                <p>Click the "Show Carrier Modulation" button to see how each audio signal modulates a carrier wave.</p>
+            </div>
+
+            <div class="indicator-container">
+                <h2>ILS Indicator Simulation</h2>
+                <canvas id="indicatorCanvas" width="600" height="300"></canvas>
+                <p class="indicator-description">
+                    This simulates the ILS indicator's behavior when stationary on the centerline/glideslope.
+                    The "Target Line" represents the ideal path. The "Aircraft Symbol" (vertical bar in LOC, horizontal bar in GP)
+                    represents the aircraft's perceived deviation.
+                    Adjust the "150Hz Signal Relative Phase" to observe how phase errors cause the indicator to "scallop" or "flicker" around the center, even if your actual position doesn't change.
+                    Adjust "DDM Noise Standard Deviation" to simulate receiver noise or signal interference.
+                    (Note: This is a simplified visual model of DDM measurement instability caused by phase errors and receiver noise.)
+                </p>
+            </div>
+        </div>
+    </div>
+
+    <p class="signature-text">Gemini (Ph.D. in Electronic Engineering, Antenna Engineering Expert)</p>
+
+    <script>
+        const freq90Input = document.getElementById('freq90');
+        const modDepth90Input = document.getElementById('modDepth90');
+        const freq150Input = document.getElementById('freq150');
+        const modDepth150Input = document.getElementById('modDepth150');
+        const phaseOffsetInput = document.getElementById('phaseOffset');    
+        const noiseStdDevInput = document.getElementById('noiseStdDev');
+        const carrierFreqInput = document.getElementById('carrierFreq');    
+
+        const outputFreq90 = document.getElementById('outputFreq90');
+        const outputModDepth90 = document.getElementById('outputModDepth90');
+        const outputFreq150 = document.getElementById('outputFreq150');
+        const outputModDepth150 = document.getElementById('outputModDepth150');
+        const outputPhaseOffset = document.getElementById('outputPhaseOffset');    
+        const outputNoiseStdDev = document.getElementById('outputNoiseStdDev');
+        const outputCarrierFreq = document.getElementById('outputCarrierFreq');
+        const ddmDisplay = document.getElementById('ddmDisplay');    
+
+        const locModeBtn = document.getElementById('locModeBtn');
+        const gpModeBtn = document.getElementById('gpModeBtn');
+        const csbModeBtn = document.getElementById('csbModeBtn');
+        const sboModeBtn = document.getElementById('sboModeBtn');
+
+        const combinedCanvas = document.getElementById('combinedCanvas');
+        const ctxCombined = combinedCanvas.getContext('2d');
+        const signal90Canvas = document.getElementById('signal90Canvas');
+        const ctxSignal90 = signal90Canvas.getContext('2d');
+        const signal150Canvas = document.getElementById('signal150Canvas');
+        const ctxSignal150 = signal150Canvas.getContext('2d');
+
+        const indicatorCanvas = document.getElementById('indicatorCanvas');
+        const ctxIndicator = indicatorCanvas.getContext('2d');
+
+        const toggleButtons = document.querySelectorAll('.toggle-btn');
+
+        let showCarrierModulation = {
+            combined: false,
+            signal90: false,
+            signal150: false
+        };
+
+        let currentFreq90 = parseFloat(freq90Input.value);
+        let currentModDepth90 = parseFloat(modDepth90Input.value);    
+        let currentFreq150 = parseFloat(freq150Input.value);
+        let currentModDepth150 = parseFloat(modDepth150Input.value);    
+        let currentPhaseOffsetDeg = parseFloat(phaseOffsetInput.value);    
+        let currentNoiseStdDev = parseFloat(noiseStdDevInput.value);
+        let currentCarrierFreqMHz = parseFloat(carrierFreqInput.value);    
+        let currentMode = 'LOC'; // 'LOC' or 'GP'
+        let currentSignalType = 'CSB'; // 'CSB' or 'SBO'
+
+        const VISUAL_CARRIER_SCALE_FACTOR = 10000;    
+        const AMPLITUDE_SCALE_FACTOR_AUDIO = 2.5;    
+        const AMPLITUDE_SCALE_FACTOR_CARRIER = 2.2;    
+
+        // --- ILS Indicator Specific Constants ---
+        const DDM_FSD_LOC = 0.155; 
+        const DDM_FSD_GP = 0.175;  
+        const DDM_PHASE_NOISE_SCALE = 0.005;
+        const DOT_COUNT = 4;
+        let lastFluctuatingDDM = 0;
+
+        let spareRandom = null;
+
+        function gaussianRandom(mean = 0, stdDev = 1) {
+            let val, u, v, s, mul;
+
+            if (spareRandom !== null) {
+                val = spareRandom;
+                spareRandom = null;
+            } else {
+                do {
+                    u = Math.random() * 2 - 1;
+                    v = Math.random() * 2 - 1;
+                    s = u * u + v * v;
+                } while (s === 0 || s >= 1);
+
+                mul = Math.sqrt(-2 * Math.log(s) / s);
+                val = u * mul;
+                spareRandom = v * mul;
+            }
+            return mean + stdDev * val;
+        }
+
+        function calculateDDM(modDepth90, modDepth150) {
+            const m90 = modDepth90 / 100;
+            const m150 = modDepth150 / 100;
+
+            if (m90 + m150 === 0) {
+                return 0;    
+            }
+            return (m150 - m90) / (m150 + m90);
+        }
+
+        function getFluctuatingDDM(baseDDM, phaseOffsetDeg, gaussianNoiseStdDev) {
+            const phaseNoiseAmplitude = Math.abs(phaseOffsetDeg / 180) * DDM_PHASE_NOISE_SCALE;
+            const phaseNoise = (Math.sin(Date.now() / 200) + Math.cos(Date.now() / 350)) / 2 * phaseNoiseAmplitude;
+            
+            const gaussianNoise = gaussianRandom(0, gaussianNoiseStdDev);
+
+            const totalNoise = phaseNoise + gaussianNoise;
+
+            lastFluctuatingDDM = lastFluctuatingDDM * 0.9 + (baseDDM + totalNoise) * 0.1; 
+            return lastFluctuatingDDM;
+        }
+
+        function updateDDMDisplay() {
+            const baseDDMValue = calculateDDM(currentModDepth90, currentModDepth150);
+            ddmDisplay.textContent = `CenterLine DDM: ${baseDDMValue.toFixed(4)}`;    
+
+            ddmDisplay.classList.remove('on-path', 'on-positive');    
+            
+            const ddmThreshold = 0.0001;    
+
+            if (baseDDMValue > ddmThreshold) {    
+                ddmDisplay.classList.add('on-positive');
+            } else if (baseDDMValue < -ddmThreshold) {    
+                // Default color is red
+            } else {    
+                ddmDisplay.classList.add('on-path');
+            }
+        }
+
+        function updateValues() {
+            currentFreq90 = parseFloat(freq90Input.value);
+            currentModDepth90 = parseFloat(modDepth90Input.value);
+            currentFreq150 = parseFloat(freq150Input.value);
+            currentModDepth150 = parseFloat(modDepth150Input.value);
+            currentPhaseOffsetDeg = parseFloat(phaseOffsetInput.value);    
+            
+            if (currentPhaseOffsetDeg > 180) currentPhaseOffsetDeg = 180;
+            if (currentPhaseOffsetDeg < -180) currentPhaseOffsetDeg = -180;
+            phaseOffsetInput.value = currentPhaseOffsetDeg;
+
+            currentNoiseStdDev = parseFloat(noiseStdDevInput.value);
+            currentCarrierFreqMHz = parseFloat(carrierFreqInput.value);
+
+            outputFreq90.textContent = currentFreq90;
+            outputModDepth90.textContent = currentModDepth90;
+            outputFreq150.textContent = currentFreq150;
+            outputModDepth150.textContent = currentModDepth150;
+            outputPhaseOffset.textContent = currentPhaseOffsetDeg;    
+            outputNoiseStdDev.textContent = currentNoiseStdDev.toFixed(3);
+            outputCarrierFreq.textContent = currentCarrierFreqMHz.toFixed(1);    
+
+            updateDDMDisplay();    
+            drawWaveforms();
+        }
+
+        function animateIndicator() {
+            const baseDDM = calculateDDM(currentModDepth90, currentModDepth150);
+            const fluctuatingDDM = getFluctuatingDDM(baseDDM, currentPhaseOffsetDeg, currentNoiseStdDev);
+            drawIndicator(fluctuatingDDM);
+            requestAnimationFrame(animateIndicator);
+        }
+
+        // Modified drawWaveforms to correctly handle CSB and SBO signal generation with 90Hz phase reversal
+        function drawWaveforms() {
+            const sampleRate = 44100;    
+            const duration = 0.05;    
+            const numSamples = sampleRate * duration;
+
+            const visualCarrierFreq = currentCarrierFreqMHz * VISUAL_CARRIER_SCALE_FACTOR;
+            const phaseOffsetRad = currentPhaseOffsetDeg * (Math.PI / 180);    
+
+            let combinedAudioPoints = [];
+            let signal90AudioPoints = [];
+            let signal150AudioPoints = [];
+
+            let combinedCarrierPoints = [];
+            let signal90CarrierPoints = [];
+            let signal150CarrierPoints = [];
+
+            for (let i = 0; i < numSamples; i++) {
+                const time = i / sampleRate;
+                const carrierPhase = 2 * Math.PI * visualCarrierFreq * time;
+
+                // Baseband Audio signals
+                const audio90 = Math.sin(2 * Math.PI * currentFreq90 * time);
+                const audio150 = Math.sin(2 * Math.PI * currentFreq150 * time + phaseOffsetRad);
+
+                // Modulated Audio signals (amplitude scaled by modulation depth)
+                const modulatedAudio90 = audio90 * (currentModDepth90 / 100);
+                const modulatedAudio150 = audio150 * (currentModDepth150 / 100);
+
+                // --- MODIFICATION START ---
+                // For audio waveforms, both CSB and SBO modes should show the simple sum of the baseband audio signals.
+                // The difference (150Hz - 90Hz) is relevant for DDM calculation *after* demodulation,
+                // or for the carrier-modulated SBO composite signal's null property, not the original audio.
+                const combinedAudioSignal = modulatedAudio90 + modulatedAudio150;
+                // --- MODIFICATION END ---
+
+                combinedAudioPoints.push(combinedAudioSignal);
+                signal90AudioPoints.push(modulatedAudio90);
+                signal150AudioPoints.push(modulatedAudio150);
+
+                // Carrier signal (cosine for I-component, sine for Q-component in quadrature)
+                const carrier_I = Math.cos(carrierPhase); // In-phase carrier
+                const carrier_Q = Math.sin(carrierPhase); // Quadrature carrier (90 deg phase shifted)
+
+                let carrierSignal90_modulated, carrierSignal150_modulated, combinedModulatedCarrier;
+
+                if (currentSignalType === 'CSB') {
+                    // CSB (Carrier and Sideband - traditional AM)
+                    carrierSignal90_modulated = (1 + modulatedAudio90) * carrier_I;
+                    carrierSignal150_modulated = (1 + modulatedAudio150) * carrier_I;
+                    
+                    const scaledCombinedAudio = (modulatedAudio90 + modulatedAudio150) / 2; // Use sum for CSB carrier
+                    combinedModulatedCarrier = (1 + scaledCombinedAudio) * carrier_I;
+
+                } else { // SBO (Sideband Only - USB for 90Hz, LSB for 150Hz)
+                    // SSB Generation using Quadrature Modulation
+                    // M(t) = A * sin(omega_m * t)
+                    // M_hat(t) = A * cos(omega_m * t)
+                    // USB = M(t) * cos(omega_c * t) - M_hat(t) * sin(omega_c * t)
+                    // LSB = M(t) * cos(omega_c * t) + M_hat(t) * sin(omega_c * t)
+
+                    // 90Hz USB component (using original modulatedAudio90 for individual display)
+                    const audio90_hat = Math.cos(2 * Math.PI * currentFreq90 * time) * (currentModDepth90 / 100); 
+                    carrierSignal90_modulated = (modulatedAudio90 * carrier_I) - (audio90_hat * carrier_Q);
+
+                    // 150Hz LSB component
+                    const audio150_hat = Math.cos(2 * Math.PI * currentFreq150 * time + phaseOffsetRad) * (currentModDepth150 / 100); 
+                    carrierSignal150_modulated = (modulatedAudio150 * carrier_I) + (audio150_hat * carrier_Q);
+                    
+                    // Combined SBO signal on carrier: 150Hz LSB minus 90Hz USB to reflect DDM logic
+                    combinedModulatedCarrier = carrierSignal150_modulated - carrierSignal90_modulated; 
+                }
+
+                signal90CarrierPoints.push(carrierSignal90_modulated);
+                signal150CarrierPoints.push(carrierSignal150_modulated);
+                combinedCarrierPoints.push(combinedModulatedCarrier);
+            }
+
+            drawCanvasBasedOnToggle(ctxCombined, combinedCanvas, combinedAudioPoints, combinedCarrierPoints, showCarrierModulation.combined, '#2980b9');
+            drawCanvasBasedOnToggle(ctxSignal90, signal90Canvas, signal90AudioPoints, signal90CarrierPoints, showCarrierModulation.signal90, '#e67e22');
+            drawCanvasBasedOnToggle(ctxSignal150, signal150Canvas, signal150AudioPoints, signal150CarrierPoints, showCarrierModulation.signal150, '#8e44ad');
+        }
+
+        function drawCanvasBasedOnToggle(ctx, canvas, audioPoints, carrierPoints, isCarrierMode, color) {
+            if (isCarrierMode) {
+                // Adjust amplitude scaling for SBO to better visualize
+                const sboAmplitudeScaleFactor = (currentSignalType === 'SBO') ? AMPLITUDE_SCALE_FACTOR_CARRIER * 1.5 : AMPLITUDE_SCALE_FACTOR_CARRIER; 
+                drawSingleWaveform(ctx, canvas, carrierPoints, color, sboAmplitudeScaleFactor);
+            } else {
+                drawSingleWaveform(ctx, canvas, audioPoints, color, AMPLITUDE_SCALE_FACTOR_AUDIO);
+            }
+        }
+
+        function drawSingleWaveform(ctx, canvas, points, color, amplitudeDivisor) {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);    
+            ctx.strokeStyle = color;    
+            ctx.lineWidth = (amplitudeDivisor === AMPLITUDE_SCALE_FACTOR_CARRIER || currentSignalType === 'SBO') ? 1 : 2;    
+
+            const centerY = canvas.height / 2;
+            const amplitudeScale = canvas.height / amplitudeDivisor;    
+
+            ctx.beginPath();
+            ctx.moveTo(0, centerY);
+
+            const numSamples = points.length;
+            for (let i = 0; i < numSamples; i++) {
+                const x = (i / numSamples) * canvas.width;
+                const y = centerY - (points[i] * amplitudeScale);
+                ctx.lineTo(x, y);
+            }
+            ctx.stroke();
+
+            ctx.strokeStyle = '#95a5a6';
+            ctx.lineWidth = 1;
+            ctx.beginPath();
+            ctx.moveTo(0, centerY);
+            ctx.lineTo(canvas.width, centerY);
+            ctx.stroke();
+        }
+
+        function drawIndicator(ddm) {
+            ctxIndicator.clearRect(0, 0, indicatorCanvas.width, indicatorCanvas.height);
+
+            const canvasWidth = indicatorCanvas.width;
+            const canvasHeight = indicatorCanvas.height;
+            const centerX = canvasWidth / 2;
+            const centerY = canvasHeight / 2;
+
+            const MAX_DDM_INDICATOR = (currentMode === 'LOC') ? DDM_FSD_LOC : DDM_FSD_GP;
+            
+            ddm = Math.max(-MAX_DDM_INDICATOR, Math.min(MAX_DDM_INDICATOR, ddm));
+            let normalizedDdm = ddm / MAX_DDM_INDICATOR;
+
+            ctxIndicator.fillStyle = '#ecf0f1';
+            ctxIndicator.fillRect(0, 0, canvasWidth, canvasHeight);
+
+            ctxIndicator.strokeStyle = '#666';
+            ctxIndicator.lineWidth = 2;
+            const boxWidth = 200;
+            const boxHeight = 200;
+            ctxIndicator.strokeRect(centerX - boxWidth / 2, centerY - boxHeight / 2, boxWidth, boxHeight);
+
+            ctxIndicator.strokeStyle = '#95a5a6';
+            ctxIndicator.lineWidth = 2;
+            ctxIndicator.beginPath();
+            ctxIndicator.moveTo(centerX, 0);
+            ctxIndicator.lineTo(centerX, canvasHeight);
+            ctxIndicator.moveTo(0, centerY);
+            ctxIndicator.lineTo(canvasWidth, centerY);
+            ctxIndicator.stroke();
+
+            ctxIndicator.fillStyle = '#95a5a6';
+            const dotRadius = 4;
+            const dotTravelRange = boxWidth / 2;
+            const dotSpacing = dotTravelRange / (DOT_COUNT / 2);
+
+            for (let i = -DOT_COUNT / 2; i <= DOT_COUNT / 2; i++) {
+                if (i !== 0) {
+                    ctxIndicator.beginPath();
+                    ctxIndicator.arc(centerX + i * dotSpacing, centerY, dotRadius, 0, Math.PI * 2); 
+                    ctxIndicator.fill();
+                    
+                    ctxIndicator.beginPath();
+                    ctxIndicator.arc(centerX, centerY + i * dotSpacing, dotRadius, 0, Math.PI * 2); 
+                    ctxIndicator.fill();
+                }
+            }
+
+            ctxIndicator.strokeStyle = '#e74c3c';
+            ctxIndicator.lineWidth = 4;
+
+            let indicatorPosition;
+
+            if (currentMode === 'LOC') {
+                indicatorPosition = centerX + normalizedDdm * dotTravelRange; 
+                ctxIndicator.beginPath();
+                ctxIndicator.moveTo(indicatorPosition, centerY - 80);
+                ctxIndicator.lineTo(indicatorPosition, centerY + 80);
+                ctxIndicator.stroke();
+            } else {
+                indicatorPosition = centerY - normalizedDdm * dotTravelRange; 
+                ctxIndicator.beginPath();
+                ctxIndicator.moveTo(centerX - 80, indicatorPosition);
+                ctxIndicator.lineTo(centerX + 80, indicatorPosition);
+                ctxIndicator.stroke();
+            }
+        }
+
+        // Event Listeners for sliders
+        freq90Input.addEventListener('input', updateValues);
+        modDepth90Input.addEventListener('input', updateValues);
+        freq150Input.addEventListener('input', updateValues);
+        modDepth150Input.addEventListener('input', updateValues);
+        phaseOffsetInput.addEventListener('input', updateValues);
+        noiseStdDevInput.addEventListener('input', updateValues);
+        carrierFreqInput.addEventListener('input', updateValues);    
+
+        // Event Listeners for LOC/GP mode buttons
+        locModeBtn.addEventListener('click', () => {
+            currentMode = 'LOC';
+            locModeBtn.classList.add('active');
+            gpModeBtn.classList.remove('active');
+            modDepth90Input.value = 20;
+            modDepth150Input.value = 20;
+            updateValues();
+        });
+
+        gpModeBtn.addEventListener('click', () => {
+            currentMode = 'GP';
+            gpModeBtn.classList.add('active');
+            locModeBtn.classList.remove('active');
+            modDepth90Input.value = 40;
+            modDepth150Input.value = 40;
+            updateValues();
+        });
+
+        // Event Listeners for CSB/SBO signal type buttons
+        csbModeBtn.addEventListener('click', () => {
+            currentSignalType = 'CSB';
+            csbModeBtn.classList.add('active');
+            sboModeBtn.classList.remove('active');
+            updateValues();
+        });
+
+        sboModeBtn.addEventListener('click', () => {
+            currentSignalType = 'SBO';
+            sboModeBtn.classList.add('active');
+            csbModeBtn.classList.remove('active');
+            updateValues();
+        });
+
+        // Event Listeners for toggle buttons
+        toggleButtons.forEach(button => {
+            button.addEventListener('click', () => {
+                const canvasType = button.dataset.canvasType;    
+                showCarrierModulation[canvasType] = !showCarrierModulation[canvasType];    
+
+                if (showCarrierModulation[canvasType]) {
+                    button.textContent = "Show Audio Waveform";
+                } else {
+                    button.textContent = "Show Carrier Modulation";
+                }
+                drawWaveforms();    
+            });
+        });
+
+        // Initial setup and start animation
+        updateValues();
+        animateIndicator();
+    </script>
+</body>
+</html>
