@@ -1,0 +1,2030 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8" />
+    <title>ILS 글라이드 패스 시뮬레이터</title>
+    <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+    <style>
+        :root {
+            /* Basic Colors */
+            --primary-color: #007bff;
+            --secondary-color: #0056b3;
+            --background-light: #f5f7fa;
+            --background-card: #fff;
+            --text-dark: #333;
+            --text-light: #555;
+            --border-light: #e0e0e0;
+            --border-dark: #ccc;
+            --highlight-blue: #007bff;
+
+            /* Instrument Colors */
+            --instrument-background-dark: #333;
+            --instrument-background-gp-top: #3399FF; /* Sky Blue */
+            --instrument-background-gp-bottom: #996633; /* Amber/Brown */
+            --instrument-needle-color: red; /* Red */
+            --instrument-tick-light: #DDD;
+            --instrument-tick-dark: #AAA;
+            --instrument-digital-text: white; /* White */
+            --instrument-crosshair-color: #EEE; /* Crosshair color */
+            --instrument-arrow-color: #00FF00; /* Green Fluorescent */
+            --info-text-color: white; /* For top left info */
+            --om-text-color: yellow; /* For OM text */
+
+            /* ILS DDM Constants */
+            --ddm-gp-max-deflection: 0.175;
+            --ddm-ll-max-deflection: 0.155; 
+
+            /* Instrument Tick Spacing - for visual consistency on the combined indicator */
+            --tick-spacing-px: 37.5px; /* (300px height/width / 4 dots per half) = 37.5px per dot */
+        }
+
+        body {
+            font-family: 'Segoe UI', sans-serif;
+            background-color: var(--background-light);
+            margin: 0;
+            color: var(--text-dark);
+            display: flex;
+            flex-direction: column;
+            min-height: 100vh;
+        }
+        header {
+            background-color: var(--primary-color);
+            color: white;
+            padding: 20px 0;
+            text-align: center;
+            font-size: 2em;
+            font-weight: bold;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+        }
+        .container {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 20px;
+            padding: 20px;
+            flex-grow: 1; 
+            
+            /* --- 고정 크기 적용 시작 --- */
+            width: 1200px; /* 전체 시뮬레이터 너비 고정 */
+            margin: 0 auto; /* 가운데 정렬 */
+            /* --- 고정 크기 적용 끝 --- */
+        }
+        .left-panel, .right-panel {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+        .left-panel {
+            width: 450px; /* 고정 너비 설정 */
+        }
+        .right-panel {
+            width: 730px; /* 고정 너비 설정 */
+        }
+        .card {
+            background: var(--background-card);
+            border-radius: 12px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+            padding: 20px;
+            margin-bottom: 0;
+            width: 100%; /* 카드 자체는 부모 요소의 100%를 따름 */
+            box-sizing: border-box;
+        }
+        .card h2 {
+            margin-top: 0;
+            color: var(--secondary-color);
+            border-bottom: 2px solid #f0f4f8;
+            padding-bottom: 10px;
+            margin-bottom: 15px;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 15px;
+        }
+        th, td {
+            border: 1px solid var(--border-dark);
+            padding: 8px;
+            text-align: center;
+        }
+        th {
+            background: #f0f4f8;
+            color: #444;
+        }
+        input[type="number"] {
+            width: 60px;
+            padding: 4px;
+            border: 1px solid var(--border-dark);
+            border-radius: 4px;
+            transition: border-color 0.2s;
+            text-align: right; /* Numbers right-aligned */
+        }
+        input[type="number"]:focus {
+            outline: none;
+            border-color: var(--highlight-blue);
+        }
+        /* 체크박스 그룹 공통 스타일 */
+        .checkbox-group {
+            margin-top: 15px;
+            display: flex;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+        .checkbox-group label {
+            margin-right: 15px;
+            display: inline-flex;
+            align-items: center;
+            padding: 5px 0;
+            font-weight: bold;
+        }
+        /* 모든 그래프를 위한 통합 체크박스 테이블 스타일 */
+        .all-patterns-checkbox-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 15px;
+            margin-bottom: 15px;
+        }
+        .all-patterns-checkbox-table th, 
+        .all-patterns-checkbox-table td {
+            border: 1px solid var(--border-light);
+            padding: 8px;
+            text-align: left;
+        }
+        .all-patterns-checkbox-table th {
+            background: #f8f8f8;
+            font-weight: bold;
+        }
+        .all-patterns-checkbox-table label {
+            margin-right: 0;
+            font-weight: normal;
+            display: flex; /* 체크박스와 텍스트를 인라인으로 정렬 */
+            align-items: center;
+        }
+        .all-patterns-checkbox-table input[type="checkbox"] {
+            margin-right: 5px; /* 체크박스와 라벨 텍스트 사이 간격 */
+        }
+        /* 개별 패턴 체크박스 그룹 제거 */
+        .card .checkbox-group { 
+            display: none;
+        }
+
+        #toggleAllPatterns {
+            background-color: var(--primary-color);
+            color: white;
+            padding: 10px 15px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 1em;
+            margin-bottom: 15px;
+            transition: background-color 0.2s ease;
+        }
+        #toggleAllPatterns:hover {
+            background-color: var(--secondary-color);
+        }
+
+        #pattern-graph {
+            width: 690px; /* 그래프 너비 고정 */
+            height: 700px; /* 그래프 높이 고정 */
+        }
+        /* 항공기 계기 스타일 */
+        .instrument-card-content { 
+            display: flex;
+            align-items: flex-start; /* Align to top for better vertical layout */
+            justify-content: center;
+            gap: 20px;
+            flex-wrap: wrap;
+        }
+        .instrument-controls-panel {
+            display: flex;
+            flex-direction: column; /* Main controls stacked vertically */
+            align-items: center;
+            gap: 15px;
+            min-width: 150px;
+        }
+
+        /* Digital Display Group - new layout for three displays */
+        .digital-display-group {
+            display: flex;
+            flex-direction: column; /* Stack vertically */
+            width: 200px; /* 고정 너비 */
+            height: 300px; /* 고정 높이 */
+            justify-content: space-around; /* Distribute space evenly */
+            border: 2px solid #555; /* Add border for the group */
+            border-radius: 8px;
+            background-color: var(--instrument-background-dark); /* Background for the display group */
+            box-shadow: inset 0 0 5px rgba(0,0,0,0.5);
+            padding: 5px; /* Padding inside the display group */
+            box-sizing: border-box;
+        }
+        .digital-display {
+            background-color: #222; /* Darker background for individual segments */
+            border-radius: 3px;
+            padding: 5px 10px;
+            font-size: 1em; 
+            color: var(--instrument-digital-text); /* White text */
+            text-shadow: 0 0 5px var(--instrument-digital-text);
+            border: 1px solid #444;
+            box-shadow: inset 0 0 3px rgba(0,255,0,0.3);
+            min-width: unset; /* Remove min-width to allow width to control */
+            width: 100%; /* Take full width of parent group */
+            height: calc(100% / 3 - 10px); /* Distribute height evenly across 3 displays */
+            display: flex;
+            flex-direction: column; /* Label on top, value below */
+            align-items: flex-start; /* Label left-aligned */
+            justify-content: center; /* Vertically center content */
+            box-sizing: border-box;
+            line-height: 1; /* Remove extra line spacing */
+        }
+        .digital-display .label {
+            font-size: 2em; /* Label font size doubled relative to 1em */
+            font-weight: bold; /* Bold label */
+            color: var(--instrument-digital-text); /* Use digital text color */
+            margin-bottom: 2px;
+            text-shadow: 0 0 3px var(--instrument-digital-text); /* Glow for label */
+        }
+        .digital-display .value {
+            font-family: 'DSEG7 Classic', 'Segment7Standard', monospace; /* Seven-segment font for value */
+            font-size: 3.5em; /* Value font size adjusted for box fit */
+            font-weight: bold; /* Keep bold for digital look */
+            margin-left: auto; /* Push value to the right */
+            align-self: flex-end; /* Align value to bottom-right */
+        }
+
+        @font-face {
+            font-family: 'DSEG7 Classic';
+            src: url('https://raw.githubusercontent.com/BigBadBug/7-Segment-Font/master/fonts/DSEG7Classic-Bold.ttf') format('truetype');
+        }
+
+        /* Sliders Layout - Horizontal and in a row */
+        .sliders-horizontal-group {
+            display: flex;
+            flex-direction: row; /* Horizontal layout for sliders */
+            justify-content: space-around;
+            width: 100%;
+            gap: 15px;
+            margin-top: 10px;
+            padding: 10px;
+            border: 1px solid var(--border-dark);
+            border-radius: 8px;
+            background-color: #f8f8f8;
+        }
+        .instrument-slider-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            width: 30%; /* Distribute width for 3 sliders */
+            min-width: 100px; /* Minimum width for each slider container */
+        }
+        .instrument-slider-container label {
+            text-align: center; /* Center labels above sliders */
+        }
+        .instrument-slider-container input[type="range"] {
+            width: 100%;
+            height: 8px; /* Slimmer slider track */
+            -webkit-appearance: none;
+            background: #d3d3d3;
+            outline: none;
+            opacity: 0.7;
+            transition: opacity .2s;
+            border-radius: 5px;
+        }
+        .instrument-slider-container input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 18px;
+            height: 18px;
+            background: var(--primary-color);
+            border-radius: 50%;
+            cursor: pointer;
+            border: 1px solid #555;
+        }
+        .instrument-slider-container input[type="range"]:hover {
+            opacity: 1;
+        }
+        .instrument-slider-container span {
+            margin-top: 5px;
+            font-size: 0.9em;
+            color: var(--text-light);
+        }
+        .slider-checkbox-group {
+            display: flex;
+            align-items: center;
+            margin-top: 10px;
+            font-weight: normal; /* Override bold from parent .checkbox-group */
+        }
+        .slider-checkbox-group label {
+            margin-left: 5px;
+            margin-right: 0; /* Clear default margin-right */
+            font-weight: normal;
+        }
+
+
+        /* --- 통합 ILS 계기판 스타일 --- */
+        .ils-combined-indicator {
+            position: relative;
+            width: 300px; /* 고정 너비 */
+            height: 300px; /* 고정 높이 */
+            border: 3px solid #555; /* Thicker border */
+            border-radius: 15px;
+            overflow: hidden;
+            box-shadow: inset 0 0 10px rgba(0,0,0,0.5);
+            background: linear-gradient(to bottom, 
+                                        var(--instrument-background-gp-top) 0%, 
+                                        var(--instrument-background-gp-top) 50%, 
+                                        var(--instrument-background-gp-bottom) 50%, 
+                                        var(--instrument-background-gp-bottom) 100%);
+            flex-shrink: 0;
+            margin-right: 20px; /* Shift instrument slightly to the left to make space for displays */
+        }
+
+        /* 계기판 중앙 십자선 */
+        .ils-combined-indicator .crosshair-horizontal {
+            position: absolute;
+            left: 0; top: 50%; right: 0; height: 3px;
+            background-color: var(--instrument-crosshair-color);
+            transform: translateY(-50%);
+            z-index: 1;
+        }
+        .ils-combined-indicator .crosshair-vertical {
+            position: absolute;
+            top: 0; left: 50%; bottom: 0; width: 3px;
+            background-color: var(--instrument-crosshair-color);
+            transform: translateX(-50%);
+            z-index: 1;
+        }
+
+        /* 눈금 마크 - 공통 */
+        .ils-combined-indicator .tick-mark-horizontal,
+        .ils-combined-indicator .tick-mark-vertical {
+            position: absolute;
+            background-color: var(--instrument-tick-light);
+            z-index: 1;
+        }
+
+        /* 수평(GP) 눈금 - 짧은 막대 형태, 등간격 8칸 (중앙 제외 상하 4칸) */
+        .ils-combined-indicator .tick-mark-horizontal {
+            width: 20px; /* Shorter ticks */
+            height: 2px;
+            left: 50%; /* Center horizontally */
+            transform: translateX(-50%);
+        }
+
+        .ils-combined-indicator .tick-mark-horizontal.dot-1-up { top: calc(50% - var(--tick-spacing-px)); }
+        .ils-combined-indicator .tick-mark-horizontal.dot-2-up { top: calc(50% - var(--tick-spacing-px) * 2); }
+        .ils-combined-indicator .tick-mark-horizontal.dot-3-up { top: calc(50% - var(--tick-spacing-px) * 3); }
+        .ils-combined-indicator .tick-mark-horizontal.dot-4-up { top: 0%; height: 3px; width: 90%; background-color: var(--instrument-tick-dark); transform: translateX(-50%); } /* Full Scale Top */
+
+        .ils-combined-indicator .tick-mark-horizontal.dot-1-down { top: calc(50% + var(--tick-spacing-px)); }
+        .ils-combined-indicator .tick-mark-horizontal.dot-2-down { top: calc(50% + var(--tick-spacing-px) * 2); }
+        .ils-combined-indicator .tick-mark-horizontal.dot-3-down { top: calc(50% + var(--tick-spacing-px) * 3); }
+        .ils-combined-indicator .tick-mark-horizontal.dot-4-down { top: 100%; height: 3px; width: 90%; background-color: var(--instrument-tick-dark); transform: translateX(-50%); } /* Full Scale Bottom */
+        
+        /* 세로(LOC) 눈금 - 짧은 막대 형태, 등간격 8칸 (중앙 제외 좌우 4칸) */
+        .ils-combined-indicator .tick-mark-vertical {
+            height: 20px; /* Shorter ticks */
+            width: 2px;
+            top: 50%; /* Center vertically */
+            transform: translateY(-50%);
+        }
+
+        .ils-combined-indicator .tick-mark-vertical.dot-1-right { left: calc(50% + var(--tick-spacing-px)); }
+        .ils-combined-indicator .tick-mark-vertical.dot-2-right { left: calc(50% + var(--tick-spacing-px) * 2); }
+        .ils-combined-indicator .tick-mark-vertical.dot-3-right { left: calc(50% + var(--tick-spacing-px) * 3); }
+        .ils-combined-indicator .tick-mark-vertical.dot-4-right { left: 100%; width: 3px; height: 90%; background-color: var(--instrument-tick-dark); transform: translateY(-50%); } /* Full Scale Right */
+
+        .ils-combined-indicator .tick-mark-vertical.dot-1-left { left: calc(50% - var(--tick-spacing-px)); }
+        .ils-combined-indicator .tick-mark-vertical.dot-2-left { left: calc(50% - var(--tick-spacing-px) * 2); }
+        .ils-combined-indicator .tick-mark-vertical.dot-3-left { left: calc(50% - var(--tick-spacing-px) * 3); }
+        .ils-combined-indicator .tick-mark-vertical.dot-4-left { left: 0%; width: 3px; height: 90%; background-color: var(--instrument-tick-dark); transform: translateY(-50%); } /* Full Scale Left */
+
+
+        /* GP 니들 (수평 바늘) */
+        .ils-gp-needle {
+            position: absolute;
+            left: 0;
+            width: 100%;
+            height: 6px; /* Thicker needle */
+            background-color: var(--instrument-needle-color); /* Red needle */
+            z-index: 3; /* Ensure it's above ticks and crosshair */
+            transition: all 0.1s linear;
+        }
+        /* LOC 니들 (수직 바늘) */
+        .ils-ll-needle {
+            position: absolute;
+            top: 0;
+            height: 100%;
+            width: 6px; /* Thicker needle */
+            background-color: var(--instrument-needle-color); /* Red needle */
+            z-index: 3; /* Ensure it's above ticks and crosshair */
+            transition: all 0.1s linear;
+        }
+
+        /* 화살표 스타일 (계기판 내부, 크기 2배, 초록 형광색) */
+        .ils-combined-indicator .out-of-range-arrow {
+            position: absolute;
+            width: 0;
+            height: 0;
+            /* Border sizes adjusted for 2x larger arrow */
+            border-left: 20px solid transparent; 
+            border-right: 20px solid transparent;
+            visibility: hidden;
+            z-index: 4; /* Above needles */
+            opacity: 0.9;
+        }
+        .ils-combined-indicator .out-of-range-arrow.arrow-up {
+            border-bottom: 30px solid var(--instrument-arrow-color); /* Indicate "Fly Up" */ /* 2x size */
+            top: 5px; /* Near top edge */
+            left: 50%;
+            transform: translateX(-50%);
+        }
+        .ils-combined-indicator .out-of-range-arrow.arrow-down {
+            border-top: 30px solid var(--instrument-arrow-color); /* Indicate "Fly Down" */ /* 2x size */
+            bottom: 5px; /* Near bottom edge */
+            left: 50%;
+            transform: translateX(-50%);
+        }
+         .ils-combined-indicator .out-of-range-arrow.arrow-left {
+            border-right: 30px solid var(--instrument-arrow-color); /* Indicate "Fly Left" */ /* 2x size */
+            left: 5px; /* Near left edge */
+            top: 50%;
+            transform: translateY(-50%);
+        }
+        .ils-combined-indicator .out-of-range-arrow.arrow-right {
+            border-left: 30px solid var(--instrument-arrow-color); /* Indicate "Fly Right" */ /* 2x size */
+            right: 5px; /* Near right edge */
+            top: 50%;
+            transform: translateY(-50%);
+        }
+        .ils-combined-indicator .out-of-range-arrow.show {
+            visibility: visible;
+        }
+
+        /* FLAG Warning - 박스 형태, 흰색 바탕 빨간 사선, 중앙에서 1칸 위, 우측 정렬 */
+        .ils-combined-indicator .flag-warning {
+            position: absolute;
+            top: calc(50% - var(--tick-spacing-px)); 
+            right: 5%; 
+            transform: translateY(-50%); 
+            width: 60px; 
+            height: 30px; 
+            display: flex; 
+            align-items: center; 
+            justify-content: center; 
+            
+            background-color: white; 
+            background-image: linear-gradient(45deg, red 25%, transparent 25%, transparent 50%, red 50%, red 75%, transparent 75%, transparent); 
+            background-size: 10px 10px; 
+            border: 2px solid #555; 
+            border-radius: 3px;
+            
+            color: black; 
+            font-size: 1.2em; 
+            font-weight: bold;
+            visibility: hidden; 
+            z-index: 5; 
+            overflow: hidden; 
+        }
+        .ils-combined-indicator .flag-warning.show {
+            visibility: visible;
+        }
+
+        /* New: Top Left Info (ICJU/065 DME 6.2) */
+        .ils-combined-indicator .info-top-left {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            color: var(--info-text-color); /* White */
+            font-size: 0.8em; /* Small font size */
+            font-weight: normal;
+            line-height: 1.2;
+            z-index: 5; /* Ensure visibility */
+            text-align: left;
+        }
+
+        /* New: Top Right Info (OM) */
+        .ils-combined-indicator .info-top-right {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            color: var(--om-text-color); /* Yellow */
+            font-size: 0.9em; /* Slightly larger than left info */
+            font-weight: bold;
+            border: 1px solid var(--om-text-color); /* Yellow border */
+            padding: 2px 5px;
+            border-radius: 3px;
+            background-color: transparent; /* Transparent background */
+            z-index: 5; /* Ensure visibility */
+        }
+
+
+        /* 측면 시뮬레이션 카드 */
+        #side-view-simulation-card {
+            background: var(--background-card);
+            border-radius: 12px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+            padding: 20px;
+            margin-top: 20px; /* Separates it from the instrument card */
+            width: 100%;
+            box-sizing: border-box;
+            display: flex; /* Use flexbox for layout inside the card */
+            flex-direction: row; /* SVG on left, slider on right */
+            gap: 20px;
+            align-items: center; /* Vertically align items */
+            justify-content: center;
+        }
+
+        #side-view-simulation-card h2 {
+            margin-top: 0;
+            color: var(--secondary-color);
+            border-bottom: 2px solid #f0f4f8;
+            padding-bottom: 10px;
+            margin-bottom: 15px;
+            width: 100%; /* Make header span full width */
+            text-align: center;
+        }
+
+        /* 항공기 고도 각도 슬라이더 (세로) */
+        #aircraftAngleSliderContainerVertical {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            height: 100%; /* Take full height of the parent flex item */
+            justify-content: center;
+            padding: 10px;
+            border-left: 1px solid var(--border-dark); /* Separator from SVG */
+        }
+
+        #aircraftAngleSliderVertical {
+            -webkit-appearance: slider-vertical; /* For Chrome/Safari */
+            writing-mode: bt-lr; /* Vertical text direction for Firefox/IE */
+            width: 8px; /* Slimmer track */
+            height: 300px; /* Fixed height for the vertical slider */
+            background: #d3d3d3;
+            outline: none;
+            opacity: 0.7;
+            transition: opacity .2s;
+            border-radius: 5px;
+        }
+        #aircraftAngleSliderVertical::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 18px;
+            height: 18px;
+            background: var(--primary-color);
+            border-radius: 50%;
+            cursor: pointer;
+            border: 1px solid #555;
+        }
+        #aircraftAngleSliderVertical:hover {
+            opacity: 1;
+        }
+        #aircraftAngleSliderDisplayVertical {
+            margin-top: 10px;
+            font-size: 1em;
+            color: var(--text-dark);
+        }
+
+        /* SVG container for side view */
+        #sideViewSVG {
+            width: 800px; /* 고정 너비 */
+            height: 350px; /* 고정 높이 */
+            border: 1px solid #ccc;
+            background: linear-gradient(to bottom, 
+                                        var(--instrument-background-gp-top) 0%, 
+                                        var(--instrument-background-gp-top) 70%, /* Sky part */
+                                        var(--instrument-background-gp-bottom) 70%, /* Ground part */
+                                        var(--instrument-background-gp-bottom) 100%);
+            border-radius: 8px;
+            box-shadow: inset 0 0 5px rgba(0,0,0,0.2);
+        }
+
+        /* SVG elements styling */
+        .gp-antenna {
+            fill: #666; /* Dark gray for antenna */
+        }
+        .ground {
+            fill: var(--instrument-background-gp-bottom); /* Match ground color */
+        }
+        .runway {
+            fill: #999; /* Lighter gray for runway */
+            stroke: white; /* White border */
+            stroke-width: 2; /* Thicker border */
+        }
+        .runway-center-line {
+            stroke: white;
+            stroke-width: 1;
+            stroke-dasharray: 10 10; /* Dashed line */
+        }
+        .glide-path-line {
+            stroke: white;
+            stroke-width: 2;
+            stroke-dasharray: 5 5; /* Dashed line */
+        }
+        .ddm-reference-line {
+            stroke: yellow;
+            stroke-width: 1;
+            stroke-dasharray: 3 3; /* Shorter dashes */
+            opacity: 0.7;
+        }
+        .svg-label {
+            fill: white;
+            font-family: Arial, sans-serif;
+            font-size: 12px;
+            text-anchor: middle;
+        }
+        /* New: Aircraft SVG style */
+        .svg-aircraft-body {
+            fill: #32CD32; /* Lime Green */
+            filter: drop-shadow(0 0 5px rgba(50, 205, 50, 0.7)); /* Green glow */
+        }
+        .svg-aircraft-wing {
+            fill: #008000; /* Darker Green */
+            filter: drop-shadow(0 0 3px rgba(0, 128, 0, 0.5));
+        }
+
+        /* Side view Y-axis labels */
+        .y-axis-angle-label {
+            fill: white;
+            font-family: Arial, sans-serif;
+            font-size: 14px;
+            text-anchor: end; /* Align to the right of the y-axis */
+        }
+
+        footer {
+            background-color: #e2e6ea;
+            color: var(--text-light);
+            text-align: center;
+            padding: 15px 0;
+            font-size: 0.9em;
+            margin-top: 20px;
+        }
+
+        /* 반응형 디자인 (작은 화면에서는 유동적으로 동작하도록 유지) */
+        @media (max-width: 1250px) { /* container width + padding + gap 보다 작아지면 */
+            .container {
+                flex-direction: column;
+                align-items: center;
+                width: 100%; /* 작은 화면에서는 너비를 다시 유동적으로 */
+                padding: 10px;
+            }
+            .left-panel, .right-panel {
+                width: 100%; /* 작은 화면에서는 100% 너비 */
+                max-width: 95%; /* 최대 너비 제한 */
+                min-width: unset;
+            }
+            .instrument-card-content {
+                flex-direction: column; /* Stack instrument and controls vertically */
+                align-items: center;
+            }
+            .ils-combined-indicator {
+                order: 2; /* Place instrument below controls */
+                margin-right: 0; /* Remove horizontal margin */
+            }
+            .instrument-controls-panel {
+                width: 100%;
+                order: 1; /* Place controls below the instrument */
+                padding: 10px;
+            }
+            .digital-display-group {
+                flex-direction: row; /* Digital displays side-by-side on small screens */
+                height: auto;
+                width: 100%;
+                flex-wrap: wrap;
+                justify-content: center;
+                border: none; /* Remove border for smaller screens */
+                background-color: transparent;
+                box-shadow: none;
+                padding: 0;
+            }
+            .digital-display {
+                min-width: unset; /* Remove fixed width */
+                width: calc(33% - 10px); /* Approx 3 per row */
+                font-size: 0.8em; /* Smaller font for small screens */
+                height: auto;
+                background-color: var(--instrument-background-dark); /* Restore individual background */
+                margin: 5px; /* Add some margin between displays */
+            }
+            .digital-display .label {
+                font-size: 0.8em; /* Adjust label font size for small screens */
+            }
+            .digital-display .value {
+                font-size: 1.5em; /* Adjust value font size for small screens */
+            }
+            .sliders-horizontal-group {
+                flex-direction: column; /* Sliders stacked vertically on small screens */
+                padding: 10px;
+            }
+            .instrument-slider-container {
+                width: 100%; /* Full width for sliders on small screens */
+            }
+            /* 측면 시뮬레이션 카드 반응형 */
+            #side-view-simulation-card {
+                flex-direction: column; /* Stack SVG and slider vertically */
+                min-height: unset;
+            }
+            #sideViewSVG {
+                width: 95%; /* Adjust width for smaller screens */
+                height: 300px;
+            }
+            #aircraftAngleSliderContainerVertical {
+                width: 100%; /* Full width for slider container */
+                height: auto;
+                border-left: none; /* Remove border */
+                border-top: 1px solid var(--border-dark); /* Add top border */
+            }
+            #aircraftAngleSliderVertical {
+                height: 150px; /* Shorter vertical slider */
+            }
+            #pattern-graph {
+                width: 100%;
+                height: 500px; /* 그래프 높이도 줄임 */
+            }
+        }
+    </style>
+</head>
+<body>
+    <header>
+        ILS 글라이드 패스 시뮬레이터
+    </header>
+
+    <div class="container">
+        <div class="left-panel">
+            <div class="card">
+                <h2>GP 기본 정보</h2>
+                <table>
+                    <thead>
+                        <tr><th>항목</th><th>값</th><th>단위</th><th>계산 결과</th></tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>활공 각도 (Glide Angle)</td>
+                            <td><input id="glideAngle" type="number" value="3" step="0.1"></td>
+                            <td>도 (°)</td>
+                            <td></td>
+                        </tr>
+                        <tr>
+                            <td>TCH (Threshold Crossing Height)</td>
+                            <td><input id="tch" type="number" value="50"></td>
+                            <td>피트 (ft)</td>
+                            <td></td>
+                        </tr>
+                        <tr>
+                            <td>주파수 (Frequency)</td>
+                            <td><input id="frequency" type="number" value="330" step="0.1"></td>
+                            <td>MHz</td>
+                            <td></td>
+                        </tr>
+                        <tr>
+                            <td>파장 (Lambda)</td>
+                            <td colspan="2"><span id="lambdaDisplay">0.0000</span></td>
+                            <td>미터 (m)</td>
+                        </tr>
+                        <tr>
+                            <td>활주로 중심선으로부터의 거리</td>
+                            <td><input id="runwayCenterDist" type="number" value="300"></td>
+                            <td>피트 (ft)</td>
+                            <td>(디폴트)</td>
+                        </tr>
+                        <tr>
+                            <td>GP 안테나 설치 거리 (활주로 시단으로부터)</td>
+                            <td colspan="2"><span id="gpAntennaDistance">0.00</span></td>
+                            <td>피트 (ft)</td>
+                        </tr>
+                        <tr>
+                            <td>Lower 안테나 높이</td>
+                            <td colspan="2"><span id="H_lower_display">0.00</span></td>
+                            <td>미터 (m)</td>
+                        </tr>
+                        <tr>
+                            <td>Middle 안테나 높이</td>
+                            <td colspan="2"><span id="H_middle_display">0.00</span></td>
+                            <td>미터 (m)</td>
+                        </tr>
+                        <tr>
+                            <td>Upper 안테나 높이</td>
+                            <td colspan="2"><span id="H_upper_display">0.00</span></td>
+                            <td>미터 (m)</td>
+                        </tr>
+                    </tbody>
+                </table>
+                <div class="checkbox-group"></div>
+            </div>
+
+            <div class="card">
+                <h2>CSB 안테나 진폭/위상 설정</h2>
+                <table>
+                    <thead>
+                        <tr><th>안테나</th><th>진폭</th><th>위상 (°)</th></tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>Lower CSB</td>
+                            <td><input id="lowerCSBAmp" type="number" value="1.0" step="0.1"></td>
+                            <td><input id="lowerCSBPhase" type="number" value="0" step="0.1"></td>
+                        </tr>
+                        <tr>
+                            <td>Middle CSB</td>
+                            <td><input id="middleCSBAmp" type="number" value="0.5" step="0.1"></td>
+                            <td><input id="middleCSBPhase" type="number" value="180" step="0.1"></td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <div class="card">
+                <h2>SBO 안테나 진폭/위상 설정</h2>
+                <table>
+                    <thead>
+                        <tr><th>항목</th><th>값</th><th>단위</th></tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>A (측파대 성분 비율)</td>
+                            <td><input id="sbo_A_value" type="number" value="0.31" step="0.01"></td>
+                            <td></td>
+                        </tr>
+                    </tbody>
+                </table>
+                <table>
+                    <thead>
+                        <tr><th>안테나</th><th>진폭 계수</th><th>위상 (°)</th></tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>Upper SBO (0.5A)</td>
+                            <td><input id="upperSBOAmpFactor" type="number" value="0.5" step="0.1" readonly></td>
+                            <td><input id="upperSBOPhase" type="number" value="180" step="0.1"></td>
+                        </tr>
+                        <tr>
+                            <td>Middle SBO (1.0A)</td>
+                            <td><input id="middleSBOAmpFactor" type="number" value="1.0" step="0.1" readonly></td>
+                            <td><input id="middleSBOPhase" type="number" value="0" step="0.1"></td>
+                        </tr>
+                        <tr>
+                            <td>Lower SBO (0.5A)</td>
+                            <td><input id="lowerSBOAmpFactor" type="number" value="0.5" step="0.1" readonly></td>
+                            <td><input id="lowerSBOPhase" type="number" value="180" step="0.1"></td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <div class="card">
+                <h2>Clearance 신호 설정 (150Hz)</h2>
+                <table>
+                    <thead>
+                        <tr><th>항목</th><th>값</th><th>단위</th></tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>코스 CSB 기준 파워</td>
+                            <td><input id="courseCSBPower" type="number" value="3.0" step="0.1"></td>
+                            <td>W</td>
+                        </tr>
+                        <tr>
+                            <td>CLR/CSB 파워 비율</td>
+                            <td><input id="clrCsbPowerRatio" type="number" value="0.15" step="0.01"></td>
+                            <td></td>
+                        </tr>
+                    </tbody>
+                </table>
+                <table>
+                    <thead>
+                        <tr><th>안테나</th><th>진폭</th><th>위상 (°)</th></tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>Lower Clearance</td>
+                            <td><input id="lowerClAmp" type="number" value="0.00" step="0.001" readonly></td>
+                            <td><input id="lowerClPhase" type="number" value="0" step="0.1"></td>
+                        </tr>
+                        <tr>
+                            <td>Upper Clearance</td>
+                            <td><input id="upperClAmp" type="number" value="0.00" step="0.001" readonly></td>
+                            <td><input id="upperClPhase" type="number" value="0" step="0.1"></td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <div class="right-panel">
+            <div class="card">
+                <h2>그래프 표시 설정</h2>
+                <button id="toggleAllPatterns">모든 그래프 토글</button>
+                <table class="all-patterns-checkbox-table">
+                    <thead>
+                        <tr>
+                            <th>카테고리</th>
+                            <th>패턴</th>
+                            <th>표시</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td rowspan="3">CSB</td>
+                            <td>Lower Pattern</td>
+                            <td><label><input type="checkbox" id="toggleLowerPattern" checked></label></td>
+                        </tr>
+                        <tr>
+                            <td>Middle Pattern</td>
+                            <td><label><input type="checkbox" id="toggleMiddlePattern" checked></label></td>
+                        </tr>
+                        <tr>
+                            <td>Composite Pattern</td>
+                            <td><label><input type="checkbox" id="toggleCompositePattern" checked></label></td>
+                        </tr>
+                        <tr>
+                            <td rowspan="4">SBO</td>
+                            <td>Upper Pattern</td>
+                            <td><label><input type="checkbox" id="toggleUpperSBOPattern" checked></label></td>
+                        </tr>
+                        <tr>
+                            <td>Middle Pattern</td>
+                            <td><label><input type="checkbox" id="toggleMiddleSBOPattern" checked></label></td>
+                        </tr>
+                        <tr>
+                            <td>Lower Pattern</td>
+                            <td><label><input type="checkbox" id="toggleLowerSBOPattern" checked></label></td>
+                        </tr>
+                        <tr>
+                            <td>Sum Pattern</td>
+                            <td><label><input type="checkbox" id="toggleSBOSumPattern" checked></label></td>
+                        </tr>
+                        <tr>
+                            <td rowspan="3">Clearance</td>
+                            <td>Lower Pattern (150Hz)</td>
+                            <td><label><input type="checkbox" id="toggleLowerClPattern" checked></label></td>
+                        </tr>
+                        <tr>
+                            <td>Upper Pattern (150Hz)</td>
+                            <td><label><input type="checkbox" id="toggleUpperClPattern" checked></label></td>
+                        </tr>
+                        <tr>
+                            <td>Sum Pattern (150Hz)</td>
+                            <td><label><input type="checkbox" id="toggleClearanceSumPattern" checked></label></td>
+                        </tr>
+                        <tr>
+                            <td rowspan="2">DDM</td>
+                            <td>간략화 공식</td>
+                            <td><label><input type="checkbox" id="toggleSimplifiedDDM" checked></label></td>
+                        </tr>
+                        <tr>
+                            <td>캡처 이펙트 공식</td>
+                            <td><label><input type="checkbox" id="toggleCaptureEffectDDM" checked></label></td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+            <div class="card">
+                <h2>시뮬레이션 그래프</h2>
+                <div id="pattern-graph"></div>
+            </div>
+            <div class="card">
+                <h2>항공기 ILS 수신 계기</h2> 
+                <div class="instrument-card-content">
+                    <div class="ils-combined-indicator">
+                        <div class="crosshair-horizontal"></div>
+                        <div class="crosshair-vertical"></div>
+
+                        <div class="tick-mark-horizontal dot-1-up"></div>
+                        <div class="tick-mark-horizontal dot-2-up"></div>
+                        <div class="tick-mark-horizontal dot-3-up"></div>
+                        <div class="tick-mark-horizontal dot-4-up"></div> <div class="tick-mark-horizontal dot-1-down"></div>
+                        <div class="tick-mark-horizontal dot-2-down"></div>
+                        <div class="tick-mark-horizontal dot-3-down"></div>
+                        <div class="tick-mark-horizontal dot-4-down"></div> <div class="tick-mark-vertical dot-1-right"></div>
+                        <div class="tick-mark-vertical dot-2-right"></div>
+                        <div class="tick-mark-vertical dot-3-right"></div>
+                        <div class="tick-mark-vertical dot-4-right"></div> <div class="tick-mark-vertical dot-1-left"></div>
+                        <div class="tick-mark-vertical dot-2-left"></div>
+                        <div class="tick-mark-vertical dot-3-left"></div>
+                        <div class="tick-mark-vertical dot-4-left"></div> <div class="ils-gp-needle" id="gpNeedle" style="top: 50%;"></div>
+                        <div class="ils-ll-needle" id="llNeedle" style="left: 50%;"></div>
+
+                        <div class="out-of-range-arrow arrow-up" id="gpArrowUp"></div>
+                        <div class="out-of-range-arrow arrow-down" id="gpArrowDown"></div>
+                        <div class="out-of-range-arrow arrow-left" id="llArrowLeft"></div>
+                        <div class="out-of-range-arrow arrow-right" id="llArrowRight"></div>
+
+                        <div class="flag-warning" id="flagWarning">FLAG</div>
+
+                        <div class="info-top-left">
+                            <div>ICJU/065</div>
+                            <div>DME 6.2</div>
+                        </div>
+
+                        <div class="info-top-right">OM</div>
+                    </div>
+                   
+                    <div class="instrument-controls-panel">
+                        <div class="digital-display-group">
+                            <div class="digital-display">
+                                <span class="label">ANGLE</span>
+                                <span class="value" id="aircraftAngleDisplay">3.0°</span>
+                            </div>
+                            <div class="digital-display">
+                                <span class="label">GP DDM</span>
+                                <span class="value" id="aircraftDDMDisplay">0.0000</span>
+                            </div> 
+                            <div class="digital-display">
+                                <span class="label">LOC DDM</span>
+                                <span class="value" id="aircraftLLDDMDisplay">0.0000</span>
+                            </div> 
+                        </div>
+                        <div class="sliders-horizontal-group">
+                            <div class="instrument-slider-container">
+                                <label for="groundReflectionError">지면 반사 오차 (GP):</label>
+                                <input type="range" id="groundReflectionError" min="0" max="0.1" step="0.001" value="0">
+                                <span id="groundReflectionErrorDisplay">0.000</span>
+                                <div class="slider-checkbox-group">
+                                    <input type="checkbox" id="toggleGroundReflectionError" checked>
+                                    <label for="toggleGroundReflectionError">적용</label>
+                                </div>
+                            </div>
+                            <div class="instrument-slider-container">
+                                <label for="localizerError">로컬라이저 오차 (LOC):</label>
+                                <input type="range" id="localizerError" min="-0.1" max="0.1" step="0.001" value="0">
+                                <span id="localizerErrorDisplay">0.000</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="card" id="side-view-simulation-card">
+                <h2>GP 활공 경로 측면 시뮬레이션</h2>
+                <svg id="sideViewSVG" viewBox="0 0 1000 400" preserveAspectRatio="xMidYMid meet">
+                    </svg>
+                <div id="aircraftAngleSliderContainerVertical">
+                    <label for="aircraftAngleSliderVertical">항공기 고도 각도:</label>
+                    <input type="range" id="aircraftAngleSliderVertical" min="0" max="9" step="0.1" value="3.0">
+                    <span id="aircraftAngleSliderDisplayVertical">3.0°</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <footer>
+        &copy; 2025 ILS 글라이드 패스 시뮬레이터. 모든 권리 보유.
+    </footer>
+
+    <script>
+        // 전역 상수 및 헬퍼 함수
+        const DEG_TO_RAD = Math.PI / 180;
+        const SPEED_OF_LIGHT_MPS = 299792458; // m/s
+        const FEET_TO_METER = 0.3048; // 1 ft = 0.3048 m
+        const MODULATION_DEPTH = 0.4; // ILS modulation depth
+
+        // ILS DDM 규격 (CSS 변수와 일치하도록 가져옴)
+        const DDM_GP_MAX_DEFLECTION = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--ddm-gp-max-deflection')); // 0.175
+        const DDM_LL_MAX_DEFLECTION = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--ddm-ll-max-deflection')); // 0.155
+
+        const angles = Array.from({ length: 91 }, (_, i) => i * 0.1); // 0도에서 9도까지 0.1도 간격
+        const TARGET_MIDDLE_ANTENNA_PHASE_DEG = 3440; // 미들 안테나 높이 계산 기준 위상값
+
+        // --- GP 기본 정보 계산 및 업데이트 함수 ---
+        function updateGPBasicInfo() {
+            const glideAngleDeg = parseFloat(document.getElementById('glideAngle').value);
+            const tchFeet = parseFloat(document.getElementById('tch').value);
+            const frequencyMhz = parseFloat(document.getElementById('frequency').value);
+
+            if (isNaN(frequencyMhz) || frequencyMhz <= 0) {
+                console.error("유효하지 않은 주파수 값입니다.");
+                document.getElementById('lambdaDisplay').innerText = "오류";
+                document.getElementById('H_lower_display').innerText = "오류";
+                document.getElementById('H_middle_display').innerText = "오류";
+                document.getElementById('H_upper_display').innerText = "오류";
+                return { lambda: 0, k: 0, H_lower: 0, H_middle: 0, H_upper: 0, gpAntennaDistance: 0, glideAngleDeg: 0 };
+            }
+
+            const frequencyHz = frequencyMhz * 1e6; // MHz를 Hz로 변환
+            const lambda = SPEED_OF_LIGHT_MPS / frequencyHz; // 파장 계산
+            const k = 2 * Math.PI / lambda; // 전파 상수 k 계산
+
+            document.getElementById('lambdaDisplay').innerText = lambda.toFixed(4);
+
+            let gpAntennaDistanceFeet = 0;
+            if (!isNaN(tchFeet) && tchFeet > 0 && !isNaN(glideAngleDeg) && glideAngleDeg > 0) {
+                const glideAngleRad = glideAngleDeg * DEG_TO_RAD;
+                if (Math.tan(glideAngleRad) !== 0) {
+                    gpAntennaDistanceFeet = tchFeet / Math.tan(glideAngleRad);
+                }
+            }
+            document.getElementById('gpAntennaDistance').innerText = gpAntennaDistanceFeet.toFixed(2);
+
+            // 안테나 높이 계산 (미터 단위)
+            let H_lower_calc = 0, H_middle_calc = 0, H_upper_calc = 0;
+            
+            if (lambda > 0) { // 파장이 유효할 때만 계산
+                H_middle_calc = (TARGET_MIDDLE_ANTENNA_PHASE_DEG * lambda) / 360; 
+                H_lower_calc = H_middle_calc / 2; 
+                H_upper_calc = H_middle_calc * 1.5; 
+            }
+            
+            document.getElementById('H_lower_display').innerText = H_lower_calc.toFixed(3);
+            document.getElementById('H_middle_display').innerText = H_middle_calc.toFixed(3);
+            document.getElementById('H_upper_display').innerText = H_upper_calc.toFixed(3);
+
+            return {
+                lambda: lambda, 
+                k: k,           
+                H_lower: H_lower_calc,
+                H_middle: H_middle_calc,
+                H_upper: H_upper_calc,
+                gpAntennaDistance: gpAntennaDistanceFeet, // ft
+                glideAngleDeg: glideAngleDeg // deg
+            };
+        }
+
+        // --- CSB 방사패턴 함수 ---
+        function generateCSBPattern(params, H_antenna, amplitude, phaseDeg) { 
+            const k_val = params.k;            
+            const phaseRad = phaseDeg * DEG_TO_RAD;
+            
+            const patternData = [];
+
+            for (let theta of angles) {
+                const rad = theta * DEG_TO_RAD;
+                const sinAlpha = Math.sin(rad); 
+
+                const argument = k_val * H_antenna * sinAlpha + phaseRad; 
+                const value = amplitude * Math.sin(argument); 
+                patternData.push(value);
+            }
+            return patternData;
+        }
+
+        // --- SBO 방사패턴 함수 ---
+        function generateSBOPattern(params, H_antenna, amplitudeFactor, phaseDeg, A_value_input) { 
+            const k_val = params.k;
+            const phaseRad = phaseDeg * DEG_TO_RAD;
+            
+            const patternData = [];
+
+            for (let theta of angles) {
+                const rad = theta * DEG_TO_RAD;
+                const sinAlpha = Math.sin(rad);
+
+                const argument = k_val * H_antenna * sinAlpha + phaseRad;
+                const value = amplitudeFactor * A_value_input * Math.sin(argument); 
+                patternData.push(value);
+            }
+            return patternData;
+        }
+
+        // --- Clearance 방사패턴 함수 (150Hz만) ---
+        function generateClearancePattern(params, H_antenna, amplitude, phaseDeg) { 
+            const k_val = params.k;
+            const phaseRad = phaseDeg * DEG_TO_RAD; 
+
+            const patternData = [];
+
+            for (let theta of angles) {
+                const rad = theta * DEG_TO_RAD;
+                const sinAlpha = Math.sin(rad);
+
+                const argument = k_val * H_antenna * sinAlpha + phaseRad;
+                const value = amplitude * Math.sin(argument);
+                patternData.push(value);
+            }
+            return patternData;
+        }
+
+
+        // --- 합성(Composite) 신호 생성 함수 ---
+        function generateCompositePattern(pattern1, pattern2) {
+            const compositeData = [];
+            for (let i = 0; i < angles.length; i++) {
+                const sumOfValues = pattern1[i] + pattern2[i];
+                compositeData.push(sumOfValues);
+            }
+            return compositeData;
+        }
+
+        // --- SBO 합성 패턴 생성 함수 --- (Lower, Middle, Upper SBO 패턴의 합)
+        function generateSBOSumPattern(upperPattern, middlePattern, lowerPattern) {
+            const sboSumData = [];
+            for(let i = 0; i < angles.length; i++) {
+                sboSumData.push(upperPattern[i] + middlePattern[i] + lowerPattern[i]);
+            }
+            return sboSumData;
+        }
+
+        // --- Clearance 합성 패턴 생성 함수 --- (Lower, Upper Clearance 패턴의 합)
+        function generateClearanceSumPattern(lowerClPattern, upperClPattern) {
+            const clSumData = [];
+            for (let i = 0; i < angles.length; i++) {
+                clSumData.push(lowerClPattern[i] + upperClPattern[i]);
+            }
+            return clSumData;
+        }
+
+        // --- DDM 계산 함수 (간략화 공식) ---
+        function generateSimplifiedDDMData(params, A_value_input) {
+            const H_lower = params.H_lower; 
+            const wavelength = params.lambda; 
+
+            const phase_H_lower_deg = (H_lower / wavelength) * 360; 
+
+            const ddmData = [];
+
+            for (let theta of angles) {
+                const rad = theta * DEG_TO_RAD;
+                const sinAlpha = Math.sin(rad);
+
+                const argument = (phase_H_lower_deg * DEG_TO_RAD) * sinAlpha; 
+                const ddmValue = 4 * MODULATION_DEPTH * A_value_input * Math.cos(argument);
+                ddmData.push(ddmValue);
+            }
+            return ddmData;
+        }
+
+        // --- DDM 계산 함수 (캡처 이펙트 공식) ---
+        function generateCaptureEffectDDMData(params, A_value_input) {
+            const Hl = params.H_lower; 
+            const Hm = params.H_middle; 
+            const Hu = params.H_upper; 
+            const wavelength = params.lambda; 
+
+            const upperSBOPhase = parseFloat(document.getElementById('upperSBOPhase').value);
+            const middleSBOPhase = parseFloat(document.getElementById('middleSBOPhase').value);
+            const lowerSBOPhase = parseFloat(document.getElementById('lowerSBOPhase').value);
+
+            const phase_Hl_deg = (Hl / wavelength) * 360;
+            const phase_Hm_deg = (Hm / wavelength) * 360;
+            const phase_Hu_deg = (Hu / wavelength) * 360;
+
+            const ddmData = [];
+            const EPSILON = 1e-6; 
+
+            for (let theta of angles) {
+                const rad = theta * DEG_TO_RAD;
+                const sinAlpha = Math.sin(rad);
+
+                const arg_Hl_total = (phase_Hl_deg * DEG_TO_RAD) * sinAlpha + (lowerSBOPhase * DEG_TO_RAD); 
+                const arg_Hm_total = (phase_Hm_deg * DEG_TO_RAD) * sinAlpha + (middleSBOPhase * DEG_TO_RAD); 
+                const arg_Hu_total = (phase_Hu_deg * DEG_TO_RAD) * sinAlpha + (upperSBOPhase * DEG_TO_RAD); 
+
+                const numerator = -0.5 * A_value_input * Math.sin(arg_Hl_total) + 
+                                  A_value_input * Math.sin(arg_Hm_total) - 
+                                  0.5 * A_value_input * Math.sin(arg_Hu_total);
+
+                const denominator = Math.sin(arg_Hl_total) - 0.5 * Math.sin(arg_Hm_total);
+
+                let ddmValue = 0;
+                if (Math.abs(denominator) > EPSILON) { 
+                    ddmValue = 2 * MODULATION_DEPTH * (numerator / denominator);
+                } else {
+                    ddmValue = 0; // 분모가 0에 가까우면 DDM이 무한대 또는 정의되지 않으므로 0으로 설정
+                }
+                
+                // DDM 값 부호 반전: 실제 항공기 계기판의 지시 방향(Fly Up/Down)과 일치시키기 위함
+                ddmValue = -ddmValue; 
+
+                ddmData.push(ddmValue);
+            }
+            return ddmData;
+        }
+
+        // --- 항공기 GP/LL 계기 업데이트 함수 ---
+        let cachedCaptureEffectDDMPattern = []; // GP DDM 데이터를 저장할 변수
+
+        function updateInstrument() {
+            // Updated slider ID for the vertical slider
+            const aircraftAngleSlider = document.getElementById('aircraftAngleSliderVertical'); 
+            const aircraftAngleDisplay = document.getElementById('aircraftAngleDisplay');
+            const aircraftAngleSliderDisplay = document.getElementById('aircraftAngleSliderDisplayVertical'); // Vertical slider value display
+            const aircraftDDMDisplay = document.getElementById('aircraftDDMDisplay');
+            const aircraftLLDDMDisplay = document.getElementById('aircraftLLDDMDisplay');
+            const gpNeedle = document.getElementById('gpNeedle');
+            const llNeedle = document.getElementById('llNeedle');
+            const gpArrowUp = document.getElementById('gpArrowUp');
+            const gpArrowDown = document.getElementById('gpArrowDown');
+            const llArrowLeft = document.getElementById('llArrowLeft');
+            const llArrowRight = document.getElementById('llArrowRight');
+            const flagWarning = document.getElementById('flagWarning'); // FLAG 경고 요소
+
+            const groundReflectionErrorSlider = document.getElementById('groundReflectionError');
+            const groundReflectionErrorDisplay = document.getElementById('groundReflectionErrorDisplay');
+            const toggleGroundReflectionError = document.getElementById('toggleGroundReflectionError'); // Checkbox
+
+            const localizerErrorSlider = document.getElementById('localizerError');
+            const localizerErrorDisplay = document.getElementById('localizerErrorDisplay');
+
+            const currentAngle = parseFloat(aircraftAngleSlider.value);
+            aircraftAngleDisplay.innerText = currentAngle.toFixed(1) + '°'; // Added degree symbol
+            aircraftAngleSliderDisplay.innerText = currentAngle.toFixed(1) + '°';
+
+
+            let finalGroundReflectionError = 0;
+            if (toggleGroundReflectionError.checked) { // 체크박스가 체크되어 있을 때만 랜덤 오차 적용
+                const currentGroundReflectionErrorSetting = parseFloat(groundReflectionErrorSlider.value);
+                // 지면 반사 오차: 설정값 이내로 +- 랜덤하게 변동
+                finalGroundReflectionError = (Math.random() * 2 - 1) * currentGroundReflectionErrorSetting; // -설정값 ~ +설정값
+            }
+            groundReflectionErrorDisplay.innerText = finalGroundReflectionError.toFixed(3);
+
+            const currentLocalizerError = parseFloat(localizerErrorSlider.value);
+            localizerErrorDisplay.innerText = currentLocalizerError.toFixed(3);
+
+
+            // GP DDM 값 가져오기
+            const index = Math.round(currentAngle * 10); 
+            let gpDdmValue = 0;
+            if (index >= 0 && index < cachedCaptureEffectDDMPattern.length) {
+                gpDdmValue = cachedCaptureEffectDDMPattern[index];
+            }
+            
+            // 지면 반사 오차 적용
+            gpDdmValue += finalGroundReflectionError; 
+            aircraftDDMDisplay.innerText = gpDdmValue.toFixed(4);
+
+            // GP DDM 값을 바늘 위치로 변환 (-DDM_GP_MAX_DEFLECTION ~ +DDM_GP_MAX_DEFLECTION 범위)
+            let normalizedGPDDM = gpDdmValue / DDM_GP_MAX_DEFLECTION; 
+            
+            // DDM 값이 최대/최소 편향을 벗어나는 경우 화살표 표시 및 니들 클리핑
+            gpArrowUp.classList.remove('show');
+            gpArrowDown.classList.remove('show');
+            if (normalizedGPDDM > 1) {
+                normalizedGPDDM = 1; // 클리핑하여 바늘이 사라지지 않고 최대 편향 유지
+                gpArrowUp.classList.add('show');
+            } else if (normalizedGPDDM < -1) {
+                normalizedGPDDM = -1; // 클리핑하여 바늘이 사라지지 않고 최대 편향 유지
+                gpArrowDown.classList.add('show');
+            }
+
+            // top: 0% (top) to 100% (bottom)
+            // Need to reverse the normalized DDM for 'top' CSS property
+            const gpNeedlePosition = ((1 - normalizedGPDDM) / 2) * 100; 
+            gpNeedle.style.top = `${gpNeedlePosition}%`;
+
+            // 로컬라이저 DDM 값 (임시)
+            let llDdmValue = currentLocalizerError; // 로컬라이저 오차 슬라이더 값만 사용
+
+            aircraftLLDDMDisplay.innerText = llDdmValue.toFixed(4);
+
+            // LL DDM 값을 바늘 위치로 변환 (-DDM_LL_MAX_DEFLECTION ~ +DDM_LL_MAX_DEFLECTION 범위)
+            let normalizedLLDDM = llDdmValue / DDM_LL_MAX_DEFLECTION;
+
+            // DDM 값이 최대/최소 편향을 벗어나는 경우 화살표 표시 및 니들 클리핑
+            llArrowLeft.classList.remove('show');
+            llArrowRight.classList.remove('show');
+            if (normalizedLLDDM > 1) {
+                normalizedLLDDM = 1; 
+                llArrowRight.classList.add('show');
+            } else if (normalizedLLDDM < -1) {
+                normalizedLLDDM = -1; 
+                llArrowLeft.classList.add('show');
+            }
+
+            const llNeedlePosition = ((normalizedLLDDM + 1) / 2) * 100; 
+            llNeedle.style.left = `${llNeedlePosition}%`;
+
+            // GP 0도에서 "FLAG" 경고 표시
+            if (Math.abs(currentAngle) < 0.05) { // 0도 근처일 때 (부동 소수점 오차 고려)
+                flagWarning.classList.add('show');
+            } else {
+                flagWarning.classList.remove('show');
+            }
+        }
+
+        /**
+         * 주어진 DDM 값에 해당하는 활공 경로 각도의 오프셋을 계산합니다.
+         * 이 함수는 캡처 이펙트 공식의 역함수 또는 근사치로 사용될 수 있습니다.
+         * 현재는 간단한 선형 근사를 사용합니다.
+         * @param {number} ddmValue
+         * @param {object} params - GP 기본 정보 (lambda, k, H_middle 등 포함)
+         * @returns {number} 각도 오프셋 (도)
+         */
+        function ddmToAngleOffset(ddmValue, params) {
+            // DDM_GP_MAX_DEFLECTION (0.175)이 0.7도의 각도 차이에 해당한다고 가정
+            // FSD (Full Scale Deflection)는 보통 0.7도 또는 0.75도입니다.
+            // 여기서는 0.175 DDM이 0.7도에 해당한다고 가정하고 선형적으로 계산
+            // DDM_GP_MAX_DEFLECTION에 해당하는 각도 오프셋을 0.7도로 가정
+            const angleForMaxDDM = 0.7; // degrees
+
+            if (DDM_GP_MAX_DEFLECTION === 0) return 0; // Avoid division by zero
+            return (ddmValue / DDM_GP_MAX_DEFLECTION) * angleForMaxDDM;
+        }
+
+        // --- 측면 시뮬레이션 SVG 그리기 함수 ---
+        function drawSideView(gpParams) {
+            const svg = document.getElementById('sideViewSVG');
+            if (!svg) {
+                console.error("sideViewSVG element not found.");
+                return;
+            }
+
+            // Clear previous drawings
+            while (svg.firstChild) {
+                svg.removeChild(svg.firstChild);
+            }
+
+            // Fixed viewBox dimensions from HTML
+            const svgWidth = 1000; 
+            const svgHeight = 400; 
+
+            // Convert feet to meters for consistent calculations with GP antenna heights
+            const gpAntennaDistanceM = gpParams.gpAntennaDistance * FEET_TO_METER;
+            const tchM = parseFloat(document.getElementById('tch').value) * FEET_TO_METER;
+
+            // X-axis scale: 0 to roughly 15km (for typical GP range)
+            // Y-axis scale: 0 to roughly 600m (for typical GP altitudes)
+            const maxDistance = 15000; // meters (approx. 8 NM) - X-axis represents distance from runway threshold
+            const maxAltitude = 600; // meters (approx. 2000 ft)
+
+            // Scaling factors for converting real-world meters to SVG pixels
+            const xScale = svgWidth / maxDistance;
+            const yScale = svgHeight / maxAltitude;
+
+            // Ground/Runway
+            const groundHeightSVG = svgHeight * 0.15; // Ground takes 15% of SVG height from bottom
+            const groundY = svgHeight - groundHeightSVG; // This is the Y-coordinate of the ground/sky boundary
+
+            // Draw Ground
+            const ground = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+            ground.setAttribute('x', '0');
+            ground.setAttribute('y', groundY);
+            ground.setAttribute('width', svgWidth);
+            ground.setAttribute('height', groundHeightSVG);
+            ground.setAttribute('class', 'ground');
+            svg.appendChild(ground); 
+
+            // GP Antenna location in SVG (fixed for visualization)
+            // The GP Antenna is physically located gpAntennaDistanceM from the runway threshold (beginning of runway)
+            // We place the runway threshold at a certain X position in SVG, then calculate GP Antenna X
+            const runwayThresholdX_SVG = 800; // Runway threshold fixed at 150px from left
+            const gpAntennaX_SVG = runwayThresholdX_SVG + (gpAntennaDistanceM * xScale);
+            
+            // Draw Runway (starting from runway threshold, extending right)
+            const runwayLengthM = 3000; // meters (e.g., 3km runway)
+            const runwayWidthM = 45; // meters (approx 150 ft)
+
+            const runwayWidthSVG = runwayWidthM * yScale; // Runway width based on Y scale
+
+            const runway = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+            runway.setAttribute('x', runwayThresholdX_SVG);
+            // Runway's top edge should align with the groundY line
+            runway.setAttribute('y', groundY - runwayWidthSVG); 
+            runway.setAttribute('width', runwayLengthM * xScale);
+            runway.setAttribute('height', runwayWidthSVG);
+            runway.setAttribute('class', 'runway');
+            svg.appendChild(runway); 
+
+            // Draw Runway Center Line (dashed)
+            const runwayCenterLine = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+            runwayCenterLine.setAttribute('x1', runwayThresholdX_SVG);
+            // Center line should be in the middle of the runway
+            runwayCenterLine.setAttribute('y1', groundY - (runwayWidthSVG / 2)); 
+            runwayCenterLine.setAttribute('x2', runwayThresholdX_SVG + (runwayLengthM * xScale));
+            runwayCenterLine.setAttribute('y2', groundY - (runwayWidthSVG / 2)); 
+            runwayCenterLine.setAttribute('class', 'runway-center-line');
+            svg.appendChild(runwayCenterLine);
+
+
+            // GP Antenna (vertical line)
+            // Antenna height based on H_middle (in meters)
+            const antennaHeightM = gpParams.H_middle || 0; // Use middle antenna height as a reference
+            const antennaHeightSVG = antennaHeightM * yScale;
+            const antennaWidthSVG = 8; // fixed width for visual representation
+
+            const gpAntennaRect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+            gpAntennaRect.setAttribute('x', gpAntennaX_SVG - (antennaWidthSVG / 2));
+            // Position above ground, starting from the groundY line
+            gpAntennaRect.setAttribute('y', groundY - antennaHeightSVG); 
+            gpAntennaRect.setAttribute('width', antennaWidthSVG);
+            gpAntennaRect.setAttribute('height', antennaHeightSVG);
+            gpAntennaRect.setAttribute('class', 'gp-antenna');
+            svg.appendChild(gpAntennaRect);
+
+            // Add GP Antenna label
+            const gpAntennaLabel = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+            gpAntennaLabel.setAttribute('x', gpAntennaX_SVG);
+            gpAntennaLabel.setAttribute('y', groundY - antennaHeightSVG - 5 + 30); // Above antenna, adjusted for new antenna Y
+            gpAntennaLabel.textContent = `GP Antenna (H:${antennaHeightM.toFixed(1)}m)`;
+            gpAntennaLabel.setAttribute('class', 'svg-label');
+            svg.appendChild(gpAntennaLabel);
+
+            // --- Aircraft Position Calculation (relative to new Y-axis scale) ---
+            const currentAircraftAngleDeg = parseFloat(document.getElementById('aircraftAngleSliderVertical').value);
+            const currentAircraftAngleRad = currentAircraftAngleDeg * DEG_TO_RAD;
+
+            // Y-axis for Angle: Map 0-9 degrees to SVG Y coordinates
+            // SVG Y range is 0 (top) to svgHeight (bottom)
+            // We want 9 deg at top, 0 deg at bottom of the main sky/ground area (groundY)
+            const angleMax = 9; // Max angle for Y-axis display
+            const angleMin = 0; // Min angle for Y-axis display
+            const usableSvgHeightForAngles = groundY; // From top of SVG to ground line
+
+            // Function to convert angle to SVG Y coordinate
+            const angleToSvgY = (angle) => {
+                // Scale angle to 0-1 range (0 at bottom, 1 at top)
+                const normalizedAngle = (angle - angleMin) / (angleMax - angleMin);
+                // Invert Y for SVG (0 is top, max is bottom) and scale to usableSvgHeightForAngles
+                return usableSvgHeightForAngles * (1 - normalizedAngle);
+            };
+
+            const aircraftY_SVG = angleToSvgY(currentAircraftAngleDeg);
+            const aircraftFixedX_SVG = svgWidth * 0.05; // Fixed X position for the aircraft
+
+            // --- Draw Aircraft ---
+            const bodyWidth = 80;
+            const bodyHeight = 20;
+            const wingShortLength = 0; // Shorter top wing
+            const wingLongLength = 30;  // Longer bottom wing
+            const wingWidth = 5;        // Narrow width for both wings
+            const wingForwardOffset = 15; // Offset wings slightly forward
+
+            // Body
+            const aircraftBody = document.createElementNS('http://www.w3.org/2000/svg', 'ellipse');
+            aircraftBody.setAttribute('cx', aircraftFixedX_SVG);
+            aircraftBody.setAttribute('cy', aircraftY_SVG);
+            aircraftBody.setAttribute('rx', bodyWidth / 2);
+            aircraftBody.setAttribute('ry', bodyHeight / 2);
+            aircraftBody.setAttribute('class', 'svg-aircraft-body');
+            svg.appendChild(aircraftBody);
+
+            // Top Wing
+            const topWing = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+            topWing.setAttribute('x', aircraftFixedX_SVG -(wingShortLength / 2) + wingForwardOffset);
+            topWing.setAttribute('y', aircraftY_SVG - (bodyHeight / 2) - wingWidth); // Above body
+            topWing.setAttribute('width', wingShortLength);
+            topWing.setAttribute('height', wingWidth);
+            topWing.setAttribute('class', 'svg-aircraft-wing');
+            svg.appendChild(topWing);
+
+            // Bottom Wing
+            const bottomWing = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+            bottomWing.setAttribute('x', aircraftFixedX_SVG -10 -(wingLongLength / 2) + wingForwardOffset);
+            bottomWing.setAttribute('y', aircraftY_SVG -10 + (bodyHeight / 2)); // Below body
+            bottomWing.setAttribute('width', wingLongLength);
+            bottomWing.setAttribute('height', wingWidth);
+            bottomWing.setAttribute('class', 'svg-aircraft-wing');
+            svg.appendChild(bottomWing);
+
+            // Add aircraft angle label
+            const aircraftLabel = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+            aircraftLabel.setAttribute('x', aircraftFixedX_SVG);
+            aircraftLabel.setAttribute('y', aircraftY_SVG - (bodyHeight / 2) - wingWidth - 10 + 10); // Above aircraft
+            aircraftLabel.textContent = `Aircraft: ${currentAircraftAngleDeg.toFixed(1)}°`;
+            aircraftLabel.setAttribute('class', 'svg-label');
+            aircraftLabel.setAttribute('fill', 'lime'); // Bright color for aircraft label
+            svg.appendChild(aircraftLabel);
+
+            // --- Y-axis Angle Ticks and Labels ---
+            const yAxisStartX = 0; // Y-axis is at the left edge of SVG
+            const yAxisEndX = 20; // Short horizontal lines for ticks
+
+            for (let angle = angleMin; angle <= angleMax; angle += 0.5) {
+                const y = angleToSvgY(angle);
+
+                // Draw tick mark
+                const tickLine = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+                tickLine.setAttribute('x1', yAxisStartX);
+                tickLine.setAttribute('y1', y);
+                tickLine.setAttribute('x2', yAxisEndX);
+                tickLine.setAttribute('y2', y);
+                tickLine.setAttribute('stroke', 'white');
+                tickLine.setAttribute('stroke-width', angle % 1 === 0 ? 2 : 1); /* Thicker for whole degrees */
+		tickLine.setAttribute('stroke-opacity', '0'); //눈금선 투명화
+                svg.appendChild(tickLine);
+
+                // Draw angle label
+                const angleLabel = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+                angleLabel.setAttribute('x', yAxisEndX + 5); /* Offset label from tick */
+                angleLabel.setAttribute('y', y + 4); /* Adjust vertical alignment */
+                angleLabel.textContent = `${angle.toFixed(1)}°`;
+                angleLabel.setAttribute('class', 'y-axis-angle-label');
+                angleLabel.setAttribute('text-anchor', 'start'); /* Align label to start */
+                //svg.appendChild(angleLabel);
+            }
+
+            // --- Glide Path Reference Lines (starting from RUNWAY THRESHOLD and passing through GP antenna) ---
+            // The GP Antenna is located at gpAntennaX_SVG (e.g., 850px from left)
+            // The runway threshold is at runwayThresholdX_SVG (e.g., 150px from left)
+            // The GP antenna is H_middle above the ground.
+            // The effective origin for glide path angles is the point (runwayThresholdX_SVG, groundY - tchM * yScale).
+            // This is the point on the runway threshold at TCH altitude.
+
+            const glidePathOriginX_SVG = runwayThresholdX_SVG;
+            const glidePathOriginY_SVG = groundY - (tchM * yScale); // Y position for TCH at threshold
+
+
+            // 0 DDM Glide Path Line (based on nominal glide angle from GP Basic Info)
+            const nominalGlideAngleDeg = 0.8;
+            const nominalGlideAngleRad = nominalGlideAngleDeg * DEG_TO_RAD;
+
+            // Calculate endpoint for 0 DDM line extending to the left edge (x=0)
+            const lineEndX_0DDM = 0;
+            const distFromOriginToLeftEdgeM = (glidePathOriginX_SVG - lineEndX_0DDM) / xScale;
+            const altitudeChange_0DDM = distFromOriginToLeftEdgeM * Math.tan(nominalGlideAngleRad);
+            const lineEndY_0DDM = glidePathOriginY_SVG - (altitudeChange_0DDM * yScale); // Subtract as altitude increases upwards
+
+            const glidePathLine = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+            glidePathLine.setAttribute('x1', glidePathOriginX_SVG);
+            glidePathLine.setAttribute('y1', glidePathOriginY_SVG);
+            glidePathLine.setAttribute('x2', lineEndX_0DDM);
+            glidePathLine.setAttribute('y2', lineEndY_0DDM);
+            glidePathLine.setAttribute('class', 'glide-path-line');
+            svg.appendChild(glidePathLine);
+
+            // 0 DDM Label
+            const label0DDM = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+            label0DDM.setAttribute('x', glidePathOriginX_SVG - 500 - (svgWidth * 0.1)); // Slightly left of origin
+            label0DDM.setAttribute('y', glidePathOriginY_SVG - 5 -((glidePathOriginX_SVG - label0DDM.getAttribute('x')) / xScale * Math.tan(nominalGlideAngleRad) * yScale));
+            label0DDM.textContent = '0 DDM';
+            label0DDM.setAttribute('class', 'svg-label');
+            label0DDM.setAttribute('fill', 'white');
+            svg.appendChild(label0DDM);
+
+
+            // 0.175 DDM Reference Lines (Upper and Lower) - from threshold at TCH
+            const angleOffsetFor0175DDM = ddmToAngleOffset(DDM_GP_MAX_DEFLECTION, gpParams);
+
+            const upperRefAngleDeg = 1; // nominalGlideAngleDeg + angleOffsetFor0175DDM;
+            const lowerRefAngleDeg = 0.6; //nominalGlideAngleDeg - angleOffsetFor0175DDM;
+
+            const upperRefAngleRad = upperRefAngleDeg * DEG_TO_RAD;
+            const lowerRefAngleRad = lowerRefAngleDeg * DEG_TO_RAD;
+
+            // Upper Reference Line (+0.175 DDM)
+            const altitudeChangeUpper = distFromOriginToLeftEdgeM * Math.tan(upperRefAngleRad);
+            const lineEndYUpper = glidePathOriginY_SVG - (altitudeChangeUpper * yScale);
+
+            const refLineUpper = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+            refLineUpper.setAttribute('x1', glidePathOriginX_SVG);
+            refLineUpper.setAttribute('y1', glidePathOriginY_SVG);
+            refLineUpper.setAttribute('x2', lineEndX_0DDM);
+            refLineUpper.setAttribute('y2', lineEndYUpper);
+            refLineUpper.setAttribute('class', 'ddm-reference-line');
+            svg.appendChild(refLineUpper);
+
+            const labelUpperDDM = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+            labelUpperDDM.setAttribute('x', glidePathOriginX_SVG - 500 - (svgWidth * 0.1));
+            labelUpperDDM.setAttribute('y', glidePathOriginY_SVG - 10 -((glidePathOriginX_SVG - labelUpperDDM.getAttribute('x')) / xScale * Math.tan(upperRefAngleRad) * yScale));
+            labelUpperDDM.textContent = '+0.175 DDM';
+            labelUpperDDM.setAttribute('class', 'svg-label');
+            labelUpperDDM.setAttribute('fill', 'yellow');
+            svg.appendChild(labelUpperDDM);
+
+            // Lower Reference Line (-0.175 DDM)
+            const altitudeChangeLower = distFromOriginToLeftEdgeM * Math.tan(lowerRefAngleRad);
+            const lineEndYLower = glidePathOriginY_SVG - (altitudeChangeLower * yScale);
+
+            const refLineLower = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+            refLineLower.setAttribute('x1', glidePathOriginX_SVG);
+            refLineLower.setAttribute('y1', glidePathOriginY_SVG);
+            refLineLower.setAttribute('x2', lineEndX_0DDM);
+            refLineLower.setAttribute('y2', lineEndYLower);
+            refLineLower.setAttribute('class', 'ddm-reference-line');
+            svg.appendChild(refLineLower);
+
+            const labelLowerDDM = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+            labelLowerDDM.setAttribute('x', glidePathOriginX_SVG - 500- (svgWidth * 0.1));
+            labelLowerDDM.setAttribute('y', glidePathOriginY_SVG +15 - ((glidePathOriginX_SVG - labelLowerDDM.getAttribute('x')) / xScale * Math.tan(lowerRefAngleRad) * yScale));
+            labelLowerDDM.textContent = '-0.175 DDM';
+            labelLowerDDM.setAttribute('class', 'svg-label');
+            labelLowerDDM.setAttribute('fill', 'yellow');
+            svg.appendChild(labelLowerDDM);
+        }
+
+        // 그래프 그리기 및 업데이트
+        function drawGraph() {
+            const gpParams = updateGPBasicInfo(); 
+            
+            const lowerCSBAmp = parseFloat(document.getElementById('lowerCSBAmp').value);
+            const lowerCSBPhase = parseFloat(document.getElementById('lowerCSBPhase').value);
+            const middleCSBAmp = parseFloat(document.getElementById('middleCSBAmp').value);
+            const middleCSBPhase = parseFloat(document.getElementById('middleCSBPhase').value);
+
+            const sbo_A_value = parseFloat(document.getElementById('sbo_A_value').value); 
+            const upperSBOAmpFactor = parseFloat(document.getElementById('upperSBOAmpFactor').value);
+            const upperSBOPhase = parseFloat(document.getElementById('upperSBOPhase').value);
+            const middleSBOAmpFactor = parseFloat(document.getElementById('middleSBOAmpFactor').value);
+            const middleSBOPhase = parseFloat(document.getElementById('middleSBOPhase').value);
+            const lowerSBOAmpFactor = parseFloat(document.getElementById('lowerSBOAmpFactor').value);
+            const lowerSBOPhase = parseFloat(document.getElementById('lowerSBOPhase').value);
+
+            const courseCSBPower = parseFloat(document.getElementById('courseCSBPower').value);
+            const clrCsbPowerRatio = parseFloat(document.getElementById('clrCsbPowerRatio').value);
+
+            let calculatedClAmp = 0;
+            if (!isNaN(courseCSBPower) && courseCSBPower > 0 && !isNaN(clrCsbPowerRatio) && clrCsbPowerRatio >= 0) {
+                calculatedClAmp = Math.sqrt(courseCSBPower * clrCsbPowerRatio);
+            }
+            document.getElementById('lowerClAmp').value = calculatedClAmp.toFixed(3);
+            document.getElementById('upperClAmp').value = calculatedClAmp.toFixed(3);
+            
+            const lowerClPhase = parseFloat(document.getElementById('lowerClPhase').value);
+            const upperClPhase = parseFloat(document.getElementById('upperClPhase').value);
+
+
+            if (isNaN(lowerCSBAmp) || isNaN(lowerCSBPhase) || isNaN(middleCSBAmp) || isNaN(middleCSBPhase) ||
+                isNaN(sbo_A_value) || 
+                isNaN(upperSBOAmpFactor) || isNaN(upperSBOPhase) ||
+                isNaN(middleSBOAmpFactor) || isNaN(middleSBOPhase) ||
+                isNaN(lowerSBOAmpFactor) || isNaN(lowerSBOPhase) ||
+                isNaN(courseCSBPower) || isNaN(clrCsbPowerRatio) || 
+                isNaN(lowerClPhase) || isNaN(upperClPhase)) { 
+                console.error("입력값이 유효하지 않습니다. 숫자를 입력해주세요.");
+                Plotly.newPlot('pattern-graph', [], { title: '입력 오류' }); 
+                return;
+            }
+
+            const traces = [];
+            
+            const showLowerCSBPattern = document.getElementById('toggleLowerPattern').checked;
+            const showMiddleCSBPattern = document.getElementById('toggleMiddlePattern').checked;
+            const showCompositeCSBPattern = document.getElementById('toggleCompositePattern').checked; 
+            const showUpperSBOPattern = document.getElementById('toggleUpperSBOPattern').checked;
+            const showMiddleSBOPattern = document.getElementById('toggleMiddleSBOPattern').checked;
+            const showLowerSBOPattern = document.getElementById('toggleLowerSBOPattern').checked;
+            const showSBOSumPattern = document.getElementById('toggleSBOSumPattern').checked;
+            const showLowerClPattern = document.getElementById('toggleLowerClPattern').checked;
+            const showUpperClPattern = document.getElementById('toggleUpperClPattern').checked;
+            const showClearanceSumPattern = document.getElementById('toggleClearanceSumPattern').checked;
+            const showSimplifiedDDMPattern = document.getElementById('toggleSimplifiedDDM').checked;
+            const showCaptureEffectDDMPattern = document.getElementById('toggleCaptureEffectDDM').checked;
+
+
+            const middleCSBPattern = generateCSBPattern(gpParams, gpParams.H_middle, middleCSBAmp, middleCSBPhase); 
+            if (showMiddleCSBPattern) { 
+                traces.push({ 
+                    x: angles, 
+                    y: middleCSBPattern, 
+                    name: 'CSB Middle Pattern', 
+                    line: { color: 'blue', width: 2 }, 
+                    hovertemplate: 'Angle: %{x:.1f}°<br>Magnitude: %{y:.3f}<extra></extra>' 
+                });
+            }
+
+            const lowerCSBPattern = generateCSBPattern(gpParams, gpParams.H_lower, lowerCSBAmp, lowerCSBPhase); 
+            if (showLowerCSBPattern) { 
+                traces.push({ 
+                    x: angles, 
+                    y: lowerCSBPattern, 
+                    name: 'CSB Lower Pattern', 
+                    line: { color: 'green', width: 2 }, 
+                    hovertemplate: 'Angle: %{x:.1f}°<br>Magnitude: %{y:.3f}<extra></extra>' 
+                });
+            }
+
+            const compositeCSBPattern = generateCompositePattern(middleCSBPattern, lowerCSBPattern);
+            const hasNonZeroCompositeCSBData = compositeCSBPattern.some(val => val !== 0); 
+            
+            if (showCompositeCSBPattern && compositeCSBPattern.length > 0 && hasNonZeroCompositeCSBData) { 
+                traces.push({
+                    x: angles,
+                    y: compositeCSBPattern,
+                    name: 'CSB Composite Signal', 
+                    line: { color: 'red', width: 2, dash: 'dashdot' }, 
+                    hovertemplate: 'Angle: %{x:.1f}°<br>Composite Value: %{y:.3f}<extra></extra>' 
+                });
+            } 
+
+
+            const upperSBOPattern = generateSBOPattern(gpParams, gpParams.H_upper, upperSBOAmpFactor, upperSBOPhase, sbo_A_value); 
+            if (showUpperSBOPattern) {
+                traces.push({
+                    x: angles,
+                    y: upperSBOPattern,
+                    name: 'SBO Upper Pattern',
+                    line: { color: '#AA00FF', width: 2 }, 
+                    hovertemplate: 'Angle: %{x:.1f}°<br>Magnitude: %{y:.3f}<extra></extra>'
+                });
+            }
+
+            const middleSBOPattern = generateSBOPattern(gpParams, gpParams.H_middle, middleSBOAmpFactor, middleSBOPhase, sbo_A_value); 
+            if (showMiddleSBOPattern) {
+                traces.push({
+                    x: angles,
+                    y: middleSBOPattern,
+                    name: 'SBO Middle Pattern',
+                    line: { color: '#CC6600', width: 2 }, 
+                    hovertemplate: 'Angle: %{x:.1f}°<br>Magnitude: %{y:.3f}<extra></extra>'
+                });
+            }
+
+            const lowerSBOPattern = generateSBOPattern(gpParams, gpParams.H_lower, lowerSBOAmpFactor, lowerSBOPhase, sbo_A_value); 
+            if (showLowerSBOPattern) {
+                traces.push({
+                    x: angles,
+                    y: lowerSBOPattern,
+                    name: 'SBO Lower Pattern',
+                    line: { color: '#0099CC', width: 2 }, 
+                    hovertemplate: 'Angle: %{x:.1f}°<br>Magnitude: %{y:.3f}<extra></extra>'
+                });
+            }
+
+            const sboSumPattern = generateSBOSumPattern(upperSBOPattern, middleSBOPattern, lowerSBOPattern);
+            const hasNonZeroSBOSumData = sboSumPattern.some(val => val !== 0);
+
+            if (showSBOSumPattern && sboSumPattern.length > 0 && hasNonZeroSBOSumData) {
+                traces.push({
+                    x: angles,
+                    y: sboSumPattern,
+                    name: 'SBO Sum Pattern',
+                    line: { color: 'black', width: 2, dash: 'solid' }, 
+                    hovertemplate: 'Angle: %{x:.1f}°<br>Magnitude: %{y:.3f}<extra></extra>'
+                });
+            } 
+
+            const lowerClPattern = generateClearancePattern(gpParams, gpParams.H_lower, calculatedClAmp, lowerClPhase);
+            if (showLowerClPattern) {
+                traces.push({
+                    x: angles,
+                    y: lowerClPattern,
+                    name: 'Lower CL Pattern (150Hz)',
+                    line: { color: '#FF00FF', width: 2 }, 
+                    hovertemplate: 'Angle: %{x:.1f}°<br>Magnitude: %{y:.3f}<extra></extra>'
+                });
+            }
+
+            const upperClPattern = generateClearancePattern(gpParams, gpParams.H_upper, calculatedClAmp, upperClPhase);
+            if (showUpperClPattern) {
+                traces.push({
+                    x: angles,
+                    y: upperClPattern,
+                    name: 'Upper CL Pattern (150Hz)',
+                    line: { color: '#00FFFF', width: 2 }, 
+                    hovertemplate: 'Angle: %{x:.1f}°<br>Magnitude: %{y:.3f}<extra></extra>'
+                });
+            }
+
+            const clearanceSumPattern = generateClearanceSumPattern(lowerClPattern, upperClPattern);
+            const hasNonZeroClearanceSumData = clearanceSumPattern.some(val => val !== 0);
+
+            if (showClearanceSumPattern && clearanceSumPattern.length > 0 && hasNonZeroClearanceSumData) {
+                traces.push({
+                    x: angles,
+                    y: clearanceSumPattern,
+                    name: 'CL Sum Pattern (150Hz)',
+                    line: { color: 'gray', width: 2, dash: 'dash' }, 
+                    hovertemplate: 'Angle: %{x:.1f}°<br>Magnitude: %{y:.3f}<extra></extra>'
+                });
+            } 
+
+            const simplifiedDDMPattern = generateSimplifiedDDMData(gpParams, sbo_A_value); 
+            if (showSimplifiedDDMPattern) {
+                traces.push({
+                    x: angles,
+                    y: simplifiedDDMPattern,
+                    name: 'DDM (간략화 공식)', 
+                    yaxis: 'y2', 
+                    line: { color: 'darkorange', width: 2, dash: 'dot' }, 
+                    hovertemplate: 'Angle: %{x:.1f}°<br>DDM: %{y:.4f}<extra></extra>'
+                });
+            }
+
+            const captureEffectDDMPattern = generateCaptureEffectDDMData(gpParams, sbo_A_value); 
+            if (showCaptureEffectDDMPattern) {
+                traces.push({
+                    x: angles,
+                    y: captureEffectDDMPattern,
+                    name: 'DDM (캡처 이펙트 공식)', 
+                    yaxis: 'y2', 
+                    line: { color: 'purple', width: 2, dash: 'solid' },
+                    hovertemplate: 'Angle: %{x:.1f}°<br>DDM: %{y:.4f}<extra></extra>'
+                });
+            } 
+
+            let maxY1 = 0;
+            let minY1 = 0;
+            const allY1Values = [];
+            if (showMiddleCSBPattern) allY1Values.push(...middleCSBPattern);
+            if (showLowerCSBPattern) allY1Values.push(...lowerCSBPattern);
+            if (showCompositeCSBPattern && compositeCSBPattern.length > 0 && hasNonZeroCompositeCSBData) {
+                allY1Values.push(...compositeCSBPattern);
+            }
+            if (showUpperSBOPattern) allY1Values.push(...upperSBOPattern);
+            if (showMiddleSBOPattern) allY1Values.push(...middleSBOPattern);
+            if (showLowerSBOPattern) allY1Values.push(...lowerSBOPattern);
+            if (showSBOSumPattern && sboSumPattern.length > 0 && hasNonZeroSBOSumData) {
+                allY1Values.push(...sboSumPattern);
+            }
+            if (showLowerClPattern) allY1Values.push(...lowerClPattern);
+            if (showUpperClPattern) allY1Values.push(...upperClPattern);
+            if (showClearanceSumPattern && clearanceSumPattern.length > 0 && hasNonZeroClearanceSumData) {
+                allY1Values.push(...clearanceSumPattern);
+            }
+
+            if (allY1Values.length > 0) {
+                const actualMax1 = Math.max(...allY1Values);
+                const actualMin1 = Math.min(...allY1Values);
+
+                let buffer1 = 0.1 * (actualMax1 - actualMin1); 
+                if (buffer1 === 0) buffer1 = 0.5; 
+
+                maxY1 = Math.ceil((actualMax1 + buffer1) / 0.5) * 0.5;
+                minY1 = Math.floor((actualMin1 - buffer1) / 0.5) * 0.5;
+
+                maxY1 = Math.max(maxY1, 1.5);
+                minY1 = Math.min(minY1, -1.5);
+
+            } else { 
+                maxY1 = 1.5;
+                minY1 = -1.5;
+            }
+
+            const layout = {
+                title: 'CSB & SBO & Clearance & DDM Radiation Patterns', 
+                xaxis: {
+                    title: 'Angle (degrees)',
+                    range: [0, 9],
+                    showgrid: true,
+                    zeroline: true
+                },
+                yaxis: { // 기본 Y1 축 (Magnitude)
+                    title: 'Magnitude',
+                    range: [minY1, maxY1], 
+                    dtick: 0.5, 
+                    side: 'left',
+                    showgrid: true,
+                    zeroline: true
+                },
+                yaxis2: { // DDM 전용 Y2 축 (고정 범위)
+                    title: 'DDM',
+                    overlaying: 'y', 
+                    side: 'right', 
+                    range: [-1, 1], 
+                    dtick: 0.2, 
+                    showgrid: true, 
+                    zeroline: true
+                },
+                legend: {
+                    x: 1.05,
+                    xanchor: 'left',
+                    y: 1,
+                    bgcolor: 'rgba(255,255,255,0.7)',
+                    bordercolor: '#ccc',
+                    borderwidth: 1
+                },
+                margin: {
+                    l: 60, r: 60, b: 60, t: 60
+                }
+            };
+
+            Plotly.newPlot('pattern-graph', traces, layout);
+
+            cachedCaptureEffectDDMPattern = captureEffectDDMPattern;
+            updateInstrument(); 
+            drawSideView(gpParams); // Call drawSideView after updating GP info
+        }
+
+        const allInputAndCheckboxIds = [
+            'glideAngle', 'tch', 'frequency', 'runwayCenterDist',
+            'lowerCSBAmp', 'lowerCSBPhase', 'middleCSBAmp', 'middleCSBPhase',
+            'sbo_A_value', 'upperSBOAmpFactor', 'upperSBOPhase',
+            'middleSBOAmpFactor', 'middleSBOPhase', 'lowerSBOAmpFactor', 'lowerSBOPhase',
+            'courseCSBPower', 'clrCsbPowerRatio', 'lowerClPhase', 'upperClPhase',
+            'localizerError' 
+        ];
+
+        const patternCheckboxIds = [
+            'toggleLowerPattern', 'toggleMiddlePattern', 'toggleCompositePattern',
+            'toggleUpperSBOPattern', 'toggleMiddleSBOPattern', 'toggleLowerSBOPattern', 'toggleSBOSumPattern',
+            'toggleLowerClPattern', 'toggleUpperClPattern', 'toggleClearanceSumPattern',
+            'toggleSimplifiedDDM', 'toggleCaptureEffectDDM'
+        ];
+
+        // Attach event listeners to all relevant inputs and checkboxes
+        [...allInputAndCheckboxIds, ...patternCheckboxIds].forEach(id => {
+            const element = document.getElementById(id);
+            if (element) {
+                element.addEventListener('input', drawGraph); 
+            } else {
+                console.warn(`Element with ID '${id}' not found for event listener.`);
+            }
+        });
+
+        // Specific listeners for instrument controls and new side view slider
+        document.getElementById('aircraftAngleSliderVertical').addEventListener('input', updateInstrument); 
+        // Also add a listener to redraw side view when the slider is moved
+        document.getElementById('aircraftAngleSliderVertical').addEventListener('input', () => {
+            const gpParams = updateGPBasicInfo(); // Re-calculate params as they might be needed for drawSideView
+            drawSideView(gpParams);
+        });
+
+        document.getElementById('localizerError').addEventListener('input', updateInstrument); 
+        document.getElementById('groundReflectionError').addEventListener('input', updateInstrument); 
+        document.getElementById('toggleGroundReflectionError').addEventListener('change', updateInstrument); 
+        
+        document.getElementById('toggleAllPatterns').addEventListener('click', () => {
+            const checkboxes = document.querySelectorAll('.all-patterns-checkbox-table input[type="checkbox"]');
+            let allChecked = true;
+            checkboxes.forEach(cb => {
+                if (!cb.checked) allChecked = false;
+            });
+            checkboxes.forEach(cb => {
+                cb.checked = !allChecked;
+            });
+            drawGraph();
+        });
+
+        document.addEventListener('DOMContentLoaded', (event) => {
+            drawGraph(); // Initial drawing when the page loads
+        });
+    </script>
+</body>
+</html>오후 1:36 2025-07-31
