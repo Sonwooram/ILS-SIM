@@ -3,356 +3,593 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>2개 등방성 안테나 배열 방사패턴 시뮬레이터 (위상 제어)</title>
+    <title>어레이 안테나 방사패턴 시뮬레이터</title>
     <style>
         body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            margin: 0;
-            padding: 0;
-            background-color: #f4f7f6;
-            color: #333;
-            /* overflow: hidden; 속성 제거: 필요 시 스크롤바 자동 생성 */
+            font-family: Arial, sans-serif;
             display: flex;
             flex-direction: column;
             align-items: center;
-            justify-content: flex-start; /* 상단부터 내용 배치 */
-            min-height: 100vh; /* 뷰포트 전체 높이 사용 */
-            padding-bottom: 50px; /* 하단 여백 추가 (스크롤 시 내용 잘림 방지) */
+            padding: 20px;
+            background-color: #f4f4f9;
+        }
+        h1 {
+            color: #333;
         }
         .container {
             display: flex;
+            width: 100%;
+            max-width: 1200px;
+            gap: 20px;
+            margin-top: 20px;
+        }
+        .controls {
+            flex: 1;
+            padding: 20px;
+            border: 1px solid #ccc;
+            border-radius: 8px;
+            background-color: #fff;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .visualization {
+            flex: 2;
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+            padding: 20px;
+            border: 1px solid #ccc;
+            border-radius: 8px;
+            background-color: #fff;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .canvas-container {
+            display: flex;
+            gap: 20px;
+        }
+        .canvas-wrapper {
+            flex: 1;
+            display: flex;
             flex-direction: column;
             align-items: center;
-            /* justify-content: center; 제거: 스크롤 영역 확보 */
-            padding: 20px;
-            max-width: 900px;
+        }
+        .canvas-wrapper h3 {
+            margin-top: 0;
+            color: #555;
+        }
+        .controls h2, .visualization h2 {
+            margin-top: 0;
+            color: #555;
+        }
+        .input-group {
+            margin-bottom: 15px;
+        }
+        .input-group label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+        }
+        .input-group input[type="range"] {
             width: 100%;
         }
-        h1 {
-            color: #2c3e50;
-            text-align: center;
-            margin-bottom: 20px;
-            font-size: 2.2em;
+        .input-group input[type="number"] {
+            width: 80px;
+            padding: 5px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
         }
-        #info-panel {
-            background-color: #e8f5e9;
-            padding: 15px 25px;
-            border-radius: 8px;
-            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-            margin-bottom: 20px;
-            text-align: center;
-            font-size: 1.1em;
-            width: 80%;
-            max-width: 600px;
+        .current-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 10px;
         }
-        #info-panel p {
+        .current-table th, .current-table td {
+            border: 1px solid #ddd;
+            padding: 8px;
+            text-align: center;
+        }
+        .current-table th {
+            background-color: #f2f2f2;
+        }
+        canvas {
+            border: 1px solid #ccc;
+            background-color: #f9f9f9;
+            cursor: crosshair;
+        }
+        #analysis-result {
+            margin-top: 15px;
+            padding: 10px;
+            background-color: #e9e9f4;
+            border-radius: 4px;
+        }
+        #analysis-result p {
             margin: 5px 0;
         }
-        #info-panel strong {
-            color: #4CAF50;
-        }
-        #controls {
-            display: flex;
-            justify-content: center;
-            gap: 20px;
-            margin-top: 15px;
-            flex-wrap: wrap;
-        }
-        .control-group {
-            text-align: left;
-        }
-        .control-group label {
-            display: block;
-            font-weight: bold;
-            color: #2c3e50;
-            margin-bottom: 5px;
-        }
-        .control-group input[type="number"] {
-            padding: 8px;
-            border: 1px solid #ccc;
-            border-radius: 5px;
+        #selectedPointInput {
             width: 100px;
-            text-align: center;
-            font-size: 1em;
         }
-        .value-display {
-            font-weight: bold;
-            color: #1976D2;
-            margin-left: 5px;
-        }
-        #pattern-container { 
-            width: 1000px; 
-            height: 1000px;
-            background-color: #fcfcfc;
-            border: 1px solid #ddd;
-            border-radius: 8px;
-            overflow: hidden; /* SVG 캔버스 자체는 스크롤되지 않도록 hidden 유지 */
-            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
-            margin-top: 20px;
-            /* min-height를 100vh로 설정하면 패턴 컨테이너가 잘릴 수 있으므로, flex-start로 변경 */
-        }
-        #patternChart {
-            width: 100%;
-            height: 100%;
-        }
-        /* SVG 요소 스타일 */
-        .polar-grid-circle {
-            fill: none;
-            stroke: #ccc;
-            stroke-width: 0.8;
-            stroke-dasharray: 2 2;
-        }
-        .polar-grid-line {
-            fill: none; /* 추가: 선이 채워지지 않도록 */
-            stroke: #ccc;
-            stroke-width: 0.8;
-            stroke-dasharray: 2 2;
-        }
-        .center-dot {
-            fill: #555;
-        }
-        .pattern-path {
-            fill: none;
-            stroke: #4CAF50;
-            stroke-width: 3;
-        }
-        .antenna-element {
-            fill: #FF5722;
-            stroke: #CD3300;
-            stroke-width: 1;
-        }
-        .axis-label {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            font-size: 12px;
-            fill: #555;
-            text-anchor: middle;
-        }
-        .magnitude-label {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            font-size: 10px;
-            fill: #777;
-            text-anchor: middle;
+        .math-expr {
+            font-family: 'Times New Roman', serif;
+            font-size: 1.2em;
         }
     </style>
+    <script type="text/javascript" async
+        src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.7/MathJax.js?config=TeX-MML-AM_CHTML">
+    </script>
 </head>
 <body>
 
+    <h1>어레이 안테나 방사패턴 시뮬레이터</h1>
+
     <div class="container">
-        <h1>2개 등방성 안테나 배열 방사패턴 시뮬레이터</h1>
-
-        <div id="info-panel">
-            <p><strong>2개 등방성 안테나 배열</strong>은 안테나 간격과 위상 차이에 따라 다양한 로브 패턴을 가집니다.</p>
-            <p>안테나 배열은 X축에 위치하며, 안테나 1은 기준(0 위상), 안테나 2는 상대 위상을 가집니다.</p>
-            <p>이득: <span id="display-gain"></span> dB (선형: <span id="display-linear-gain"></span>배)</p>
-            <p>파장: <span id="display-wavelength"></span> m</p>
-
-            <div id="controls">
-                <div class="control-group">
-                    <label for="gain-input">개별 안테나 이득 (dB):</label>
-                    <input type="number" id="gain-input" value="0.0" step="0.1" min="-10.0" max="10.0">
-                    <span id="gain-value-display"></span>
-                </div>
-                <div class="control-group">
-                    <label for="spacing-input">안테나 간격 (Degree):</label>
-                    <input type="number" id="spacing-input" value="180" step="10" min="0" max="720">
-                    <span id="spacing-value-display"></span>
-                    <p style="font-size:0.85em; color:#666; margin-top:5px;">
-                        (예: 180 Deg = 0.5 파장 간격)
-                    </p>
-                </div>
-                <div class="control-group">
-                    <label for="phase-input">안테나 2 위상 차이 (Degree):</label>
-                    <input type="number" id="phase-input" value="0" step="10" min="-360" max="360">
-                    <span id="phase-value-display"></span>
-                    <p style="font-size:0.85em; color:#666; margin-top:5px;">
-                        (안테나 1 기준. 0이면 동위상)
-                    </p>
-                </div>
+        <div class="controls">
+            <h2>설정</h2>
+            <div class="input-group">
+                <label for="antennaCount">안테나 개수 (N): <span id="antennaCountValue">5</span></label>
+                <input type="range" id="antennaCount" min="1" max="20" value="5">
             </div>
+            <div class="input-group">
+                <label for="phaseDifference">안테나 간 위상차 (β) [°]:</label>
+                <input type="number" id="phaseDifference" value="0" min="-360" max="360" step="1">
+            </div>
+            <div class="input-group">
+                <label for="frequency">주파수 (f) [MHz]:</label>
+                <input type="number" id="frequency" value="300" min="1">
+            </div>
+            <div class="info">
+                <p>계산된 안테나 간 거리 (d): <span id="calculatedDistance">...</span> m</p>
+                <p>파장 (λ): <span id="wavelength">...</span> m</p>
+            </div>
+            <h3>안테나별 전류 (I)</h3>
+            <table class="current-table">
+                <thead>
+                    <tr>
+                        <th>#</th>
+                        <th>크기</th>
+                        <th>위상 [°]</th>
+                    </tr>
+                </thead>
+                <tbody id="currentTableBody">
+                </tbody>
+            </table>
         </div>
 
-        <div id="pattern-container">
-            <svg id="patternChart" viewBox="0 0 1000 1000"></svg>
+        <div class="visualization">
+            <h2>결과 시각화</h2>
+            <div class="canvas-container">
+                <div class="canvas-wrapper">
+                    <h3>방사패턴</h3>
+                    <canvas id="radiationPatternCanvas" width="600" height="600"></canvas>
+                </div>
+                <div class="canvas-wrapper">
+                    <h3>전계 벡터 합</h3>
+                    <canvas id="vectorSumCanvas" width="600" height="600"></canvas>
+                </div>
+            </div>
+            <div id="analysis-result">
+                <h3>선택 지점 분석 (수신점 P)</h3>
+                <p>
+                    각도 (θ): 
+                    <input type="number" id="selectedPointInput" value="0" min="0" max="360" step="1">
+                    ° <button id="updatePointBtn">적용</button>
+                </p>
+                <p>총 전계강도 (복소수 합): <span id="totalEfield">0</span></p>
+                <p>총 전계강도 (실수부만 합): <span id="totalEfieldReal">0</span></p>
+                <div id="individualEfields"></div>
+            </div>
         </div>
     </div>
 
     <script>
-        // SVG 크기 및 중심 (2배 확대)
-        const SVG_VIEWBOX_SIZE = 1000; 
-        const SVG_CENTER = SVG_VIEWBOX_SIZE / 2; 
-        const MAX_RADIUS = SVG_CENTER * 0.8; 
+        const radiationPatternCanvas = document.getElementById('radiationPatternCanvas');
+        const radiationPatternCtx = radiationPatternCanvas.getContext('2d');
+        const vectorSumCanvas = document.getElementById('vectorSumCanvas');
+        const vectorSumCtx = vectorSumCanvas.getContext('2d');
 
-        // 가상 파장 (주파수 300 MHz 기준, 약 1m 파장)
-        const FREQUENCY_HZ = 300 * 10**6; 
-        const C = 299792458; 
-        const WAVELENGTH_M = C / FREQUENCY_HZ; 
+        const c = 299792458; // 빛의 속도 (m/s)
 
-        // HTML 요소 참조
-        const displayGainElement = document.getElementById('display-gain');
-        const displayLinearGainElement = document.getElementById('display-linear-gain');
-        const displayWavelengthElement = document.getElementById('display-wavelength');
-        const gainInputElement = document.getElementById('gain-input');
-        const gainValueDisplayElement = document.getElementById('gain-value-display');
-        const spacingInputElement = document.getElementById('spacing-input');
-        const spacingValueDisplayElement = document.getElementById('spacing-value-display');
-        const phaseInputElement = document.getElementById('phase-input');
-        const phaseValueDisplayElement = document.getElementById('phase-value-display');
-        const patternChart = document.getElementById('patternChart');
+        const antennaCountInput = document.getElementById('antennaCount');
+        const phaseDifferenceInput = document.getElementById('phaseDifference');
+        const frequencyInput = document.getElementById('frequency');
+        const currentTableBody = document.getElementById('currentTableBody');
 
-        let patternPath; 
-        let antennaElements = []; 
+        const antennaCountValue = document.getElementById('antennaCountValue');
+        const calculatedDistanceSpan = document.getElementById('calculatedDistance');
+        const wavelengthSpan = document.getElementById('wavelength');
+        const totalEfieldSpan = document.getElementById('totalEfield');
+        const totalEfieldRealSpan = document.getElementById('totalEfieldReal');
+        const individualEfieldsDiv = document.getElementById('individualEfields');
+        const selectedPointInput = document.getElementById('selectedPointInput');
+        const updatePointBtn = document.getElementById('updatePointBtn');
+        
+        let selectedAngleRad = null;
 
-        // 초기화 함수
-        function init() {
-            displayWavelengthElement.textContent = WAVELENGTH_M.toFixed(3); 
-
-            drawPolarGrid(); 
+        function updateCurrentTable() {
+            const count = parseInt(antennaCountInput.value);
+            currentTableBody.innerHTML = '';
+            for (let i = 0; i < count; i++) {
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td>${i + 1}</td>
+                    <td><input type="number" class="current-mag" value="1" min="0" step="0.1" data-index="${i}"></td>
+                    <td><input type="number" class="current-phase" value="0" min="-360" max="360" step="1" data-index="${i}"></td>
+                `;
+                currentTableBody.appendChild(row);
+            }
+            document.querySelectorAll('.current-mag, .current-phase').forEach(input => {
+                input.addEventListener('input', updatePattern);
+            });
+        }
+        
+        function drawPolarPlot(data) {
+            radiationPatternCtx.clearRect(0, 0, radiationPatternCanvas.width, radiationPatternCanvas.height);
+            const centerX = radiationPatternCanvas.width / 2;
+            const centerY = radiationPatternCanvas.height / 2;
+            const maxRadius = Math.min(centerX, centerY) * 0.8;
+            const maxValue = Math.max(...data);
             
-            patternPath = document.createElementNS("http://www.w3.org/2000/svg", "path");
-            patternPath.classList.add("pattern-path");
-            patternChart.appendChild(patternPath);
-
-            // 안테나 소자 2개 초기 생성
-            const antennaRadius = 3 * (SVG_VIEWBOX_SIZE / 500); // SVG 크기에 맞춰 반지름도 조정 (이전 500px 기준)
-            for (let i = 0; i < 2; i++) {
-                const antennaDot = document.createElementNS("http://www.w3.org/2000/svg", "circle");
-                antennaDot.setAttribute("r", antennaRadius);
-                antennaDot.classList.add("antenna-element");
-                patternChart.appendChild(antennaDot);
-                antennaElements.push(antennaDot);
+            // 극좌표 그리드 그리기
+            radiationPatternCtx.strokeStyle = '#ddd';
+            radiationPatternCtx.beginPath();
+            radiationPatternCtx.arc(centerX, centerY, maxRadius, 0, 2 * Math.PI);
+            radiationPatternCtx.stroke();
+            for (let i = 0; i < 12; i++) {
+                const angle = i * Math.PI / 6;
+                radiationPatternCtx.beginPath();
+                radiationPatternCtx.moveTo(centerX, centerY);
+                radiationPatternCtx.lineTo(centerX + maxRadius * Math.cos(angle), centerY + maxRadius * Math.sin(angle));
+                radiationPatternCtx.stroke();
+            }
+            
+            // 안테나 위치 표시
+            const N = parseInt(antennaCountInput.value);
+            const antennaSpacing = maxRadius / (N + 1);
+            for (let i = 0; i < N; i++) {
+                const x = centerX;
+                const y = centerY + (i - (N - 1) / 2) * antennaSpacing;
+                radiationPatternCtx.beginPath();
+                radiationPatternCtx.fillStyle = 'red';
+                radiationPatternCtx.arc(x, y, 3, 0, 2 * Math.PI);
+                radiationPatternCtx.fill();
             }
 
-            // 이벤트 리스너
-            gainInputElement.addEventListener('input', updatePattern);
-            spacingInputElement.addEventListener('input', updatePattern);
-            phaseInputElement.addEventListener('input', updatePattern);
+            // 방사패턴 그리기 (12시를 90도로 보이게 변환)
+            if (maxValue > 0) {
+                radiationPatternCtx.beginPath();
+                radiationPatternCtx.strokeStyle = 'blue';
+                radiationPatternCtx.lineWidth = 2;
+                data.forEach((value, index) => {
+                    const patternAngleRad = index * Math.PI / 180;
+                    const radius = (value / maxValue) * maxRadius;
+                    
+                    // 각도를 12시=90도 기준으로 변환하여 그리기
+                    const drawAngleRad = patternAngleRad - Math.PI / 2;
+                    const x = centerX + radius * Math.cos(drawAngleRad);
+                    const y = centerY + radius * Math.sin(drawAngleRad);
+                    if (index === 0) {
+                        radiationPatternCtx.moveTo(x, y);
+                    } else {
+                        radiationPatternCtx.lineTo(x, y);
+                    }
+                });
+                radiationPatternCtx.closePath();
+                radiationPatternCtx.stroke();
+            }
 
-            // 초기 패턴 업데이트
-            updatePattern(); 
+            if (selectedAngleRad !== null) {
+                drawSelectedPoint(data, selectedAngleRad);
+            }
         }
 
-        // 극좌표 그리드 그리기 함수
-        function drawPolarGrid() {
-            patternChart.innerHTML = ''; 
+        function drawSelectedPoint(patternData, angleRad) {
+            const centerX = radiationPatternCanvas.width / 2;
+            const centerY = radiationPatternCanvas.height / 2;
+            const maxRadius = Math.min(centerX, centerY) * 0.8;
+            const maxValue = Math.max(...patternData);
 
-            patternChart.innerHTML += `<circle cx="${SVG_CENTER}" cy="${SVG_CENTER}" r="2" class="center-dot" />`;
+            if (maxValue === 0) return;
 
-            // 동심원 (크기 눈금)
-            const numCircles = 4;
-            for (let i = 1; i <= numCircles; i++) {
-                const r = (MAX_RADIUS / numCircles) * i;
-                patternChart.innerHTML += `<circle cx="${SVG_CENTER}" cy="${SVG_CENTER}" r="${r}" class="polar-grid-circle" />`;
-                const gainAtRadius = (i / numCircles) * 1.0; 
-                // 레이블 위치 조정 (SVG_VIEWBOX_SIZE가 커졌으므로 레이블 오프셋도 조정)
-                patternChart.innerHTML += `<text x="${SVG_CENTER + r + (SVG_VIEWBOX_SIZE * 0.02)}" y="${SVG_CENTER + (SVG_VIEWBOX_SIZE * 0.01)}" class="magnitude-label" text-anchor="middle">${(gainAtRadius * 2).toFixed(1)}x</text>`; 
-            }
+            // 입력된 각도는 3시방향 0도 기준으로
+            const angleIndex = Math.round(angleRad * 180 / Math.PI) % 361;
+            const patternValue = patternData[angleIndex];
+            const radius = (patternValue / maxValue) * maxRadius;
+            
+            // 캔버스에 그릴 때는 12시가 90도가 되도록 변환
+            const drawAngleRad = angleRad - Math.PI / 2;
+            const x = centerX + radius * Math.cos(drawAngleRad);
+            const y = centerY + radius * Math.sin(drawAngleRad);
 
-            // 방사선 (각도 눈금)
-            const numLines = 12; // 30도 간격
-            for (let i = 0; i < numLines; i++) {
-                const angle = i * (360 / numLines);
-                const angleRad = angle * Math.PI / 180;
-                const x1 = SVG_CENTER;
-                const y1 = SVG_CENTER;
-                const x2 = SVG_CENTER + MAX_RADIUS * Math.cos(angleRad);
-                const y2 = SVG_CENTER + MAX_RADIUS * Math.sin(angleRad);
-                patternChart.innerHTML += `<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" class="polar-grid-line" />`;
-                
-                // 각도 레이블 위치 조정
-                const labelOffset = SVG_VIEWBOX_SIZE * 0.08; /* 이전 40px */
-                const labelX = SVG_CENTER + (MAX_RADIUS + labelOffset) * Math.cos(angleRad);
-                const labelY = SVG_CENTER + (MAX_RADIUS + labelOffset) * Math.sin(angleRad);
-                patternChart.innerHTML += `<text x="${labelX}" y="${labelY}" class="axis-label">${angle}°</text>`;
-            }
+            radiationPatternCtx.beginPath();
+            radiationPatternCtx.strokeStyle = 'red';
+            radiationPatternCtx.lineWidth = 2;
+            radiationPatternCtx.moveTo(centerX, centerY);
+            radiationPatternCtx.lineTo(x, y);
+            radiationPatternCtx.stroke();
+
+            radiationPatternCtx.beginPath();
+            radiationPatternCtx.fillStyle = 'black';
+            radiationPatternCtx.arc(x, y, 5, 0, 2 * Math.PI);
+            radiationPatternCtx.fill();
+
+            radiationPatternCtx.fillStyle = 'black';
+            radiationPatternCtx.font = '12px Arial';
+            radiationPatternCtx.fillText('수신점 P', x + 10, y);
         }
 
-        // 패턴 업데이트 함수
-        function updatePattern() {
-            let gainDb = parseFloat(gainInputElement.value);
-            if (isNaN(gainDb)) {
-                gainDb = 0.0;
-                gainInputElement.value = 0.0;
-            }
+        function drawVectorSum(angleRad) {
+            vectorSumCtx.clearRect(0, 0, vectorSumCanvas.width, vectorSumCanvas.height);
+            const centerX = vectorSumCanvas.width / 2;
+            const centerY = vectorSumCanvas.height / 2;
             
-            const linearGain = Math.pow(10, gainDb / 10); 
-
-            let spacingDeg = parseFloat(spacingInputElement.value);
-            if (isNaN(spacingDeg)) {
-                spacingDeg = 0;
-                spacingInputElement.value = 0;
-            }
-            // Degree 간격을 파장 단위의 물리적 거리로 변환
-            const d_meters = (spacingDeg / 360) * WAVELENGTH_M; 
-            const k = (2 * Math.PI) / WAVELENGTH_M; // 파수
-
-            let phaseDeg = parseFloat(phaseInputElement.value); // 위상 차이 입력
-            if (isNaN(phaseDeg)) {
-                phaseDeg = 0;
-                phaseInputElement.value = 0;
-            }
-            const alphaRad = phaseDeg * Math.PI / 180; // 위상 차이 (라디안)
-
-            let pathData = "M"; 
-
-            // 안테나 소자 위치 업데이트 (X축 상에 -d/2, d/2 위치)
-            // SVG 스케일에 맞춰 위치 조정 (MAX_RADIUS를 기준으로 파장 비례)
-            const antennaOffsetMeters = d_meters / 2; // 각 안테나가 중심에서 떨어진 물리적 거리
-            // 스케일 비율 조정: 1파장 간격 (360 Degree)일 때 MAX_RADIUS가 되도록 (X축 범위 전체)
-            const scaleRatio = MAX_RADIUS / (WAVELENGTH_M * (SVG_VIEWBOX_SIZE / (MAX_RADIUS*2) * 0.5)); // SVG 좌표계에 맞춤
+            // 그리드 및 축 그리기
+            vectorSumCtx.strokeStyle = '#eee';
+            vectorSumCtx.beginPath();
+            vectorSumCtx.moveTo(0, centerY);
+            vectorSumCtx.lineTo(vectorSumCanvas.width, centerY);
+            vectorSumCtx.moveTo(centerX, 0);
+            vectorSumCtx.lineTo(centerX, vectorSumCanvas.height);
+            vectorSumCtx.stroke();
             
-            // 이 스케일 비율은 원점에서 안테나가 얼마나 멀리 떨어져 그려지는지 제어합니다.
-            // 안테나가 SVG 캔버스 중앙에 적절히 표시되도록 조정했습니다.
-            // MAX_RADIUS/1000 * SVG_VIEWBOX_SIZE / (WAVELENGTH_M * 2) // 간격이 너무 넓어서 패턴 바깥으로 나가는 것을 방지
-            const antennaDrawingScale = (MAX_RADIUS / (WAVELENGTH_M * 2)); // 1파장이 그려질 때의 SVG 스케일 (임의 조정)
+            vectorSumCtx.fillStyle = '#555';
+            vectorSumCtx.font = '12px Arial';
+            vectorSumCtx.fillText('실수부', vectorSumCanvas.width - 50, centerY - 10);
+            vectorSumCtx.fillText('허수부', centerX + 10, 20);
 
-            const antenna1_x_svg = SVG_CENTER - antennaOffsetMeters * antennaDrawingScale;
-            const antenna2_x_svg = SVG_CENTER + antennaOffsetMeters * antennaDrawingScale;
+            const N = parseInt(antennaCountInput.value);
+            const betaDeg = parseFloat(phaseDifferenceInput.value) || 0;
+            const freqHz = parseFloat(frequencyInput.value) * 1e6 || 0;
 
-            antennaElements[0].setAttribute("cx", antenna1_x_svg);
-            antennaElements[0].setAttribute("cy", SVG_CENTER);
-            antennaElements[1].setAttribute("cx", antenna2_x_svg);
-            antennaElements[1].setAttribute("cy", SVG_CENTER);
+            const lambda = freqHz > 0 ? c / freqHz : 0;
+            const d = (betaDeg / 360) * lambda;
+            const k = freqHz > 0 ? 2 * Math.PI / lambda : 0;
+            const theta = angleRad;
 
+            let currentX = centerX;
+            let currentY = centerY;
+            
+            // 스케일링을 위해 최대값을 찾음
+            const totalMaxMag = N * parseFloat(currentTableBody.children[0].querySelector('.current-mag').value);
+            const scale = Math.min(vectorSumCanvas.width, vectorSumCanvas.height) / (2.5 * totalMaxMag);
 
-            // 360도 전체 각도에 대해 패턴 계산 및 그리기
-            for (let angle = 0; angle <= 360; angle += 1) { 
-                const angleRad = angle * Math.PI / 180; 
-
-                // 2개 등방성 안테나 배열 인자 AF = |2 * cos( (k * d / 2) * cos(theta) + alpha/2 )|
-                const AF_phase_term = (k * d_meters / 2) * Math.cos(angleRad) + (alphaRad / 2);
-                const arrayFactorMagnitude = Math.abs(2 * Math.cos(AF_phase_term));
+            const colors = ['#e6194b', '#3cb44b', '#ffe119', '#4363d8', '#f58231', '#911eb4', '#46f0f0', '#f032e6', '#bcf60c', '#fabebe', '#008080', '#e6beff', '#9a6324', '#fffac8', '#800000', '#aaffc3', '#808000', '#ffd8b1', '#000075', '#808080'];
+            
+            for (let n = 0; n < N; n++) {
+                const currentMag = parseFloat(currentTableBody.children[n].querySelector('.current-mag').value) || 0;
+                const currentPhaseRad = (parseFloat(currentTableBody.children[n].querySelector('.current-phase').value) || 0) * Math.PI / 180;
                 
-                // 최종 패턴 반지름 (개별 선형 이득 * 배열 인자 * 기준 스케일)
-                // baseScaleFactor는 선형 이득 1일 때 AF의 최대값 2를 고려하여 MAX_RADIUS의 절반을 채우도록 함 (MAX_RADIUS/2 = 0dB gain)
-                const baseScaleFactor = (MAX_RADIUS / 2); 
-                const effectivePatternRadius = linearGain * arrayFactorMagnitude * baseScaleFactor; 
+                const phaseTerm = k * (n - (N-1)/2) * d * Math.cos(theta) + currentPhaseRad;
+                const E_real = currentMag * Math.cos(phaseTerm);
+                const E_imag = currentMag * Math.sin(phaseTerm);
+                
+                const nextX = currentX + E_real * scale;
+                const nextY = currentY - E_imag * scale;
+                const vectorLabel = `E${n + 1}`;
+                
+                // 벡터 그리기
+                vectorSumCtx.strokeStyle = colors[n % colors.length];
+                vectorSumCtx.lineWidth = 2;
+                vectorSumCtx.beginPath();
+                vectorSumCtx.moveTo(currentX, currentY);
+                vectorSumCtx.lineTo(nextX, nextY);
+                vectorSumCtx.stroke();
+                
+                // 벡터 라벨 그리기
+                const midX = (currentX + nextX) / 2;
+                const midY = (currentY + nextY) / 2;
+                vectorSumCtx.save();
+                vectorSumCtx.fillStyle = colors[n % colors.length];
+                vectorSumCtx.translate(midX, midY);
+                const angle = Math.atan2(nextY - currentY, nextX - currentX);
+                vectorSumCtx.rotate(angle);
+                vectorSumCtx.textAlign = "center";
+                vectorSumCtx.fillText(vectorLabel, 0, -5); // 벡터 위쪽으로 라벨 위치 조정
+                vectorSumCtx.restore();
 
-                const clampedPatternRadius = Math.max(0, effectivePatternRadius);
+                // 화살표 그리기
+                const arrowLength = 10;
+                vectorSumCtx.fillStyle = colors[n % colors.length];
+                vectorSumCtx.beginPath();
+                vectorSumCtx.moveTo(nextX, nextY);
+                vectorSumCtx.lineTo(nextX - arrowLength * Math.cos(angle - Math.PI / 6), nextY - arrowLength * Math.sin(angle - Math.PI / 6));
+                vectorSumCtx.lineTo(nextX - arrowLength * Math.cos(angle + Math.PI / 6), nextY - arrowLength * Math.sin(angle + Math.PI / 6));
+                vectorSumCtx.closePath();
+                vectorSumCtx.fill();
+                
+                currentX = nextX;
+                currentY = nextY;
+            }
 
-                // 극좌표 (반지름, 각도)를 데카르트 좌표 (x, y)로 변환
-                const x = SVG_CENTER + clampedPatternRadius * Math.cos(angleRad);
-                const y = SVG_CENTER + clampedPatternRadius * Math.sin(angleRad);
+            // 최종 벡터 그리기
+            const finalX = currentX;
+            const finalY = currentY;
+            vectorSumCtx.strokeStyle = 'black';
+            vectorSumCtx.lineWidth = 3;
+            vectorSumCtx.beginPath();
+            vectorSumCtx.moveTo(centerX, centerY);
+            vectorSumCtx.lineTo(finalX, finalY);
+            vectorSumCtx.stroke();
+            
+            // 최종 벡터 라벨(Et) 그리기
+            const midFinalX = (centerX + finalX) / 2;
+            const midFinalY = (centerY + finalY) / 2;
+            vectorSumCtx.save();
+            vectorSumCtx.fillStyle = 'black';
+            vectorSumCtx.translate(midFinalX, midFinalY);
+            const totalAngle = Math.atan2(finalY - centerY, finalX - centerX);
+            vectorSumCtx.rotate(totalAngle);
+            vectorSumCtx.textAlign = "center";
+            vectorSumCtx.fillText('Et', 0, -5);
+            vectorSumCtx.restore();
 
-                if (angle === 0) {
-                    pathData += `${x},${y}`; 
-                } else {
-                    pathData += ` L${x},${y}`; 
+            const totalArrowLength = 12;
+            vectorSumCtx.fillStyle = 'black';
+            vectorSumCtx.beginPath();
+            vectorSumCtx.moveTo(finalX, finalY);
+            vectorSumCtx.lineTo(finalX - totalArrowLength * Math.cos(totalAngle - Math.PI / 6), finalY - totalArrowLength * Math.sin(totalAngle - Math.PI / 6));
+            vectorSumCtx.lineTo(finalX - totalArrowLength * Math.cos(totalAngle + Math.PI / 6), finalY - totalArrowLength * Math.sin(totalAngle + Math.PI / 6));
+            vectorSumCtx.closePath();
+            vectorSumCtx.fill();
+
+            // 최종 벡터 각도 표시
+            const angleDeg = totalAngle * 180 / Math.PI;
+            const arcRadius = 50;
+            const arcStart = totalAngle > 0 ? 0 : totalAngle;
+            const arcEnd = totalAngle > 0 ? totalAngle : 0;
+            
+            vectorSumCtx.strokeStyle = '#555';
+            vectorSumCtx.lineWidth = 1;
+            vectorSumCtx.beginPath();
+            vectorSumCtx.arc(centerX, centerY, arcRadius, arcStart, arcEnd);
+            vectorSumCtx.stroke();
+            
+            const textAngle = totalAngle / 2;
+            const textX = centerX + arcRadius * 1.2 * Math.cos(textAngle);
+            const textY = centerY - arcRadius * 1.2 * Math.sin(textAngle);
+            
+            vectorSumCtx.fillStyle = '#555';
+            vectorSumCtx.textAlign = 'center';
+            vectorSumCtx.textBaseline = 'middle';
+            vectorSumCtx.fillText(`${angleDeg.toFixed(1)}°`, textX, textY);
+        }
+
+        function calculateAndDrawPattern() {
+            const N = parseInt(antennaCountInput.value);
+            const betaDeg = parseFloat(phaseDifferenceInput.value) || 0;
+            const freqHz = parseFloat(frequencyInput.value) * 1e6 || 0;
+
+            const lambda = freqHz > 0 ? c / freqHz : 0;
+            const d = (betaDeg / 360) * lambda;
+            const k = freqHz > 0 ? 2 * Math.PI / lambda : 0;
+            const patternData = [];
+
+            calculatedDistanceSpan.textContent = d.toFixed(3);
+            wavelengthSpan.textContent = lambda.toFixed(3);
+
+            for (let angleDeg = 0; angleDeg <= 360; angleDeg++) {
+                const theta = angleDeg * Math.PI / 180;
+                let E_total_real = 0;
+                let E_total_imag = 0;
+
+                for (let n = 0; n < N; n++) {
+                    const currentMag = parseFloat(currentTableBody.children[n].querySelector('.current-mag').value) || 0;
+                    const currentPhaseRad = (parseFloat(currentTableBody.children[n].querySelector('.current-phase').value) || 0) * Math.PI / 180;
+                    
+                    const phaseTerm = k * (n - (N-1)/2) * d * Math.cos(theta) + currentPhaseRad;
+                    E_total_real += currentMag * Math.cos(phaseTerm);
+                    E_total_imag += currentMag * Math.sin(phaseTerm);
                 }
+                patternData.push(Math.sqrt(E_total_real * E_total_real + E_total_imag * E_total_imag));
             }
-            pathData += " Z"; 
-
-            patternPath.setAttribute("d", pathData); 
-
-            // 정보 패널 업데이트
-            displayGainElement.textContent = gainDb.toFixed(1);
-            displayLinearGainElement.textContent = linearGain.toFixed(2);
-            gainValueDisplayElement.textContent = `(현재: ${gainDb.toFixed(1)} dB)`;
-            spacingValueDisplayElement.textContent = `(${spacingDeg.toFixed(0)} Degree)`;
-            phaseValueDisplayElement.textContent = `(${phaseDeg.toFixed(0)} Degree)`;
+            
+            drawPolarPlot(patternData);
+            
+            if (selectedAngleRad !== null) {
+                analyzePoint(selectedAngleRad);
+                drawVectorSum(selectedAngleRad);
+            } else {
+                totalEfieldSpan.textContent = '0';
+                totalEfieldRealSpan.textContent = '0';
+                individualEfieldsDiv.innerHTML = '';
+                vectorSumCtx.clearRect(0, 0, vectorSumCanvas.width, vectorSumCanvas.height);
+            }
         }
 
-        // 페이지 로드 시 초기화 시작
-        init();
+        function analyzePoint(angleRad) {
+            const N = parseInt(antennaCountInput.value);
+            const betaDeg = parseFloat(phaseDifferenceInput.value) || 0;
+            const freqHz = parseFloat(frequencyInput.value) * 1e6 || 0;
+
+            const lambda = freqHz > 0 ? c / freqHz : 0;
+            const d = (betaDeg / 360) * lambda;
+            const k = freqHz > 0 ? 2 * Math.PI / lambda : 0;
+
+            let totalE_real = 0;
+            let totalE_imag = 0;
+            let totalE_real_sum = 0;
+            let individualEfieldsHtml = '';
+
+            const theta = angleRad;
+            const thetaDeg = (angleRad * 180 / Math.PI).toFixed(2);
+
+            for (let n = 0; n < N; n++) {
+                const currentMag = parseFloat(currentTableBody.children[n].querySelector('.current-mag').value) || 0;
+                const currentPhaseRad = (parseFloat(currentTableBody.children[n].querySelector('.current-phase').value) || 0) * Math.PI / 180;
+                const currentPhaseDeg = (currentPhaseRad * 180 / Math.PI).toFixed(2);
+
+                const zn = (n - (N - 1) / 2) * d;
+                const phaseTermRad = k * zn * Math.cos(theta) + currentPhaseRad;
+                const phaseTermDeg = (phaseTermRad * 180 / Math.PI).toFixed(2);
+
+                const E_real = currentMag * Math.cos(phaseTermRad);
+                const E_imag = currentMag * Math.sin(phaseTermRad);
+                
+                const E_mag = Math.sqrt(E_real*E_real + E_imag*E_imag);
+                const E_phaseDeg = Math.atan2(E_imag, E_real) * 180 / Math.PI;
+
+                totalE_real += E_real;
+                totalE_imag += E_imag;
+                totalE_real_sum += E_real;
+
+                individualEfieldsHtml += `
+                    <p>
+                        <b>안테나 ${n + 1} ($E_{n+1}$):</b>
+                        <br>
+                        <span class="math-expr">
+                            $$E_{${n+1}} = |I_{${n+1}}| \\times e^{j(\\text{전류 위상} + k z_{${n+1}} cos\\theta)}$$
+                            $$E_{${n+1}} = ${currentMag.toFixed(3)} \\times e^{j(${currentPhaseDeg}° + (${k.toFixed(3)} \\times ${zn.toFixed(3)} \\times cos(${thetaDeg}°)))°} = ${currentMag.toFixed(3)} \\times e^{j(${E_phaseDeg.toFixed(2)})°}$$
+                        </span>
+                        <br>
+                        <b>[시뮬레이터 계산]</b> 크기: $|E_{${n+1}}| = |I_{${n+1}}|$ = ${E_mag.toFixed(3)}, 위상: ${E_phaseDeg.toFixed(2)}°
+                        <br>
+                        <b>[수업 계산]</b> 실수부 크기: $|E_{real}| = |${E_real.toFixed(3)}|$
+                    </p>
+                `;
+            }
+
+            const totalE_mag = Math.sqrt(totalE_real * totalE_real + totalE_imag * totalE_imag);
+            totalEfieldSpan.textContent = totalE_mag.toFixed(3);
+            totalEfieldRealSpan.textContent = Math.abs(totalE_real_sum).toFixed(3);
+            individualEfieldsDiv.innerHTML = individualEfieldsHtml;
+            MathJax.Hub.Queue(["Typeset",MathJax.Hub,individualEfieldsDiv]);
+        }
+
+        function updatePattern() {
+            antennaCountValue.textContent = antennaCountInput.value;
+            calculateAndDrawPattern();
+        }
+
+        // 이벤트 리스너
+        antennaCountInput.addEventListener('input', updateCurrentTable);
+        phaseDifferenceInput.addEventListener('input', updatePattern);
+        frequencyInput.addEventListener('input', updatePattern);
+        updatePointBtn.addEventListener('click', () => {
+            const angleDeg = parseFloat(selectedPointInput.value);
+            if (!isNaN(angleDeg)) {
+                selectedAngleRad = (angleDeg * Math.PI / 180);
+                updatePattern();
+            }
+        });
+        
+        radiationPatternCanvas.addEventListener('click', (e) => {
+            const rect = radiationPatternCanvas.getBoundingClientRect();
+            const centerX = radiationPatternCanvas.width / 2;
+            const centerY = radiationPatternCanvas.height / 2;
+            const x = e.clientX - rect.left - centerX;
+            const y = e.clientY - rect.top - centerY;
+            
+            let angleRad = Math.atan2(-y, x);
+            if (angleRad < 0) {
+                angleRad += 2 * Math.PI;
+            }
+            
+            selectedAngleRad = angleRad;
+            const angleDeg = selectedAngleRad * 180 / Math.PI;
+            selectedPointInput.value = angleDeg.toFixed(2);
+            updatePattern();
+        });
+
+        // 초기 실행
+        updateCurrentTable();
+        calculateAndDrawPattern();
     </script>
 </body>
 </html>
