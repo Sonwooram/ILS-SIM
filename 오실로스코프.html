@@ -1,0 +1,443 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8" />
+<title>ILS Audio Oscilloscope (CSB/SBO) - Dual Trace + Trigger + DDM/SDM</title>
+<style>
+  body { background:#111; color:#eee; font-family: Arial, sans-serif; margin:18px; }
+  h2 { margin:0 0 10px 0; }
+  canvas { background:#000; border:1px solid #555; display:block; }
+  .controls { margin-top:10px; display:flex; flex-wrap:wrap; gap:12px; align-items:center; }
+  label { display:flex; gap:8px; align-items:center; }
+  select, button, input[type="range"], input[type="checkbox"] { accent-color:#0f0; }
+  button { background:#222; color:#eee; border:1px solid #555; padding:6px 10px; cursor:pointer; }
+  button:hover { background:#2b2b2b; }
+  .readout { color:#aaa; font-size:12px; margin-top:8px; line-height:1.55; }
+  .pill { padding:2px 8px; border:1px solid #333; border-radius:999px; background:#141414; }
+  .groupTitle { color:#bbb; font-size:12px; margin-top:10px; }
+  .measure {
+    margin-top:10px;
+    padding:10px 12px;
+    border:1px solid #333;
+    background:#0f0f0f;
+    border-radius:10px;
+    color:#ddd;
+    font-size:13px;
+    line-height:1.55;
+  }
+  .measure b { color:#fff; }
+  .row { display:flex; flex-wrap:wrap; gap:14px; }
+  .kv { display:flex; gap:6px; align-items:baseline; }
+  .kv .k { color:#aaa; }
+  .kv .v { font-variant-numeric: tabular-nums; }
+</style>
+</head>
+<body>
+
+<h2>ILS Audio Oscilloscope (90/150) - Dual Trace + Trigger + DDM/SDM</h2>
+<canvas id="scope" width="980" height="360"></canvas>
+
+<div class="controls">
+  <label>
+    Mode:
+    <select id="ilsMode">
+      <option value="csb" selected>CSB (90 + 150)</option>
+      <option value="sbo">SBO (90 − 150)</option>
+      <option value="sum">CSB + SBO (교육용: 2×90)</option>
+    </select>
+  </label>
+
+  <label><input type="checkbox" id="show90" checked> CH1 90</label>
+  <label><input type="checkbox" id="show150" checked> CH2 150</label>
+  <label><input type="checkbox" id="showComp" checked> MATH(Composite)</label>
+
+  <span class="pill" id="runState">RUN</span>
+  <button id="btnRunStop">STOP</button>
+  <button id="btnSingle">SINGLE</button>
+
+  <label>
+    Time/div (ms):
+    <input type="range" id="msPerDiv" min="1" max="80" step="1" value="10">
+  </label>
+
+  <label>
+    Volts/div:
+    <input type="range" id="vPerDiv" min="0.1" max="10" step="0.1" value="1.0">
+  </label>
+</div>
+
+<div class="groupTitle">Tone Controls</div>
+<div class="controls">
+  <label>
+    f90 (Hz):
+    <input type="range" id="f90" min="10" max="400" step="1" value="90">
+  </label>
+
+  <label>
+    A90:
+    <input type="range" id="a90" min="0" max="2" step="0.01" value="0.8">
+  </label>
+
+  <label>
+    f150 (Hz):
+    <input type="range" id="f150" min="10" max="400" step="1" value="150">
+  </label>
+
+  <label>
+    A150:
+    <input type="range" id="a150" min="0" max="2" step="0.01" value="0.8">
+  </label>
+
+  <label>
+    Phase150 (deg):
+    <input type="range" id="ph150" min="-180" max="180" step="1" value="0">
+  </label>
+</div>
+
+<div class="groupTitle">Trigger</div>
+<div class="controls">
+  <label>
+    Src:
+    <select id="trigSrc">
+      <option value="comp" selected>Composite</option>
+      <option value="90">90 Hz</option>
+      <option value="150">150 Hz</option>
+    </select>
+  </label>
+
+  <label>
+    Edge:
+    <select id="trigEdge">
+      <option value="rising" selected>Rising</option>
+      <option value="falling">Falling</option>
+    </select>
+  </label>
+
+  <label>
+    Level:
+    <input type="range" id="trigLevel" min="-2" max="2" step="0.01" value="0.0">
+  </label>
+
+  <label>
+    Holdoff (ms):
+    <input type="range" id="holdoffMs" min="0" max="300" step="10" value="40">
+  </label>
+</div>
+
+<div class="measure" id="measurePanel">
+  <div class="row">
+    <div class="kv"><span class="k">RMS90</span><b class="v" id="rms90">-</b></div>
+    <div class="kv"><span class="k">RMS150</span><b class="v" id="rms150">-</b></div>
+    <div class="kv"><span class="k">DDM</span><b class="v" id="ddm">-</b></div>
+    <div class="kv"><span class="k">SDM</span><b class="v" id="sdm">-</b></div>
+  </div>
+  <div class="row" style="margin-top:6px;">
+    <div class="kv"><span class="k">RMS(comp)</span><span class="v" id="rmsComp">-</span></div>
+    <div class="kv"><span class="k">Vpp(comp)</span><span class="v" id="vppComp">-</span></div>
+    <div class="kv"><span class="k">Window</span><span class="v" id="winInfo">-</span></div>
+  </div>
+  <div style="margin-top:6px; color:#9aa;">
+    ※ 교육용 단순 모델: DDM = RMS90 − RMS150, SDM = RMS90 + RMS150 (오디오 성분 기준)
+  </div>
+</div>
+
+<div class="readout" id="readout"></div>
+
+<script>
+/** ===============================
+ *  Core Settings
+ *  =============================== */
+const canvas = document.getElementById("scope");
+const ctx = canvas.getContext("2d");
+
+// 렌더 안정성 우선 (12 kHz면 90/150 표현 충분)
+const sampleRate = 12000;
+let phaseIndex = 0;
+let running = true;
+
+function deg2rad(d) { return d * Math.PI / 180; }
+
+function getParams() {
+  return {
+    mode: document.getElementById("ilsMode").value,
+    msPerDiv: parseFloat(document.getElementById("msPerDiv").value),
+    vPerDiv: parseFloat(document.getElementById("vPerDiv").value),
+
+    f90: parseFloat(document.getElementById("f90").value),
+    a90: parseFloat(document.getElementById("a90").value),
+
+    f150: parseFloat(document.getElementById("f150").value),
+    a150: parseFloat(document.getElementById("a150").value),
+    ph150: deg2rad(parseFloat(document.getElementById("ph150").value)),
+
+    trigSrc: document.getElementById("trigSrc").value,
+    trigEdge: document.getElementById("trigEdge").value,
+    trigLevel: parseFloat(document.getElementById("trigLevel").value),
+    holdoffMs: parseFloat(document.getElementById("holdoffMs").value),
+
+    show90: document.getElementById("show90").checked,
+    show150: document.getElementById("show150").checked,
+    showComp: document.getElementById("showComp").checked
+  };
+}
+
+function samplesPerScreen(msPerDiv) {
+  const totalMs = msPerDiv * 10; // 가로 10 div
+  return Math.max(300, Math.floor(sampleRate * (totalMs / 1000)));
+}
+
+/** ===============================
+ *  Signal Generators
+ *  =============================== */
+function tone90(t, p) {
+  return p.a90 * Math.sin(2 * Math.PI * p.f90 * t);
+}
+function tone150(t, p) {
+  return p.a150 * Math.sin(2 * Math.PI * p.f150 * t + p.ph150);
+}
+
+function compositeAtTime(t, p) {
+  const s90 = tone90(t, p);
+  const s150 = tone150(t, p);
+
+  if (p.mode === "csb") return s90 + s150;
+  if (p.mode === "sbo") return s90 - s150;
+  // sum: (90+150) + (90-150) = 2*90
+  return (s90 + s150) + (s90 - s150);
+}
+
+// 듀얼 트레이스: 각 채널을 “Mode 반영”해서 보여주기
+function chan90AtTime(t, p) {
+  const mult = (p.mode === "sum") ? 2 : 1;
+  return mult * tone90(t, p);
+}
+function chan150AtTime(t, p) {
+  if (p.mode === "sum") return 0;
+  const sign = (p.mode === "sbo") ? -1 : 1; // SBO는 150이 빼지는 방향
+  return sign * tone150(t, p);
+}
+
+/** ===============================
+ *  Trigger
+ *  =============================== */
+function trigSignalAtTime(t, p) {
+  if (p.trigSrc === "90") return chan90AtTime(t, p);
+  if (p.trigSrc === "150") return chan150AtTime(t, p);
+  return compositeAtTime(t, p);
+}
+
+function findTriggerStart(startIndex, scanCount, p) {
+  const holdoffSamples = Math.floor(sampleRate * (p.holdoffMs / 1000));
+  let prev = null;
+
+  for (let i = 0; i < scanCount; i++) {
+    const idx = startIndex + i;
+    const t = idx / sampleRate;
+    const curr = trigSignalAtTime(t, p);
+
+    if (prev !== null) {
+      const rising = (prev < p.trigLevel && curr >= p.trigLevel);
+      const falling = (prev > p.trigLevel && curr <= p.trigLevel);
+      if ((p.trigEdge === "rising" && rising) || (p.trigEdge === "falling" && falling)) {
+        return idx + holdoffSamples;
+      }
+    }
+    prev = curr;
+  }
+  return null;
+}
+
+/** ===============================
+ *  Measurements (RMS, Vpp, DDM/SDM)
+ *  =============================== */
+function computeRMS(values) {
+  let sumSq = 0;
+  for (let i = 0; i < values.length; i++) sumSq += values[i] * values[i];
+  return Math.sqrt(sumSq / values.length);
+}
+function computeMinMax(values) {
+  let mn = Infinity, mx = -Infinity;
+  for (let i = 0; i < values.length; i++) {
+    const v = values[i];
+    if (v < mn) mn = v;
+    if (v > mx) mx = v;
+  }
+  return {mn, mx};
+}
+
+function updateMeasurements(startIndex, nSamples, p) {
+  // “화면에 그리는 구간”과 동일한 창에서 측정
+  const ch90 = new Array(nSamples);
+  const ch150 = new Array(nSamples);
+  const comp = new Array(nSamples);
+
+  for (let i = 0; i < nSamples; i++) {
+    const t = (startIndex + i) / sampleRate;
+    const v90 = chan90AtTime(t, p);
+    const v150 = chan150AtTime(t, p);
+    const vc = compositeAtTime(t, p);
+
+    ch90[i] = v90;
+    ch150[i] = v150;
+    comp[i] = vc;
+  }
+
+  const rms90 = computeRMS(ch90);
+  const rms150 = computeRMS(ch150);
+  const ddm = rms90 - rms150;
+  const sdm = rms90 + rms150;
+
+  const rmsComp = computeRMS(comp);
+  const {mn, mx} = computeMinMax(comp);
+  const vpp = mx - mn;
+
+  // UI 출력
+  const fmt = (x) => x.toFixed(4);
+  document.getElementById("rms90").textContent = fmt(rms90);
+  document.getElementById("rms150").textContent = fmt(rms150);
+  document.getElementById("ddm").textContent = fmt(ddm);
+  document.getElementById("sdm").textContent = fmt(sdm);
+  document.getElementById("rmsComp").textContent = fmt(rmsComp);
+  document.getElementById("vppComp").textContent = fmt(vpp);
+
+  const totalMs = p.msPerDiv * 10;
+  document.getElementById("winInfo").textContent = `${totalMs.toFixed(0)} ms, N=${nSamples}`;
+}
+
+/** ===============================
+ *  Drawing
+ *  =============================== */
+function drawGrid(p) {
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  ctx.lineWidth = 1;
+
+  ctx.strokeStyle = "#222";
+  for (let i = 0; i <= 10; i++) {
+    const x = i * canvas.width / 10;
+    ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, canvas.height); ctx.stroke();
+  }
+  for (let i = 0; i <= 8; i++) {
+    const y = i * canvas.height / 8;
+    ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(canvas.width, y); ctx.stroke();
+  }
+
+  ctx.strokeStyle = "#333";
+  ctx.beginPath(); ctx.moveTo(0, canvas.height/2); ctx.lineTo(canvas.width, canvas.height/2); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(canvas.width/2, 0); ctx.lineTo(canvas.width/2, canvas.height); ctx.stroke();
+
+  ctx.fillStyle = "#aaa";
+  ctx.font = "12px Arial";
+  ctx.fillText(`Time/div: ${p.msPerDiv.toFixed(0)} ms`, 12, 18);
+  ctx.fillText(`Volts/div: ${p.vPerDiv.toFixed(1)}`, 12, 34);
+  ctx.fillText(`Fs: ${sampleRate} Hz`, 12, 50);
+}
+
+function drawTriggerLevel(p) {
+  const pxPerDivY = canvas.height / 8;
+  const voltsToPixels = pxPerDivY / p.vPerDiv;
+  const y = canvas.height/2 - p.trigLevel * voltsToPixels;
+
+  ctx.strokeStyle = "#555";
+  ctx.setLineDash([6, 6]);
+  ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(canvas.width, y); ctx.stroke();
+  ctx.setLineDash([]);
+
+  ctx.fillStyle = "#aaa";
+  ctx.font = "12px Arial";
+  ctx.fillText(`Trig ${p.trigLevel.toFixed(2)}`, canvas.width - 90, Math.max(12, y - 6));
+}
+
+function drawTrace(startIndex, nSamples, p, fn, strokeStyle) {
+  const pxPerDivY = canvas.height / 8;
+  const voltsToPixels = pxPerDivY / p.vPerDiv;
+
+  ctx.lineWidth = 2;
+  ctx.strokeStyle = strokeStyle;
+  ctx.beginPath();
+
+  for (let x = 0; x < canvas.width; x++) {
+    const idx = startIndex + Math.floor(x * (nSamples / canvas.width));
+    const t = idx / sampleRate;
+    const yV = fn(t, p);
+    const y = canvas.height/2 - yV * voltsToPixels;
+
+    if (x === 0) ctx.moveTo(x, y);
+    else ctx.lineTo(x, y);
+  }
+  ctx.stroke();
+}
+
+let lastStart = 0;
+
+function updateOnce() {
+  const p = getParams();
+  const n = samplesPerScreen(p.msPerDiv);
+
+  const scan = Math.max(n * 2, sampleRate);
+  const start = findTriggerStart(phaseIndex, scan, p) ?? phaseIndex;
+  lastStart = start;
+
+  drawGrid(p);
+
+  if (p.show90)   drawTrace(start, n, p, (t,pp)=>chan90AtTime(t,pp),   "#ffd400"); // 노랑
+  if (p.show150)  drawTrace(start, n, p, (t,pp)=>chan150AtTime(t,pp),  "#3aa0ff"); // 파랑
+  if (p.showComp) drawTrace(start, n, p, (t,pp)=>compositeAtTime(t,pp), "#00ff66"); // 초록
+
+  drawTriggerLevel(p);
+
+  // 측정 업데이트 (화면과 동일 창 기준)
+  updateMeasurements(start, n, p);
+
+  // 진행 속도
+  phaseIndex += Math.floor(n / 10);
+
+  const totalMs = p.msPerDiv * 10;
+  document.getElementById("readout").innerHTML =
+    `화면 시간폭: <b>${totalMs.toFixed(0)} ms</b> (10 div) · ` +
+    `Mode=<b>${p.mode.toUpperCase()}</b><br>` +
+    `CH1(90): f=<b>${p.f90.toFixed(0)}Hz</b>, A=<b>${p.a90.toFixed(2)}</b> · ` +
+    `CH2(150): f=<b>${p.f150.toFixed(0)}Hz</b>, A=<b>${p.a150.toFixed(2)}</b>, φ=<b>${(p.ph150*180/Math.PI).toFixed(0)}°</b><br>` +
+    `Trigger: <b>${p.trigSrc}</b> / <b>${p.trigEdge}</b> / Level <b>${p.trigLevel.toFixed(2)}</b> · Holdoff <b>${p.holdoffMs.toFixed(0)} ms</b> · StartIndex <b>${lastStart}</b>`;
+}
+
+function loop() {
+  if (running) updateOnce();
+  requestAnimationFrame(loop);
+}
+loop();
+
+/** ===============================
+ *  UI Events
+ *  =============================== */
+const runState = document.getElementById("runState");
+document.getElementById("btnRunStop").addEventListener("click", () => {
+  running = !running;
+  runState.textContent = running ? "RUN" : "STOP";
+  document.getElementById("btnRunStop").textContent = running ? "STOP" : "RUN";
+  if (!running) updateOnce();
+});
+
+document.getElementById("btnSingle").addEventListener("click", () => {
+  updateOnce();
+  running = false;
+  runState.textContent = "STOP";
+  document.getElementById("btnRunStop").textContent = "RUN";
+});
+
+[
+  "ilsMode","msPerDiv","vPerDiv",
+  "f90","a90","f150","a150","ph150",
+  "trigSrc","trigEdge","trigLevel","holdoffMs",
+  "show90","show150","showComp"
+].forEach(id => {
+  document.getElementById(id).addEventListener("input", () => {
+    if (!running) updateOnce();
+  });
+  document.getElementById(id).addEventListener("change", () => {
+    if (!running) updateOnce();
+  });
+});
+</script>
+
+</body>
+</html>
