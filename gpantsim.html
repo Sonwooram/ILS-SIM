@@ -1,0 +1,560 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Glide Path Simulator - Vector Breakdown Build</title>
+  <script src="https://cdn.plot.ly/plotly-2.35.2.min.js"></script>
+  <style>
+    * { box-sizing: border-box; }
+    body { margin: 0; font-family: "Segoe UI", Arial, sans-serif; background: linear-gradient(180deg, #eef4ff 0%, #f8fbff 100%); color: #1f2937; }
+    .page { max-width: 1560px; margin: 0 auto; padding: 24px; }
+    .hero { background: linear-gradient(135deg, #0f172a, #1d4ed8 58%, #0ea5e9); color: white; border-radius: 24px; padding: 28px 32px; box-shadow: 0 16px 38px rgba(15, 23, 42, 0.22); margin-bottom: 20px; }
+    .hero h1 { margin: 0 0 10px; font-size: 34px; }
+    .hero p { margin: 0; opacity: 0.96; line-height: 1.75; }
+    .layout { display: grid; grid-template-columns: 430px 1fr; gap: 20px; align-items: start; }
+    .panel, .card { background: #fff; border-radius: 20px; box-shadow: 0 10px 28px rgba(15, 23, 42, 0.08); border: 1px solid rgba(148, 163, 184, 0.16); }
+    .panel { padding: 22px; position: sticky; top: 20px; }
+    .card { padding: 20px; }
+    .content { display: grid; gap: 20px; }
+    .charts-2col { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+    .section-head { display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; margin-bottom: 12px; }
+    .section-head h2 { margin: 0; font-size: 21px; color: #0f172a; }
+    .section-note { margin-top: 2px; font-size: 13px; color: #64748b; line-height: 1.6; }
+    .tag { padding: 8px 10px; border-radius: 12px; font-size: 12px; font-weight: 800; border: 1px solid; white-space: nowrap; background: #f8fafc; border-color: #e2e8f0; color: #334155; }
+    .tag-blue { background:#eff6ff; border-color:#bfdbfe; color:#1d4ed8; }
+    .tag-green { background:#f0fdf4; border-color:#bbf7d0; color:#15803d; }
+    .tag-purple { background:#f5f3ff; border-color:#ddd6fe; color:#6d28d9; }
+    .tag-cyan { background:#ecfeff; border-color:#a5f3fc; color:#0f766e; }
+    .tag-orange { background:#fff7ed; border-color:#fed7aa; color:#c2410c; }
+    .panel-top { display:flex; justify-content:space-between; align-items:center; gap:12px; margin-bottom:14px; padding-bottom:12px; border-bottom:1px solid #e2e8f0; }
+    .kicker { font-size:12px; color:#64748b; font-weight:700; letter-spacing:0.4px; }
+    .panel-title { font-size:18px; color:#0f172a; font-weight:800; margin-top:2px; }
+    .panel-chip { padding: 8px 10px; border-radius: 12px; background:#eff6ff; border:1px solid #bfdbfe; color:#1d4ed8; font-size:12px; font-weight:800; }
+    .subcard { padding: 14px; border-radius: 16px; border: 1px solid #e2e8f0; background: linear-gradient(180deg, #f8fbff, #ffffff); margin-bottom: 16px; }
+    .subcard-title { font-size: 13px; color: #64748b; font-weight: 700; margin-bottom: 10px; letter-spacing: 0.3px; }
+    .row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    .row-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; }
+    .control-group { margin-bottom: 16px; }
+    label { display: block; font-weight: 700; margin-bottom: 8px; color: #0f172a; font-size: 14px; }
+    input[type="number"], select { width: 100%; padding: 11px 12px; border: 1px solid #cbd5e1; border-radius: 12px; font-size: 14px; background: #fff; }
+    .button-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 8px; }
+    .button-row-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; margin-top: 8px; }
+    button { border: 0; border-radius: 14px; padding: 12px 14px; font-size: 14px; font-weight: 800; cursor: pointer; background: linear-gradient(135deg, #2563eb, #0ea5e9); color: #fff; box-shadow: 0 8px 18px rgba(37, 99, 235, 0.22); }
+    button.secondary { background: #e2e8f0; color: #0f172a; box-shadow: none; }
+    .status-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 12px; }
+    .stat { background: linear-gradient(180deg, #eff6ff, #f8fbff); border: 1px solid #bfdbfe; border-radius: 16px; padding: 14px; position: relative; overflow: hidden; }
+    .stat::before { content: ""; position: absolute; left: 0; top: 0; width: 100%; height: 4px; background: linear-gradient(90deg, #2563eb, #0ea5e9); }
+    .stat .name { font-size: 13px; color: #334155; margin-bottom: 6px; }
+    .stat .value { font-size: 20px; font-weight: 800; color: #1d4ed8; }
+    .plot { width: 100%; height: 600px; min-height: 600px; border-radius: 14px; }
+    .small-plot { width: 100%; height: 340px; border-radius: 14px; }
+    .medium-plot { width: 100%; height: 420px; min-height: 420px; border-radius: 14px; }
+    .hint { margin-top: 14px; font-size: 13px; color: #475569; line-height: 1.75; background: #f8fafc; border-radius: 14px; padding: 14px 15px; border: 1px solid #e2e8f0; }
+    .trace-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px 12px; }
+    .trace-grid label { display: flex; align-items: center; gap: 8px; margin: 0; font-weight: 600; color: #334155; font-size: 13px; }
+    .vector-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-top: 12px; }
+    .vector-stat { background: linear-gradient(180deg, #fff, #f8fafc); border: 1px solid #e2e8f0; border-radius: 14px; padding: 12px; }
+    .vector-stat .label { font-size: 12px; color: #64748b; margin-bottom: 4px; }
+    .vector-stat .val { font-size: 18px; font-weight: 800; color: #0f172a; }
+    @media (max-width: 1280px) { .layout { grid-template-columns: 1fr; } .panel { position: static; } .charts-2col { grid-template-columns: 1fr; } .status-grid, .vector-grid { grid-template-columns: repeat(2, 1fr); } }
+    @media (max-width: 760px) { .row, .row-3, .button-row, .button-row-3, .status-grid, .trace-grid, .vector-grid { grid-template-columns: 1fr; } .plot { height: 420px; min-height: 420px; } .medium-plot { height: 360px; min-height: 360px; } }
+  </style>
+</head>
+<body>
+  <div class="page">
+    <section class="hero">
+      <h1>Glide Path Simulator</h1>
+      <p>Signal Comparison 카드에서 한 지점을 선택하면 해당 위치의 90 Hz / 150 Hz 전체 벡터와, CSB / SBO / CLR의 90 / 150 성분 크기를 각각 나누어 비교할 수 있는 교육용 버전입니다.</p>
+    </section>
+
+    <div class="layout">
+      <aside class="panel">
+        <div class="panel-top">
+          <div>
+            <div class="kicker">VECTOR BREAKDOWN + DDM</div>
+            <div class="panel-title">GP 핵심 설정</div>
+          </div>
+          <div class="panel-chip">NR / CE</div>
+        </div>
+
+        <div class="subcard">
+          <div class="subcard-title">방식 / 기준</div>
+          <div class="row">
+            <div class="control-group"><label for="gpMode">모드</label><select id="gpMode"><option value="NR">Null Reference</option><option value="CE">Capture Effect</option></select></div>
+            <div class="control-group"><label for="heightMode">높이 스케일 모드</label><select id="heightMode"><option value="fixed">Fixed</option><option value="scaled">Frequency Scaled</option></select></div>
+          </div>
+          <div class="row">
+            <div class="control-group"><label for="frequencyMHz">주파수 (MHz)</label><input id="frequencyMHz" type="number" value="330.0" step="0.1" /></div>
+            <div class="control-group"><label for="baseFrequencyMHz">기준 주파수 (MHz)</label><input id="baseFrequencyMHz" type="number" value="330.0" step="0.1" /></div>
+          </div>
+          <div class="row">
+            <div class="control-group"><label for="glideAngleDeg">Glide Angle (deg)</label><input id="glideAngleDeg" type="number" value="3.0" step="0.1" /></div>
+            <div class="control-group"><label for="scaleMode">표시 축</label><select id="scaleMode"><option value="linear">Linear</option><option value="db">dB</option></select></div>
+          </div>
+          <div class="row">
+            <div class="control-group"><label for="imageArray">Image Array</label><select id="imageArray"><option value="off">Off</option><option value="on">On</option></select></div>
+            <div class="control-group"><label for="reflectionCoeff">Reflection Coeff.</label><input id="reflectionCoeff" type="number" value="1.0" step="0.1" /></div>
+          </div>
+          <div class="button-row-3">
+            <button type="button" id="presetNR">NR 기본</button>
+            <button type="button" id="presetCE">CE 기본</button>
+            <button type="button" id="resetAll" class="secondary">Reset</button>
+          </div>
+        </div>
+
+        <div class="subcard">
+          <div class="subcard-title">안테나 높이 계산 / 조정</div>
+          <div class="row">
+            <div class="control-group"><label for="heightCalcMode">높이 설정 방식</label><select id="heightCalcMode"><option value="auto">Auto Calculate</option><option value="manual">Manual Adjust</option></select></div>
+            <div class="control-group"><label for="runwayCrossSlopeDeg">활주로 횡구배 각도 (deg)</label><input id="runwayCrossSlopeDeg" type="number" value="0.00" step="0.01" /></div>
+          </div>
+          <div class="row-3">
+            <div class="control-group"><label for="lowerBaseHeight">LWR Height</label><input id="lowerBaseHeight" type="number" value="4.35" step="0.01" /></div>
+            <div class="control-group"><label for="middleBaseHeight">MID Height</label><input id="middleBaseHeight" type="number" value="8.70" step="0.01" /></div>
+            <div class="control-group"><label for="upperBaseHeight">UPR Height</label><input id="upperBaseHeight" type="number" value="13.05" step="0.01" /></div>
+          </div>
+        </div>
+
+        <div class="subcard">
+          <div class="subcard-title">CSB</div>
+          <div class="row-3">
+            <div class="control-group"><label for="csbLowerAmp">LWR Amp</label><input id="csbLowerAmp" type="number" value="2.0" step="0.1" /></div>
+            <div class="control-group"><label for="csbMiddleAmp">MID Amp</label><input id="csbMiddleAmp" type="number" value="0.0" step="0.1" /></div>
+            <div class="control-group"><label for="csbUpperAmp">UPR Amp</label><input id="csbUpperAmp" type="number" value="0.0" step="0.1" /></div>
+          </div>
+          <div class="row-3">
+            <div class="control-group"><label for="csbLowerPhase">LWR Phase</label><input id="csbLowerPhase" type="number" value="0" step="1" /></div>
+            <div class="control-group"><label for="csbMiddlePhase">MID Phase</label><input id="csbMiddlePhase" type="number" value="0" step="1" /></div>
+            <div class="control-group"><label for="csbUpperPhase">UPR Phase</label><input id="csbUpperPhase" type="number" value="0" step="1" /></div>
+          </div>
+        </div>
+
+        <div class="subcard">
+          <div class="subcard-title">SBO</div>
+          <div class="row-3">
+            <div class="control-group"><label for="sboLowerAmp">LWR Amp</label><input id="sboLowerAmp" type="number" value="0.0" step="0.1" /></div>
+            <div class="control-group"><label for="sboMiddleAmp">MID Amp</label><input id="sboMiddleAmp" type="number" value="1.0" step="0.1" /></div>
+            <div class="control-group"><label for="sboUpperAmp">UPR Amp</label><input id="sboUpperAmp" type="number" value="0.0" step="0.1" /></div>
+          </div>
+          <div class="row-3">
+            <div class="control-group"><label for="sboLowerPhase">LWR Phase</label><input id="sboLowerPhase" type="number" value="180" step="1" /></div>
+            <div class="control-group"><label for="sboMiddlePhase">MID Phase</label><input id="sboMiddlePhase" type="number" value="0" step="1" /></div>
+            <div class="control-group"><label for="sboUpperPhase">UPR Phase</label><input id="sboUpperPhase" type="number" value="180" step="1" /></div>
+          </div>
+        </div>
+
+        <div class="subcard">
+          <div class="subcard-title">송신기 기준 위상차</div>
+          <div class="row">
+            <div class="control-group"><label for="csbTxPhaseOffset">CSB TX Phase Offset (deg)</label><input id="csbTxPhaseOffset" type="number" value="0" step="1" /></div>
+            <div class="control-group"><label for="sboTxPhaseOffset">SBO TX Phase Offset (deg)</label><input id="sboTxPhaseOffset" type="number" value="0" step="1" /></div>
+          </div>
+          <div class="row">
+            <div class="control-group"><label for="csbSboCompositePhaseDeg">CSB-SBO Composite Phase (deg)</label><input id="csbSboCompositePhaseDeg" type="number" value="0" step="1" /></div>
+            <div class="control-group"><label for="showDDM">DDM 표시</label><select id="showDDM"><option value="on">On</option><option value="off">Off</option></select></div>
+          </div>
+        </div>
+
+        <div class="subcard">
+          <div class="subcard-title">DDM 안정화</div>
+          <div class="row">
+            <div class="control-group"><label for="ddmClampLimit">DDM Clamp Limit</label><input id="ddmClampLimit" type="number" value="1.2" step="0.1" /></div>
+            <div class="control-group"><label for="ddmDenomFloor">DDM Denominator Floor</label><input id="ddmDenomFloor" type="number" value="0.05" step="0.01" /></div>
+          </div>
+        </div>
+
+        <div class="subcard">
+          <div class="subcard-title">CLR</div>
+          <div class="row-3">
+            <div class="control-group"><label for="clrLowerAmp">LWR Amp</label><input id="clrLowerAmp" type="number" value="0.0" step="0.1" /></div>
+            <div class="control-group"><label for="clrMiddleAmp">MID Amp</label><input id="clrMiddleAmp" type="number" value="0.0" step="0.1" /></div>
+            <div class="control-group"><label for="clrUpperAmp">UPR Amp</label><input id="clrUpperAmp" type="number" value="0.0" step="0.1" /></div>
+          </div>
+          <div class="row-3">
+            <div class="control-group"><label for="clrLowerPhase">LWR Phase</label><input id="clrLowerPhase" type="number" value="0" step="1" /></div>
+            <div class="control-group"><label for="clrMiddlePhase">MID Phase</label><input id="clrMiddlePhase" type="number" value="0" step="1" /></div>
+            <div class="control-group"><label for="clrUpperPhase">UPR Phase</label><input id="clrUpperPhase" type="number" value="0" step="1" /></div>
+          </div>
+        </div>
+
+        <div class="subcard">
+          <div class="subcard-title">Vertical Cartesian Signal Pattern 표시 선택</div>
+          <div class="trace-grid">
+            <label><input type="checkbox" id="traceLwrCsb" checked> LWR CSB</label>
+            <label><input type="checkbox" id="traceMidCsb" checked> MID CSB</label>
+            <label><input type="checkbox" id="traceUprCsb"> UPR CSB</label>
+            <label><input type="checkbox" id="traceCsbComp" checked> CSB Composite</label>
+            <label><input type="checkbox" id="traceLwrSbo" checked> LWR SBO</label>
+            <label><input type="checkbox" id="traceMidSbo" checked> MID SBO</label>
+            <label><input type="checkbox" id="traceUprSbo" checked> UPR SBO</label>
+            <label><input type="checkbox" id="traceSboComp" checked> SBO Composite</label>
+            <label><input type="checkbox" id="traceLwrClr" checked> LWR CLR</label>
+            <label><input type="checkbox" id="traceMidClr"> MID CLR</label>
+            <label><input type="checkbox" id="traceUprClr" checked> UPR CLR</label>
+            <label><input type="checkbox" id="traceClrComp" checked> CLR Composite</label>
+            <label><input type="checkbox" id="traceTargetGlide" checked> Target Glide</label>
+            <label><input type="checkbox" id="traceMainLobe" checked> Main Lobe</label>
+            <label><input type="checkbox" id="traceNulls" checked> Nulls</label>
+          </div>
+          <div class="button-row">
+            <button id="checkAllTraces">전체 선택</button>
+            <button id="clearAllTraces" class="secondary">전체 해제</button>
+          </div>
+        </div>
+
+        <div class="hint" id="explainBox">Signal Comparison 카드에서 지점을 클릭하면 해당 위치의 90 Hz / 150 Hz 전체 벡터와, CSB / SBO / CLR의 90 / 150 성분 크기를 각각 확인할 수 있습니다.</div>
+      </aside>
+
+      <main class="content">
+        <section class="card">
+          <div class="section-head"><div><h2>GP 신호 요약</h2><div class="section-note">현재 모드와 계산된 핵심 값입니다.</div></div><span class="tag tag-blue">SUMMARY</span></div>
+          <div class="status-grid">
+            <div class="stat"><div class="name">Mode</div><div class="value" id="summaryMode">NR</div></div>
+            <div class="stat"><div class="name">LWR Height</div><div class="value" id="summaryLowerH">4.35m</div></div>
+            <div class="stat"><div class="name">MID Height</div><div class="value" id="summaryMiddleH">8.70m</div></div>
+            <div class="stat"><div class="name">UPR Height</div><div class="value" id="summaryUpperH">-</div></div>
+            <div class="stat"><div class="name">Main Lobe</div><div class="value" id="summaryMainLobe">-</div></div>
+            <div class="stat"><div class="name">DDM Zero</div><div class="value" id="summaryDDMZero">-</div></div>
+            <div class="stat"><div class="name">Beamwidth</div><div class="value" id="summaryBeamwidth">-</div></div>
+            <div class="stat"><div class="name">Null Count</div><div class="value" id="summaryNulls">0</div></div>
+            <div class="stat"><div class="name">CSB Peak</div><div class="value" id="summaryCSBPeak">-</div></div>
+            <div class="stat"><div class="name">SBO Peak</div><div class="value" id="summarySBOPeak">-</div></div>
+          </div>
+        </section>
+
+        <section class="card">
+          <div class="section-head"><div><h2>Image Array / Antenna Stack View</h2><div class="section-note">안테나 높이와 활성 신호를 개념적으로 표시합니다.</div></div><span class="tag tag-green">CONCEPT</span></div>
+          <div id="conceptPlot" class="small-plot"></div>
+        </section>
+
+        <section class="card">
+          <div class="section-head"><div><h2>Vertical Cartesian Signal Pattern</h2><div class="section-note">CSB / SBO / CLR의 개별/합성 신호를 체크박스로 선택해서 표시합니다.</div></div><span class="tag tag-blue">SIGNALS</span></div>
+          <div id="cartesianSignalsPlot" class="plot"></div>
+        </section>
+
+        <section class="charts-2col">
+          <div class="card">
+            <div class="section-head"><div><h2>Composite / DDM</h2><div class="section-note">부호가 살아 있는 CSB/SBO 합성패턴과 DDM입니다.</div></div><span class="tag tag-purple">COMPOSITE</span></div>
+            <div id="compositePlot" class="plot"></div>
+          </div>
+          <div class="card">
+            <div class="section-head"><div><h2>Signal Comparison</h2><div class="section-note">클릭하면 해당 위치의 90 / 150 벡터 성분을 분석합니다.</div></div><span class="tag tag-cyan">COMPARE</span></div>
+            <div id="signalComparePlot" class="plot"></div>
+          </div>
+        </section>
+
+        <section class="card">
+          <div class="section-head"><div><h2>Selected Point Vector Analysis</h2><div class="section-note">선택한 각도에서 90 Hz / 150 Hz 전체 벡터와 DDM / SDM을 표시합니다.</div></div><span class="tag tag-orange">VECTOR</span></div>
+          <div class="vector-grid">
+            <div class="vector-stat"><div class="label">Selected Angle</div><div class="val" id="selAngle">3.00°</div></div>
+            <div class="vector-stat"><div class="label">90 Magnitude</div><div class="val" id="sel90">0.000</div></div>
+            <div class="vector-stat"><div class="label">150 Magnitude</div><div class="val" id="sel150">0.000</div></div>
+            <div class="vector-stat"><div class="label">DDM</div><div class="val" id="selDDM">0.000</div></div>
+            <div class="vector-stat"><div class="label">SDM</div><div class="val" id="selSDM">0.000</div></div>
+            <div class="vector-stat"><div class="label">CSB</div><div class="val" id="selCSB">0.000</div></div>
+            <div class="vector-stat"><div class="label">SBO</div><div class="val" id="selSBO">0.000</div></div>
+            <div class="vector-stat"><div class="label">CLR</div><div class="val" id="selCLR">0.000</div></div>
+          </div>
+          <div id="vectorPlot" class="medium-plot"></div>
+        </section>
+
+        <section class="card">
+          <div class="section-head"><div><h2>Selected Point Component Breakdown</h2><div class="section-note">선택 각도에서 90 합성, 150 합성, 그리고 150-90 차이를 직선으로 비교합니다.</div></div><span class="tag tag-orange">BREAKDOWN</span></div>
+          <div class="vector-grid">
+            <div class="vector-stat"><div class="label">CSB 90</div><div class="val" id="selCSB90">0.000</div></div>
+            <div class="vector-stat"><div class="label">CSB 150</div><div class="val" id="selCSB150">0.000</div></div>
+            <div class="vector-stat"><div class="label">SBO 90 (-)</div><div class="val" id="selSBO90">0.000</div></div>
+            <div class="vector-stat"><div class="label">SBO 150 (+)</div><div class="val" id="selSBO150">0.000</div></div>
+            <div class="vector-stat"><div class="label">CLR 90</div><div class="val" id="selCLR90">0.000</div></div>
+            <div class="vector-stat"><div class="label">CLR 150</div><div class="val" id="selCLR150">0.000</div></div>
+            <div class="vector-stat"><div class="label">SUM 90</div><div class="val" id="selSUM90">0.000</div></div>
+            <div class="vector-stat"><div class="label">SUM 150</div><div class="val" id="selSUM150">0.000</div></div>
+          </div>
+          <div id="componentBreakdownPlot" class="medium-plot"></div>
+        </section>
+      </main>
+    </div>
+  </div>
+
+  <script>
+    const C = 299792458;
+    const ANGLES = Array.from({ length: 901 }, (_, i) => i * 0.01);
+    const $ = id => document.getElementById(id);
+    const degToRad = d => d * Math.PI / 180;
+    let CURRENT_RESULTS = null;
+    let SELECTED_INDEX = 300;
+
+    function n(id, fallback = 0) {
+      const v = parseFloat($(id).value);
+      return Number.isFinite(v) ? v : fallback;
+    }
+
+    function applyHeightCalculation() {
+      const mode = $('heightCalcMode').value;
+      const freq = n('frequencyMHz', 330);
+      const glide = n('glideAngleDeg', 3);
+      const crossSlope = n('runwayCrossSlopeDeg', 0);
+      const effectiveDeg = glide - crossSlope;
+      const effectiveRad = degToRad(effectiveDeg);
+      const lowerEl = $('lowerBaseHeight');
+      const middleEl = $('middleBaseHeight');
+      const upperEl = $('upperBaseHeight');
+      if (mode === 'auto') {
+        let middle = 8.70;
+        if (freq > 0 && Math.abs(Math.sin(effectiveRad)) > 1e-9) middle = Number((149.9 / (Math.sin(effectiveRad) * freq)).toFixed(2));
+        const lower = Number((middle / 2).toFixed(2));
+        const upper = Number((middle * 1.5).toFixed(2));
+        lowerEl.value = lower; middleEl.value = middle; upperEl.value = upper;
+        lowerEl.readOnly = true; middleEl.readOnly = true; upperEl.readOnly = true;
+        lowerEl.style.background = '#f8fafc'; middleEl.style.background = '#f8fafc'; upperEl.style.background = '#f8fafc';
+      } else {
+        lowerEl.readOnly = false; middleEl.readOnly = false; upperEl.readOnly = false;
+        lowerEl.style.background = '#fff'; middleEl.style.background = '#fff'; upperEl.style.background = '#fff';
+      }
+    }
+
+    function setPreset(mode) {
+      $('gpMode').value = mode;
+      if ($('heightCalcMode').value === 'manual') {
+        $('lowerBaseHeight').value = 4.35; $('middleBaseHeight').value = 8.70; $('upperBaseHeight').value = 13.05;
+      }
+      $('csbTxPhaseOffset').value = 0; $('sboTxPhaseOffset').value = 0; $('csbSboCompositePhaseDeg').value = 0;
+      if (mode === 'NR') {
+        $('csbLowerAmp').value = 2.0; $('csbMiddleAmp').value = 0.0; $('csbUpperAmp').value = 0.0;
+        $('csbLowerPhase').value = 0; $('csbMiddlePhase').value = 0; $('csbUpperPhase').value = 0;
+        $('sboLowerAmp').value = 0.0; $('sboMiddleAmp').value = 1.0; $('sboUpperAmp').value = 0.0;
+        $('sboLowerPhase').value = 180; $('sboMiddlePhase').value = 0; $('sboUpperPhase').value = 180;
+        $('clrLowerAmp').value = 0.0; $('clrMiddleAmp').value = 0.0; $('clrUpperAmp').value = 0.0;
+        $('clrLowerPhase').value = 0; $('clrMiddlePhase').value = 0; $('clrUpperPhase').value = 0;
+      } else {
+        $('csbLowerAmp').value = 2.0; $('csbMiddleAmp').value = 1.0; $('csbUpperAmp').value = 0.0;
+        $('csbLowerPhase').value = 0; $('csbMiddlePhase').value = 180; $('csbUpperPhase').value = 0;
+        $('sboLowerAmp').value = 0.5; $('sboMiddleAmp').value = 1.0; $('sboUpperAmp').value = 0.5;
+        $('sboLowerPhase').value = 180; $('sboMiddlePhase').value = 0; $('sboUpperPhase').value = 180;
+        $('clrLowerAmp').value = 1.0; $('clrMiddleAmp').value = 0.0; $('clrUpperAmp').value = 1.0;
+        $('clrLowerPhase').value = 0; $('clrMiddlePhase').value = 0; $('clrUpperPhase').value = 0;
+      }
+      applyHeightCalculation();
+      renderAll();
+    }
+
+    function cfg() {
+      return {
+        mode: $('gpMode').value,
+        heightCalcMode: $('heightCalcMode').value,
+        runwayCrossSlopeDeg: n('runwayCrossSlopeDeg', 0),
+        heightMode: $('heightMode').value,
+        frequencyMHz: n('frequencyMHz', 330),
+        baseFrequencyMHz: n('baseFrequencyMHz', 330),
+        glideAngleDeg: n('glideAngleDeg', 3),
+        scaleMode: $('scaleMode').value,
+        imageArray: $('imageArray').value === 'on',
+        reflectionCoeff: n('reflectionCoeff', 1),
+        showDDM: $('showDDM').value === 'on',
+        ddmClampLimit: n('ddmClampLimit', 1.2),
+        ddmDenomFloor: n('ddmDenomFloor', 0.05),
+        compositePhaseDeg: n('csbSboCompositePhaseDeg', 0),
+        heights: { lower: n('lowerBaseHeight', 4.35), middle: n('middleBaseHeight', 8.70), upper: n('upperBaseHeight', 13.05) },
+        txPhase: { csb: n('csbTxPhaseOffset', 0), sbo: n('sboTxPhaseOffset', 0) },
+        sig: {
+          csb: {
+            lower: { amp: n('csbLowerAmp', 0), phase: n('csbLowerPhase', 0) },
+            middle: { amp: n('csbMiddleAmp', 0), phase: n('csbMiddlePhase', 0) },
+            upper: { amp: n('csbUpperAmp', 0), phase: n('csbUpperPhase', 0) }
+          },
+          sbo: {
+            lower: { amp: n('sboLowerAmp', 0), phase: n('sboLowerPhase', 0) },
+            middle: { amp: n('sboMiddleAmp', 0), phase: n('sboMiddlePhase', 0) },
+            upper: { amp: n('sboUpperAmp', 0), phase: n('sboUpperPhase', 0) }
+          },
+          clr: {
+            lower: { amp: n('clrLowerAmp', 0), phase: n('clrLowerPhase', 0) },
+            middle: { amp: n('clrMiddleAmp', 0), phase: n('clrMiddlePhase', 0) },
+            upper: { amp: n('clrUpperAmp', 0), phase: n('clrUpperPhase', 0) }
+          }
+        }
+      };
+    }
+
+    function scaledHeight(baseH, c) { return c.heightMode === 'fixed' ? baseH : baseH * (c.baseFrequencyMHz / c.frequencyMHz); }
+    function derived(c) { const lambda = C / (c.frequencyMHz * 1e6); return { lambda, k: 2 * Math.PI / lambda }; }
+    function computeField(angleDeg, h, amp, phaseDeg, d, c) {
+      const theta = degToRad(angleDeg); const phase = degToRad(phaseDeg);
+      const direct = amp * Math.sin(d.k * h * Math.sin(theta) + phase);
+      if (!c.imageArray) return direct;
+      const reflected = c.reflectionCoeff * amp * 0.35 * Math.cos(d.k * h * Math.sin(theta) - phase);
+      return direct + reflected;
+    }
+    function zeroSeries() { return Array.from({ length: ANGLES.length }, () => 0); }
+    function sumSeries(...list) { const out = zeroSeries(); list.forEach(series => { for (let i = 0; i < out.length; i++) out[i] += series[i] || 0; }); return out; }
+    function patternSeries(h, amp, phase, d, c) { return ANGLES.map(a => computeField(a, h, amp, phase, d, c)); }
+
+    function computeSignals(c) {
+      const d = derived(c);
+      const h = { lower: scaledHeight(c.heights.lower, c), middle: scaledHeight(c.heights.middle, c), upper: scaledHeight(c.heights.upper, c) };
+      let csbLower = zeroSeries(), csbMiddle = zeroSeries(), csbUpper = zeroSeries();
+      let sboLower = zeroSeries(), sboMiddle = zeroSeries(), sboUpper = zeroSeries();
+      let clrLower = zeroSeries(), clrMiddle = zeroSeries(), clrUpper = zeroSeries();
+      if (c.mode === 'NR') {
+        csbLower = patternSeries(h.lower, c.sig.csb.lower.amp, c.sig.csb.lower.phase + c.txPhase.csb, d, c);
+        sboMiddle = patternSeries(h.middle, c.sig.sbo.middle.amp, c.sig.sbo.middle.phase + c.txPhase.sbo, d, c);
+      } else {
+        csbLower = patternSeries(h.lower, c.sig.csb.lower.amp, c.sig.csb.lower.phase + c.txPhase.csb, d, c);
+        csbMiddle = patternSeries(h.middle, c.sig.csb.middle.amp, c.sig.csb.middle.phase + c.txPhase.csb, d, c);
+        sboLower = patternSeries(h.lower, c.sig.sbo.lower.amp, c.sig.sbo.lower.phase + c.txPhase.sbo, d, c);
+        sboMiddle = patternSeries(h.middle, c.sig.sbo.middle.amp, c.sig.sbo.middle.phase + c.txPhase.sbo, d, c);
+        sboUpper = patternSeries(h.upper, c.sig.sbo.upper.amp, c.sig.sbo.upper.phase + c.txPhase.sbo, d, c);
+        clrLower = patternSeries(h.lower, c.sig.clr.lower.amp, c.sig.clr.lower.phase, d, c);
+        clrUpper = patternSeries(h.upper, c.sig.clr.upper.amp, c.sig.clr.upper.phase, d, c);
+      }
+      const csbComposite = sumSeries(csbLower, csbMiddle, csbUpper);
+      const sboComposite = sumSeries(sboLower, sboMiddle, sboUpper);
+      const clrComposite = sumSeries(clrLower, clrMiddle, clrUpper);
+      const phi = degToRad(c.compositePhaseDeg);
+      const signedComposite = ANGLES.map((_, i) => csbComposite[i] + sboComposite[i] * Math.cos(phi));
+
+      const csb90 = ANGLES.map((_, i) => 0.2 * csbComposite[i]);
+      const csb150 = ANGLES.map((_, i) => 0.2 * csbComposite[i]);
+      const sbo90 = ANGLES.map((_, i) => -0.2 * sboComposite[i]);
+      const sbo150 = ANGLES.map((_, i) => 0.2 * sboComposite[i]);
+      const clr90 = ANGLES.map(() => 0);
+      const clr150 = ANGLES.map((_, i) => 0.2 * clrComposite[i]);
+      const v90 = ANGLES.map((_, i) => csb90[i] + sbo90[i] + clr90[i]);
+      const v150 = ANGLES.map((_, i) => csb150[i] + sbo150[i] + clr150[i]);
+
+      const ddm = ANGLES.map((_, i) => {
+        const denom = Math.max(Math.abs(csbComposite[i]), c.ddmDenomFloor);
+        const value = 0.8 * (sboComposite[i] / denom);
+        return Math.max(-c.ddmClampLimit, Math.min(c.ddmClampLimit, value));
+      });
+      const sdm = ANGLES.map((_, i) => ddm[i] / 2);
+
+      return { heights: h, csb: { lower: csbLower, middle: csbMiddle, upper: csbUpper, composite: csbComposite }, sbo: { lower: sboLower, middle: sboMiddle, upper: sboUpper, composite: sboComposite }, clr: { lower: clrLower, middle: clrMiddle, upper: clrUpper, composite: clrComposite }, csb90, csb150, sbo90, sbo150, clr90, clr150, v90, v150, signedComposite, ddm, sdm };
+    }
+
+    function scaleSeries(series, mode) { if (mode === 'linear') return series; const peak = Math.max(...series.map(v => Math.abs(v)), 1e-9); return series.map(v => Math.max(-40, 20 * Math.log10(Math.max(Math.abs(v) / peak, 1e-6)))); }
+    function metrics(c, r) {
+      const totalAbs = r.signedComposite.map(v => Math.abs(v));
+      let peakIdx = 0; for (let i = 1; i < totalAbs.length; i++) if (totalAbs[i] > totalAbs[peakIdx]) peakIdx = i;
+      const peakVal = totalAbs[peakIdx]; const mainLobe = ANGLES[peakIdx];
+      let ddmIdx = 0; let best = Math.abs(r.ddm[0]); for (let i = 1; i < r.ddm.length; i++) { const cur = Math.abs(r.ddm[i]); if (cur < best) { best = cur; ddmIdx = i; } }
+      let left = peakIdx, right = peakIdx; const thr = peakVal / Math.sqrt(2); while (left > 0 && totalAbs[left] > thr) left--; while (right < totalAbs.length - 1 && totalAbs[right] > thr) right++;
+      const nulls = []; for (let i = 1; i < totalAbs.length - 1; i++) if (totalAbs[i] < peakVal * 0.05 && (nulls.length === 0 || Math.abs(ANGLES[i] - nulls[nulls.length - 1]) > 0.2)) nulls.push(ANGLES[i]);
+      const csbPeak = ANGLES[r.csb.composite.reduce((bi, v, i, arr) => Math.abs(v) > Math.abs(arr[bi]) ? i : bi, 0)];
+      const sboPeak = ANGLES[r.sbo.composite.reduce((bi, v, i, arr) => Math.abs(v) > Math.abs(arr[bi]) ? i : bi, 0)];
+      return { mainLobe, ddmZero: ANGLES[ddmIdx], beamwidth: ANGLES[right] - ANGLES[left], nulls, csbPeak, sboPeak };
+    }
+
+    function renderConcept(c, r, m) {
+      const traces = []; const defs = [['lower', 0.5, '#2563eb', 'LWR'], ['middle', 1.3, '#16a34a', 'MID'], ['upper', 2.1, '#7c3aed', 'UPR']];
+      defs.forEach(([name, x, color, label]) => {
+        const active = Math.max(...r.csb[name].map(v => Math.abs(v)), ...r.sbo[name].map(v => Math.abs(v)), ...r.clr[name].map(v => Math.abs(v))) > 1e-9; if (!active) return;
+        const tags = []; if (Math.max(...r.csb[name].map(v => Math.abs(v))) > 1e-9) tags.push('CSB'); if (Math.max(...r.sbo[name].map(v => Math.abs(v))) > 1e-9) tags.push('SBO'); if (Math.max(...r.clr[name].map(v => Math.abs(v))) > 1e-9) tags.push('CLR');
+        traces.push({ x: [x], y: [r.heights[name]], mode: 'markers+text', text: [`${label}<br>${tags.join('/')}`], textposition: 'top center', marker: { size: 15, color } });
+        if (c.imageArray) traces.push({ x: [x], y: [-r.heights[name]], mode: 'markers', marker: { size: 10, color: '#94a3b8', symbol: 'diamond' } });
+      });
+      traces.push({ x: [-0.1, 2.7], y: [0, Math.tan(degToRad(c.glideAngleDeg)) * 2.8], mode: 'lines+text', text: ['', 'Target Glide'], textposition: 'top right', line: { width: 3, color: '#f59e0b' } });
+      traces.push({ x: [-0.1, 2.7], y: [0, Math.tan(degToRad(m.mainLobe)) * 2.8], mode: 'lines+text', text: ['', 'Main Lobe'], textposition: 'bottom right', line: { width: 3, color: '#dc2626', dash: 'dash' } });
+      Plotly.react('conceptPlot', traces, { margin: { l: 45, r: 20, t: 20, b: 40 }, xaxis: { title: 'Antenna Stack', showgrid: true, gridcolor: '#e2e8f0' }, yaxis: { title: 'Height (m)', showgrid: true, gridcolor: '#e2e8f0', zeroline: true, zerolinecolor: '#475569' }, shapes: [{ type: 'line', x0: -0.2, x1: 2.8, y0: 0, y1: 0, line: { color: '#475569', width: 2 } }], paper_bgcolor: '#fff', plot_bgcolor: '#fff', showlegend: false }, { responsive: true, displayModeBar: false });
+    }
+
+    function renderSignalChart(c, r, m) {
+      const data = []; const add = (enabled, name, series, color, width = 2, dash = 'solid') => { if (!enabled) return; const scaled = scaleSeries(series, c.scaleMode); const peak = Math.max(...scaled.map(v => Math.abs(v)), 0); if (peak > 1e-9) data.push({ x: ANGLES, y: scaled, mode: 'lines', name, line: { width, color, dash } }); };
+      add($('traceLwrCsb').checked, 'LWR CSB', r.csb.lower, '#2563eb', 2, 'dot'); add($('traceMidCsb').checked, 'MID CSB', r.csb.middle, '#60a5fa', 2, 'dot'); add($('traceUprCsb').checked, 'UPR CSB', r.csb.upper, '#93c5fd', 2, 'dot'); add($('traceCsbComp').checked, 'CSB Composite', r.csb.composite, '#1d4ed8', 3);
+      add($('traceLwrSbo').checked, 'LWR SBO', r.sbo.lower, '#7c3aed', 2, 'dot'); add($('traceMidSbo').checked, 'MID SBO', r.sbo.middle, '#a78bfa', 2, 'dot'); add($('traceUprSbo').checked, 'UPR SBO', r.sbo.upper, '#c4b5fd', 2, 'dot'); add($('traceSboComp').checked, 'SBO Composite', r.sbo.composite, '#6d28d9', 3);
+      add($('traceLwrClr').checked, 'LWR CLR', r.clr.lower, '#16a34a', 2, 'dot'); add($('traceMidClr').checked, 'MID CLR', r.clr.middle, '#4ade80', 2, 'dot'); add($('traceUprClr').checked, 'UPR CLR', r.clr.upper, '#86efac', 2, 'dot'); add($('traceClrComp').checked, 'CLR Composite', r.clr.composite, '#15803d', 3);
+      const totalScaled = scaleSeries(r.signedComposite, c.scaleMode); const yMin = c.scaleMode === 'db' ? -40 : Math.min(...totalScaled, -1); const yMax = c.scaleMode === 'db' ? 5 : Math.max(...totalScaled, 1);
+      if ($('traceTargetGlide').checked) data.push({ x: [c.glideAngleDeg, c.glideAngleDeg], y: [yMin, yMax], mode: 'lines', name: 'Target Glide', line: { width: 2, color: '#f59e0b', dash: 'dash' }, hoverinfo: 'skip' });
+      if ($('traceMainLobe').checked) data.push({ x: [m.mainLobe], y: [yMax], mode: 'markers', name: 'Main Lobe', marker: { size: 12, color: '#dc2626', symbol: 'diamond' } });
+      if ($('traceNulls').checked && m.nulls.length) data.push({ x: m.nulls, y: m.nulls.map(() => c.scaleMode === 'db' ? yMin : 0), mode: 'markers', name: 'Nulls', marker: { size: 8, color: '#111827' } });
+      Plotly.react('cartesianSignalsPlot', data, { autosize: true, margin: { l: 60, r: 20, t: 20, b: 50 }, xaxis: { title: 'Elevation Angle (deg)', range: [0, 9], dtick: 1, gridcolor: '#e2e8f0', automargin: true }, yaxis: c.scaleMode === 'db' ? { title: 'Magnitude (dB)', range: [-40, 5], dtick: 5, gridcolor: '#e2e8f0', automargin: true } : { title: 'Magnitude', gridcolor: '#e2e8f0', automargin: true }, paper_bgcolor: '#fff', plot_bgcolor: '#fff', legend: { orientation: 'h', y: 1.06 } }, { responsive: true, displayModeBar: false });
+    }
+
+    function renderCompositeChart(c, r, m) {
+      const data = []; const add = (name, series, color, width = 3, yaxis = 'y', dash = 'solid') => { const scaled = yaxis === 'y2' ? series : scaleSeries(series, c.scaleMode); const peak = Math.max(...scaled.map(v => Math.abs(v)), 0); if (peak > 1e-9 || yaxis === 'y2') data.push({ x: ANGLES, y: scaled, mode: 'lines', name, yaxis, line: { width, color, dash } }); };
+      add('CSB Composite', r.csb.composite, '#1d4ed8'); add('SBO Composite', r.sbo.composite, '#6d28d9'); add('CLR Composite', r.clr.composite, '#15803d'); add('Signed CSB+SBO', r.signedComposite, '#0f172a', 4); if (c.showDDM) add('DDM', r.ddm, '#dc2626', 3, 'y2', 'dot');
+      const totalScaled = scaleSeries(r.signedComposite, c.scaleMode); const yMin = c.scaleMode === 'db' ? -40 : Math.min(...totalScaled, -1); const yMax = c.scaleMode === 'db' ? 5 : Math.max(...totalScaled, 1);
+      data.push({ x: [c.glideAngleDeg, c.glideAngleDeg], y: [yMin, yMax], mode: 'lines', name: 'Target Glide', line: { width: 2, color: '#f59e0b', dash: 'dash' }, hoverinfo: 'skip' });
+      data.push({ x: [m.ddmZero], y: [0], mode: 'markers', name: 'DDM Zero', yaxis: 'y2', marker: { size: 10, color: '#b91c1c' } });
+      Plotly.react('compositePlot', data, { autosize: true, margin: { l: 70, r: 70, t: 20, b: 90 }, xaxis: { title: 'Elevation Angle (deg)', range: [0, 9], dtick: 1, gridcolor: '#e2e8f0', automargin: true }, yaxis: c.scaleMode === 'db' ? { title: 'Magnitude (dB)', range: [-40, 5], dtick: 5, gridcolor: '#e2e8f0', automargin: true } : { title: 'Magnitude', gridcolor: '#e2e8f0', automargin: true }, yaxis2: { title: 'DDM', overlaying: 'y', side: 'right', range: [-c.ddmClampLimit, c.ddmClampLimit], dtick: Math.max(0.2, Number((c.ddmClampLimit / 6).toFixed(2))), showgrid: false, automargin: true }, paper_bgcolor: '#fff', plot_bgcolor: '#fff', legend: { orientation: 'h', x: 0, xanchor: 'left', y: -0.22, yanchor: 'top', bgcolor: 'rgba(255,255,255,0.88)', bordercolor: '#cbd5e1', borderwidth: 1, font: { size: 11 } } }, { responsive: true, displayModeBar: false });
+    }
+
+    function renderCompareChart(c, r) {
+      const data = []; const add = (name, series, color) => { const scaled = scaleSeries(series, c.scaleMode); const peak = Math.max(...scaled.map(v => Math.abs(v)), 0); if (peak > 1e-9) data.push({ x: ANGLES, y: scaled, mode: 'lines', name, line: { width: 3, color } }); };
+      add('CSB Composite', r.csb.composite, '#1d4ed8'); add('SBO Composite', r.sbo.composite, '#6d28d9'); add('CLR Composite', r.clr.composite, '#15803d');
+      Plotly.react('signalComparePlot', data, { autosize: true, margin: { l: 60, r: 20, t: 20, b: 80 }, xaxis: { title: 'Elevation Angle (deg)', range: [0, 9], dtick: 1, gridcolor: '#e2e8f0', automargin: true }, yaxis: c.scaleMode === 'db' ? { title: 'Magnitude (dB)', range: [-40, 5], dtick: 5, gridcolor: '#e2e8f0', automargin: true } : { title: 'Magnitude', gridcolor: '#e2e8f0', automargin: true }, paper_bgcolor: '#fff', plot_bgcolor: '#fff', legend: { orientation: 'h', x: 0, xanchor: 'left', y: -0.18, yanchor: 'top', bgcolor: 'rgba(255,255,255,0.88)', bordercolor: '#cbd5e1', borderwidth: 1, font: { size: 11 } } }, { responsive: true, displayModeBar: false });
+      const cmp = $('signalComparePlot');
+      cmp.on('plotly_click', ev => { if (!ev.points || !ev.points.length) return; SELECTED_INDEX = ev.points[0].pointIndex; renderSelectedPointAnalysis(); });
+    }
+
+    function renderSelectedPointAnalysis() {
+      if (!CURRENT_RESULTS) return;
+      const { r } = CURRENT_RESULTS;
+      const i = Math.max(0, Math.min(SELECTED_INDEX, ANGLES.length - 1));
+      const angle = ANGLES[i], csb = r.csb.composite[i], sbo = r.sbo.composite[i], clr = r.clr.composite[i], v90 = r.v90[i], v150 = r.v150[i], ddm = r.ddm[i], sdm = r.sdm[i];
+      const csb90 = r.csb90[i], csb150 = r.csb150[i], sbo90 = r.sbo90[i], sbo150 = r.sbo150[i], clr90 = r.clr90[i], clr150 = r.clr150[i];
+      const sum90 = csb90 + sbo90 + clr90;
+      const sum150 = csb150 + sbo150 + clr150;
+      const diff150_90 = sum150 - sum90;
+
+      $('selAngle').textContent = `${angle.toFixed(2)}°`;
+      $('sel90').textContent = `${Math.abs(v90).toFixed(3)}`;
+      $('sel150').textContent = `${Math.abs(v150).toFixed(3)}`;
+      $('selDDM').textContent = `${ddm.toFixed(3)}`;
+      $('selSDM').textContent = `${sdm.toFixed(3)}`;
+      $('selCSB').textContent = `${csb.toFixed(3)}`;
+      $('selSBO').textContent = `${sbo.toFixed(3)}`;
+      $('selCLR').textContent = `${clr.toFixed(3)}`;
+      $('selCSB90').textContent = `${csb90.toFixed(3)}`;
+      $('selCSB150').textContent = `${csb150.toFixed(3)}`;
+      $('selSBO90').textContent = `${sbo90.toFixed(3)}`;
+      $('selSBO150').textContent = `${sbo150.toFixed(3)}`;
+      $('selCLR90').textContent = `${clr90.toFixed(3)}`;
+      $('selCLR150').textContent = `${clr150.toFixed(3)}`;
+      $('selSUM90').textContent = `${sum90.toFixed(3)}`;
+      $('selSUM150').textContent = `${sum150.toFixed(3)}`;
+
+      const maxAbs = Math.max(0.5, Math.abs(v90), Math.abs(v150), Math.abs(sum90), Math.abs(sum150), Math.abs(diff150_90));
+      Plotly.react('vectorPlot', [
+        { x: [0, v90], y: [0.35, 0.35], mode: 'lines+markers+text', name: '90 Hz Vector', text: ['', `90 Hz (${v90.toFixed(3)})`], textposition: 'top center', line: { width: 4, color: '#2563eb' }, marker: { size: 8, color: '#2563eb' } },
+        { x: [0, v150], y: [-0.35, -0.35], mode: 'lines+markers+text', name: '150 Hz Vector', text: ['', `150 Hz (${v150.toFixed(3)})`], textposition: 'bottom center', line: { width: 4, color: '#dc2626' }, marker: { size: 8, color: '#dc2626' } }
+      ], {
+        margin: { l: 60, r: 20, t: 20, b: 50 },
+        xaxis: { title: 'Vector Axis', range: [-maxAbs * 1.25, maxAbs * 1.25], zeroline: true, gridcolor: '#e2e8f0' },
+        yaxis: { range: [-1, 1], tickvals: [-0.35, 0.35], ticktext: ['150 Hz', '90 Hz'], zeroline: false, gridcolor: '#f1f5f9' },
+        paper_bgcolor: '#fff', plot_bgcolor: '#fff', legend: { orientation: 'h', y: 1.08 }
+      }, { responsive: true, displayModeBar: false });
+
+      Plotly.react('componentBreakdownPlot', [
+        { x: [0, sum90], y: [0.4, 0.4], mode: 'lines+markers+text', name: 'SUM 90', text: ['', `SUM 90 (${sum90.toFixed(3)})`], textposition: 'top center', line: { width: 4, color: '#2563eb' }, marker: { size: 8, color: '#2563eb' } },
+        { x: [0, sum150], y: [0, 0], mode: 'lines+markers+text', name: 'SUM 150', text: ['', `SUM 150 (${sum150.toFixed(3)})`], textposition: 'top center', line: { width: 4, color: '#dc2626' }, marker: { size: 8, color: '#dc2626' } },
+        { x: [0, diff150_90], y: [-0.4, -0.4], mode: 'lines+markers+text', name: '150 - 90', text: ['', `150-90 (${diff150_90.toFixed(3)})`], textposition: 'bottom center', line: { width: 4, color: '#0f172a' }, marker: { size: 8, color: '#0f172a' } }
+      ], {
+        margin: { l: 60, r: 20, t: 20, b: 50 },
+        xaxis: { title: 'Signed Value', range: [-maxAbs * 1.25, maxAbs * 1.25], zeroline: true, gridcolor: '#e2e8f0' },
+        yaxis: { range: [-0.8, 0.8], tickvals: [-0.4, 0, 0.4], ticktext: ['150-90', 'SUM 150', 'SUM 90'], zeroline: false, gridcolor: '#f1f5f9' },
+        paper_bgcolor: '#fff', plot_bgcolor: '#fff', legend: { orientation: 'h', y: 1.08 }
+      }, { responsive: true, displayModeBar: false });
+
+      $('explainBox').innerHTML = [
+        `선택 각도는 <strong>${angle.toFixed(2)}°</strong> 입니다.`,
+        `현재 위치에서 SUM 90 = <strong>${sum90.toFixed(3)}</strong>, SUM 150 = <strong>${sum150.toFixed(3)}</strong>, 그리고 150-90 = <strong>${diff150_90.toFixed(3)}</strong> 입니다.`,
+        `SBO는 교육용 모델에서 <strong>150 - 90</strong> 성격으로 반영되므로, SBO 90은 음(-) 기여, SBO 150은 양(+) 기여로 표시합니다.`,
+        `DDM = <strong>${ddm.toFixed(3)}</strong>, SDM = <strong>${sdm.toFixed(3)}</strong>, 교육용 관계식으로 <strong>DDM = 2 × SDM</strong> 입니다.`
+      ].join('<br>');
+    }
+
+    function updateSummary(c, r, m) { $('summaryMode').textContent = c.mode; $('summaryLowerH').textContent = `${r.heights.lower.toFixed(2)}m`; $('summaryMiddleH').textContent = `${r.heights.middle.toFixed(2)}m`; $('summaryUpperH').textContent = c.mode === 'CE' ? `${r.heights.upper.toFixed(2)}m` : '-'; $('summaryMainLobe').textContent = `${m.mainLobe.toFixed(2)}°`; $('summaryDDMZero').textContent = `${m.ddmZero.toFixed(2)}°`; $('summaryBeamwidth').textContent = `${m.beamwidth.toFixed(2)}°`; $('summaryNulls').textContent = `${m.nulls.length}`; $('summaryCSBPeak').textContent = `${m.csbPeak.toFixed(2)}°`; $('summarySBOPeak').textContent = `${m.sboPeak.toFixed(2)}°`; }
+    function renderAll() { applyHeightCalculation(); const c = cfg(); const r = computeSignals(c); const m = metrics(c, r); CURRENT_RESULTS = { c, r, m }; renderConcept(c, r, m); renderSignalChart(c, r, m); renderCompositeChart(c, r, m); renderCompareChart(c, r); updateSummary(c, r, m); renderSelectedPointAnalysis(); }
+    function bind() {
+      document.querySelectorAll('input, select').forEach(node => node.addEventListener('input', renderAll));
+      $('heightCalcMode').addEventListener('change', () => { applyHeightCalculation(); renderAll(); });
+      $('presetNR').addEventListener('click', () => setPreset('NR')); $('presetCE').addEventListener('click', () => setPreset('CE')); $('resetAll').addEventListener('click', () => location.reload()); $('gpMode').addEventListener('change', () => setPreset($('gpMode').value));
+      $('checkAllTraces').addEventListener('click', () => { document.querySelectorAll('.trace-grid input[type="checkbox"]').forEach(cb => cb.checked = true); renderAll(); });
+      $('clearAllTraces').addEventListener('click', () => { document.querySelectorAll('.trace-grid input[type="checkbox"]').forEach(cb => cb.checked = false); renderAll(); });
+    }
+    bind(); applyHeightCalculation(); setPreset('NR');
+  </script>
+</body>
+</html>

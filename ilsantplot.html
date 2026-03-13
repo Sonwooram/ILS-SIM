@@ -1,0 +1,748 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>안테나 방사패턴 이론 학습기</title>
+  <script src="https://cdn.plot.ly/plotly-2.35.2.min.js"></script>
+  <style>
+    * { box-sizing: border-box; }
+    body { margin: 0; font-family: "Segoe UI", Arial, sans-serif; background: linear-gradient(180deg, #eef4ff 0%, #f8fbff 100%); color: #1f2937; }
+    .page { max-width: 1480px; margin: 0 auto; padding: 24px; }
+    .hero { background: linear-gradient(135deg, #0f172a, #1d4ed8 58%, #0ea5e9); color: white; border-radius: 24px; padding: 28px 32px; box-shadow: 0 16px 38px rgba(15, 23, 42, 0.22); margin-bottom: 20px; position: relative; overflow: hidden; }
+    .hero::after { content: ""; position: absolute; right: -40px; top: -40px; width: 220px; height: 220px; background: rgba(255,255,255,0.10); border-radius: 50%; }
+    .hero-inner { position: relative; z-index: 1; display: grid; gap: 10px; }
+    .hero h1 { margin: 0 0 10px; font-size: 34px; }
+    .hero p { margin: 0; opacity: 0.96; line-height: 1.75; }
+    .layout { display: grid; grid-template-columns: 380px 1fr; gap: 20px; align-items: start; }
+    .panel, .card { background: #fff; border-radius: 20px; box-shadow: 0 10px 28px rgba(15, 23, 42, 0.08); border: 1px solid rgba(148, 163, 184, 0.16); }
+    .panel { padding: 22px; position: sticky; top: 20px; }
+    .card { padding: 20px; }
+    .section-head { display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; margin-bottom: 10px; }
+    .panel-top { display:flex; justify-content:space-between; align-items:center; gap:12px; margin-bottom:14px; padding-bottom:12px; border-bottom:1px solid #e2e8f0; }
+    .panel-top .kicker { font-size:12px; color:#64748b; font-weight:700; letter-spacing:0.4px; }
+    .panel-top .title { font-size:18px; color:#0f172a; font-weight:800; margin-top:2px; }
+    .panel-tag, .section-tag { padding: 8px 10px; border-radius: 12px; font-size: 12px; font-weight: 800; border: 1px solid; white-space: nowrap; }
+    .panel-tag { background:#eff6ff; border-color:#bfdbfe; color:#1d4ed8; }
+    .tag-blue { background:#eff6ff; border-color:#bfdbfe; color:#1d4ed8; }
+    .tag-green { background:#f0fdf4; border-color:#bbf7d0; color:#15803d; }
+    .tag-orange { background:#fff7ed; border-color:#fed7aa; color:#c2410c; }
+    .tag-purple { background:#f5f3ff; border-color:#ddd6fe; color:#6d28d9; }
+    .tag-cyan { background:#ecfeff; border-color:#a5f3fc; color:#0f766e; }
+    .pill-row { display:flex; gap:8px; flex-wrap:wrap; }
+    .section-tag { background:#f8fafc; border-color:#e2e8f0; color:#334155; }
+    .panel h2, .card h2 { margin: 0; font-size: 21px; color: #0f172a; }
+    .content { display: grid; gap: 20px; }
+    .charts { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+    .control-group { margin-bottom: 18px; }
+    .row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    .button-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 12px; }
+    label { display: block; font-weight: 700; margin-bottom: 8px; color: #0f172a; font-size: 14px; }
+    input[type="range"] { width: 100%; accent-color: #2563eb; }
+    input[type="number"], select { width: 100%; padding: 11px 12px; border: 1px solid #cbd5e1; border-radius: 12px; font-size: 14px; background: #fff; transition: border-color 0.2s ease, box-shadow 0.2s ease; }
+    input[type="number"]:focus, select:focus { outline: none; border-color: #2563eb; box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.12); }
+    button { border: 0; border-radius: 14px; padding: 12px 14px; font-size: 14px; font-weight: 800; cursor: pointer; background: linear-gradient(135deg, #2563eb, #0ea5e9); color: #fff; transition: transform 0.15s ease, box-shadow 0.15s ease; box-shadow: 0 8px 18px rgba(37, 99, 235, 0.22); }
+    button.secondary { background: #e2e8f0; color: #0f172a; box-shadow: none; }
+    button:hover { transform: translateY(-1px); }
+    .hint { margin-top: 14px; font-size: 13px; color: #475569; line-height: 1.75; background: #f8fafc; border-radius: 14px; padding: 14px 15px; border: 1px solid #e2e8f0; }
+    .hint-head { display:flex; align-items:center; gap:8px; margin-bottom:8px; color:#0f172a; font-weight:800; }
+    .hint-icon { display:inline-flex; width:22px; height:22px; border-radius:50%; background:#dbeafe; align-items:center; justify-content:center; color:#2563eb; font-size:12px; }
+    .formula { font-family: Consolas, monospace; background: #0f172a; color: #e2e8f0; border-radius: 12px; padding: 11px 12px; font-size: 13px; margin-top: 10px; }
+    .theory-box { margin-top: 10px; padding: 12px 14px; border-radius: 12px; background: linear-gradient(180deg, #eef2ff, #f8faff); color: #1e3a8a; font-size: 13px; line-height: 1.75; border: 1px solid #c7d2fe; }
+    .status-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 12px; }
+    .stat { background: linear-gradient(180deg, #eff6ff, #f8fbff); border: 1px solid #bfdbfe; border-radius: 16px; padding: 14px; position: relative; overflow: hidden; }
+    .stat::before { content: ""; position: absolute; left: 0; top: 0; width: 100%; height: 4px; background: linear-gradient(90deg, #2563eb, #0ea5e9); }
+    .stat .name { font-size: 13px; color: #334155; margin-bottom: 6px; }
+    .stat .value { font-size: 20px; font-weight: 800; color: #1d4ed8; }
+    .section-note { margin-top: 2px; font-size: 13px; color: #64748b; line-height: 1.6; }
+    .plot { width: 100%; height: 520px; border-radius: 14px; }
+    .small-plot { width: 100%; height: 320px; border-radius: 14px; }
+    .footer { margin-top:22px; background:#ffffff; border:1px solid rgba(148,163,184,0.16); box-shadow:0 10px 28px rgba(15,23,42,0.06); border-radius:20px; padding:18px 20px; display:flex; justify-content:space-between; align-items:center; gap:16px; flex-wrap:wrap; }
+    .footer .label { font-size:13px; color:#64748b; font-weight:700; letter-spacing:0.4px; }
+    .footer .value { font-size:16px; color:#0f172a; font-weight:800; margin-top:4px; }
+    @media (max-width: 1250px) { .layout { grid-template-columns: 1fr; } .panel { position: static; } .status-grid { grid-template-columns: repeat(3, 1fr); } .charts { grid-template-columns: 1fr; } }
+    @media (max-width: 760px) { .row, .button-row, .status-grid { grid-template-columns: 1fr; } .plot { height: 420px; } }
+  </style>
+</head>
+<body>
+  <div class="page">
+    <section class="hero">
+      <div class="hero-inner">
+        <h1>안테나 방사패턴 이론 학습기</h1>
+        <p>직각좌표계와 극좌표계를 함께 보면서 방사패턴을 학습할 수 있습니다. E-plane / H-plane 전환, 3D 회전, 메인로브 방향 화살표, 특정 컷 단면 보기, 실제 안테나 패턴 라이브러리까지 포함한 교육용 확장판입니다.</p>
+      </div>
+    </section>
+
+    <div class="layout">
+      <aside class="panel">
+        <div class="panel-top">
+          <div>
+            <div class="kicker">TRAINING CONTROL PANEL</div>
+            <div class="title">교육 설정</div>
+          </div>
+          <div class="panel-tag">LEARNING</div>
+        </div>
+
+        <section class="card" style="padding:14px; margin-bottom:16px; background:linear-gradient(180deg,#f8fbff,#ffffff); box-shadow:none;">
+          <div style="font-size:13px; color:#64748b; font-weight:700; margin-bottom:8px;">학습 목표</div>
+          <div style="font-size:13px; line-height:1.7; color:#334155;">
+            • 직각좌표계와 극좌표계의 대응 관계 이해<br>
+            • 메인로브, 널, 사이드로브의 의미 파악<br>
+            • 배열 안테나의 N, d/λ, β 변화에 따른 패턴 변화 확인<br>
+            • 안테나 방향과 패턴 회전의 관계 학습
+          </div>
+        </section>
+
+        <div class="button-row" style="margin-top:0; margin-bottom:16px;">
+          <button id="savePngBtn" type="button">그래프 PNG 저장</button>
+          <button id="fullscreenBtn" type="button" class="secondary">전체화면</button>
+        </div>
+
+        <div class="row" style="margin-bottom:16px;">
+          <div class="control-group" style="margin-bottom:0;">
+            <label for="languageMode">언어</label>
+            <select id="languageMode"><option value="ko">한국어</option><option value="en">English</option></select>
+          </div>
+          <div class="control-group" style="margin-bottom:0;">
+            <label for="helpMode">도움말</label>
+            <select id="helpMode"><option value="on">표시</option><option value="off">숨김</option></select>
+          </div>
+        </div>
+
+        <div class="control-group">
+          <label for="patternType">패턴 종류</label>
+          <select id="patternType">
+            <option value="sin">|sin(θ)|</option>
+            <option value="sin2">sin²(θ)</option>
+            <option value="cos">|cos(θ)|</option>
+            <option value="cardioid">Cardioid (1 + cosθ) / 2</option>
+            <option value="custom">사용자 정의: |sin(nθ)|</option>
+            <option value="array">배열 안테나 Array Factor</option>
+            <option value="isotropic">등방성 안테나</option>
+            <option value="dipole">반파장 다이폴</option>
+            <option value="patch">패치 안테나 근사</option>
+            <option value="yagi">지향성 안테나 근사</option>
+          </select>
+        </div>
+
+        <div class="control-group">
+          <label for="harmonicSlider">고조파 계수 n: <span id="harmonicValue">2</span></label>
+          <input id="harmonicSlider" type="range" min="1" max="8" step="1" value="2" />
+        </div>
+
+        <div class="row">
+          <div class="control-group"><label for="amplitudeInput">최대 진폭</label><input id="amplitudeInput" type="number" value="1" min="0.1" max="5" step="0.1" /></div>
+          <div class="control-group"><label for="samplesInput">샘플 수</label><input id="samplesInput" type="number" value="721" min="181" max="1441" step="10" /></div>
+        </div>
+
+        <div class="row">
+          <div class="control-group"><label for="elementCountInput">배열 소자 수 N</label><input id="elementCountInput" type="number" value="4" min="2" max="16" step="1" /></div>
+          <div class="control-group"><label for="spacingInput">소자 간격 d/λ</label><input id="spacingInput" type="number" value="0.5" min="0.1" max="2" step="0.1" /></div>
+        </div>
+
+        <div class="row">
+          <div class="control-group"><label for="phaseInput">위상차 β (deg)</label><input id="phaseInput" type="number" value="0" min="-180" max="180" step="1" /></div>
+          <div class="control-group"><label for="scaleMode">반경 표시 방식</label><select id="scaleMode"><option value="linear">Linear</option><option value="db">dB 정규화</option></select></div>
+        </div>
+
+        <div class="row">
+          <div class="control-group"><label for="planeMode">평면 보기</label><select id="planeMode"><option value="e">E-plane</option><option value="h">H-plane</option></select></div>
+          <div class="control-group"><label for="cutMode">단면 보기</label><select id="cutMode"><option value="azimuth">Azimuth Cut</option><option value="elevation">Elevation Cut</option></select></div>
+        </div>
+
+        <div class="row">
+          <div class="control-group"><label for="cutAngleInput">컷 각도 (deg)</label><input id="cutAngleInput" type="number" value="0" min="-180" max="180" step="1" /></div>
+          <div class="control-group"><label for="rotate3D">3D 회전</label><select id="rotate3D"><option value="off">Off</option><option value="on">On</option></select></div>
+        </div>
+
+        <div class="control-group">
+          <label for="antennaOrientation">안테나 방향 각도 (deg)</label>
+          <input id="antennaOrientation" type="number" min="-180" max="180" step="1" value="0" />
+          <div style="display:grid; grid-template-columns:repeat(4,1fr); gap:8px; margin-top:10px;">
+            <button type="button" class="secondary orientation-preset" data-angle="0">0°</button>
+            <button type="button" class="secondary orientation-preset" data-angle="45">45°</button>
+            <button type="button" class="secondary orientation-preset" data-angle="90">90°</button>
+            <button type="button" class="secondary orientation-preset" data-angle="-90">-90°</button>
+          </div>
+        </div>
+
+        <div class="control-group">
+          <label for="angleSlider">선택 각도 θ: <span id="angleSliderValue">45</span>°</label>
+          <input id="angleSlider" type="range" min="-180" max="180" step="1" value="45" />
+        </div>
+
+        <div class="button-row">
+          <button id="resetBtn" class="secondary">초기화</button>
+          <button id="animateBtn">자동 이동</button>
+        </div>
+
+        <div class="hint" id="helpPanel">
+          <div class="hint-head"><span class="hint-icon">i</span><span>운용 가이드</span></div>
+          <strong>사용법</strong><br>
+          1. 패턴 종류를 선택하세요.<br>
+          2. 직각좌표계나 극좌표계에서 곡선 위를 클릭하세요.<br>
+          3. 같은 지점이 다른 좌표계에도 함께 표시됩니다.<br>
+          4. 안테나 방향 각도를 바꾸면 개념 시각화, 2D 패턴, 3D 축 방향이 함께 연동됩니다.
+          <div class="formula" id="formulaText">r(θ) = 1.0 · |sin(θ)|</div>
+          <div class="theory-box">
+            <strong>이론 설명</strong><br>
+            직각좌표계는 각도-세기 관계를 읽기 좋고, 극좌표계는 공간상 빔 모양을 직관적으로 보여줍니다.<br>
+            다이폴은 폴 축 방향이 중요하고, 패치는 boresight 방향이 중요하며, 배열 안테나는 배열축 방향이 중요합니다.<br>
+            안테나 방향 각도를 바꾸면 패턴 형성 각도도 함께 회전합니다.
+          </div>
+        </div>
+      </aside>
+
+      <main class="content">
+        <section class="charts">
+          <div class="card">
+            <div class="section-head"><div><h2>직각좌표계 패턴</h2><div class="section-note">x축 중앙을 0°로 두고 -180°부터 180°까지 패턴을 읽습니다.</div></div><span class="section-tag tag-blue">RECTANGULAR</span></div>
+            <div id="cartesianPlot" class="plot"></div>
+          </div>
+          <div class="card">
+            <div class="section-head"><div><h2>극좌표계 패턴</h2><div class="section-note">같은 패턴을 공간 방향 기준으로 해석할 수 있도록 극좌표 형태로 표시합니다.</div></div><span class="section-tag tag-cyan">POLAR</span></div>
+            <div id="polarPlot" class="plot"></div>
+          </div>
+        </section>
+
+        <section class="card" style="background:linear-gradient(180deg,#ffffff 0%,#f8fbff 100%);">
+          <div class="section-head"><div><h2>선택 지점 및 패턴 분석</h2><div class="section-note">현재 선택한 각도와 패턴 특성을 빠르게 읽을 수 있는 학습 요약 영역입니다.</div></div><div class="pill-row"><span class="section-tag tag-blue">INSTRUCTION MODE</span><span class="section-tag">THEORY + VISUALIZATION</span></div></div>
+          <div class="status-grid">
+            <div class="stat"><div class="name">각도 θ</div><div class="value" id="readoutAngle">45.0°</div></div>
+            <div class="stat"><div class="name">표시 반경</div><div class="value" id="readoutRadius">0.707</div></div>
+            <div class="stat"><div class="name">직각좌표 x</div><div class="value" id="readoutX">45.0°</div></div>
+            <div class="stat"><div class="name">직각좌표 y</div><div class="value" id="readoutY">0.707</div></div>
+            <div class="stat"><div class="name">메인로브 각도</div><div class="value" id="readoutMainLobe">90.0°</div></div>
+            <div class="stat"><div class="name">최대값</div><div class="value" id="readoutPeak">1.000</div></div>
+            <div class="stat"><div class="name">널 개수</div><div class="value" id="readoutNulls">0</div></div>
+            <div class="stat"><div class="name">빔폭(근사)</div><div class="value" id="readoutBeamwidth">-</div></div>
+            <div class="stat"><div class="name">최대 사이드로브</div><div class="value" id="readoutSll">-</div></div>
+            <div class="stat"><div class="name">표시 모드</div><div class="value" id="readoutScale">LIN</div></div>
+            <div class="stat"><div class="name">평면</div><div class="value" id="readoutPlane">E</div></div>
+            <div class="stat"><div class="name">컷</div><div class="value" id="readoutCut">AZ 0°</div></div>
+            <div class="stat"><div class="name">안테나 방향</div><div class="value" id="readoutOrientation">0°</div></div>
+            <div class="stat"><div class="name">축-메인로브 차이</div><div class="value" id="readoutAxisDelta">0°</div></div>
+            <div class="stat"><div class="name">정렬 상태</div><div class="value" id="readoutAlignment">정렬</div></div>
+          </div>
+        </section>
+
+        <section class="card">
+          <div class="section-head"><div><h2>배열안테나 / 안테나 개념 시각화</h2><div class="section-note">안테나의 폴 축, 패치 면 방향, 배열 축 방향을 회전시켜 확인할 수 있습니다.</div></div><span class="section-tag tag-green">VISUAL GUIDE</span></div>
+          <div id="arrayVisual" class="small-plot"></div>
+        </section>
+
+        <section class="card">
+          <div class="section-head"><div><h2>3D 방사패턴 시각화</h2><div class="section-note">3차원 공간에서 빔 분포를 확인하고 메인로브 방향과 안테나 방향축을 함께 파악합니다.</div></div><span class="section-tag tag-orange">3D VIEW</span></div>
+          <div id="pattern3D" class="plot" style="height:460px;"></div>
+        </section>
+
+        <section class="card">
+          <div class="section-head"><div><h2>컷 전용 그래프</h2><div class="section-note">선택한 Azimuth/Elevation 컷만 따로 확대해 비교하는 학습용 그래프입니다.</div></div><span class="section-tag tag-purple">CUT ANALYSIS</span></div>
+          <div id="cutPlot" class="plot" style="height:380px;"></div>
+        </section>
+
+        <section class="card">
+          <div class="section-head"><div><h2>퀴즈 모드</h2><div class="section-note">현재 표시된 패턴을 보고 안테나 종류와 특성을 맞혀보는 실습 영역입니다.</div></div><span class="section-tag tag-purple">QUIZ</span></div>
+          <div style="display:grid; grid-template-columns:1.2fr 1fr; gap:16px; align-items:start;">
+            <div>
+              <div style="font-size:14px; font-weight:700; color:#0f172a; margin-bottom:8px;">문제</div>
+              <div id="quizQuestion" style="padding:14px 16px; border-radius:14px; background:#f8fafc; border:1px solid #e2e8f0; color:#334155; line-height:1.7; font-size:14px;">이 패턴은 어떤 안테나 또는 패턴 형태에 가장 가까울까요?</div>
+              <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-top:12px;">
+                <button type="button" class="secondary quiz-option" data-answer="sin">|sin(θ)|</button>
+                <button type="button" class="secondary quiz-option" data-answer="dipole">반파장 다이폴</button>
+                <button type="button" class="secondary quiz-option" data-answer="patch">패치 안테나</button>
+                <button type="button" class="secondary quiz-option" data-answer="array">배열 안테나</button>
+              </div>
+              <div style="display:flex; gap:10px; margin-top:12px; flex-wrap:wrap;">
+                <button type="button" id="newQuizBtn">새 문제</button>
+                <button type="button" id="showAnswerBtn" class="secondary">정답 보기</button>
+              </div>
+            </div>
+            <div style="padding:14px 16px; border-radius:14px; background:linear-gradient(180deg,#eff6ff,#f8fbff); border:1px solid #bfdbfe;">
+              <div style="font-size:14px; font-weight:800; color:#1d4ed8; margin-bottom:10px;">퀴즈 결과</div>
+              <div id="quizFeedback" style="font-size:14px; line-height:1.7; color:#334155; min-height:88px;">새 문제를 눌러 퀴즈를 시작하세요.</div>
+              <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-top:12px;">
+                <div style="padding:12px; border-radius:12px; background:#fff; border:1px solid #dbeafe;"><div style="font-size:12px; color:#64748b; font-weight:700;">정답 수</div><div id="quizCorrectCount" style="font-size:22px; font-weight:800; color:#15803d; margin-top:4px;">0</div></div>
+                <div style="padding:12px; border-radius:12px; background:#fff; border:1px solid #dbeafe;"><div style="font-size:12px; color:#64748b; font-weight:700;">시도 수</div><div id="quizTotalCount" style="font-size:22px; font-weight:800; color:#1d4ed8; margin-top:4px;">0</div></div>
+              </div>
+            </div>
+          </div>
+        </section>
+      </main>
+    </div>
+
+    <footer class="footer">
+      <div><div class="label">PROGRAM</div><div class="value">Antenna Radiation Pattern Learning Tool</div></div>
+      <div style="text-align:right;"><div class="label">INSTRUCTOR</div><div class="value">ILS INSTRUCTOR "SON WOO RAM"</div></div>
+    </footer>
+  </div>
+
+  <script>
+    const state = { angleDeg: 45, animating: false, timer: null, spinAngle: 0, quizAnswer: null, quizCorrect: 0, quizTotal: 0 };
+    const els = {
+      patternType: document.getElementById('patternType'),
+      harmonicSlider: document.getElementById('harmonicSlider'),
+      harmonicValue: document.getElementById('harmonicValue'),
+      amplitudeInput: document.getElementById('amplitudeInput'),
+      samplesInput: document.getElementById('samplesInput'),
+      elementCountInput: document.getElementById('elementCountInput'),
+      spacingInput: document.getElementById('spacingInput'),
+      phaseInput: document.getElementById('phaseInput'),
+      scaleMode: document.getElementById('scaleMode'),
+      planeMode: document.getElementById('planeMode'),
+      cutMode: document.getElementById('cutMode'),
+      cutAngleInput: document.getElementById('cutAngleInput'),
+      rotate3D: document.getElementById('rotate3D'),
+      antennaOrientation: document.getElementById('antennaOrientation'),
+      angleSlider: document.getElementById('angleSlider'),
+      angleSliderValue: document.getElementById('angleSliderValue'),
+      formulaText: document.getElementById('formulaText'),
+      readoutAngle: document.getElementById('readoutAngle'),
+      readoutRadius: document.getElementById('readoutRadius'),
+      readoutX: document.getElementById('readoutX'),
+      readoutY: document.getElementById('readoutY'),
+      readoutMainLobe: document.getElementById('readoutMainLobe'),
+      readoutPeak: document.getElementById('readoutPeak'),
+      readoutNulls: document.getElementById('readoutNulls'),
+      readoutBeamwidth: document.getElementById('readoutBeamwidth'),
+      readoutSll: document.getElementById('readoutSll'),
+      readoutScale: document.getElementById('readoutScale'),
+      readoutPlane: document.getElementById('readoutPlane'),
+      readoutCut: document.getElementById('readoutCut'),
+      readoutOrientation: document.getElementById('readoutOrientation'),
+      readoutAxisDelta: document.getElementById('readoutAxisDelta'),
+      readoutAlignment: document.getElementById('readoutAlignment'),
+      resetBtn: document.getElementById('resetBtn'),
+      animateBtn: document.getElementById('animateBtn'),
+      savePngBtn: document.getElementById('savePngBtn'),
+      fullscreenBtn: document.getElementById('fullscreenBtn'),
+      languageMode: document.getElementById('languageMode'),
+      helpMode: document.getElementById('helpMode'),
+      helpPanel: document.getElementById('helpPanel'),
+      newQuizBtn: document.getElementById('newQuizBtn'),
+      showAnswerBtn: document.getElementById('showAnswerBtn'),
+      quizQuestion: document.getElementById('quizQuestion'),
+      quizFeedback: document.getElementById('quizFeedback'),
+      quizCorrectCount: document.getElementById('quizCorrectCount'),
+      quizTotalCount: document.getElementById('quizTotalCount')
+    };
+
+    function degToRad(deg) { return deg * Math.PI / 180; }
+    function normalizeAngle(deg) { let v = deg % 360; if (v < 0) v += 360; return v; }
+    function wrapTo180(deg) { return ((deg + 180) % 360 + 360) % 360 - 180; }
+    function displayAngleToPatternAngle(displayDeg) { return normalizeAngle(displayDeg); }
+
+    function getPatternValue(thetaDeg) {
+      const orientation = parseFloat(els.antennaOrientation.value || 0);
+      const effectiveThetaDeg = normalizeAngle(thetaDeg - orientation);
+      const t = degToRad(effectiveThetaDeg);
+      const type = els.patternType.value;
+      const amp = Math.max(0.1, parseFloat(els.amplitudeInput.value) || 1);
+      const n = parseInt(els.harmonicSlider.value, 10) || 2;
+      let base = 0;
+
+      if (type === 'sin') base = Math.abs(Math.sin(t));
+      else if (type === 'sin2') base = Math.pow(Math.sin(t), 2);
+      else if (type === 'cos') base = Math.abs(Math.cos(t));
+      else if (type === 'cardioid') base = (1 + Math.cos(t)) / 2;
+      else if (type === 'custom') base = Math.abs(Math.sin(n * t));
+      else if (type === 'array') {
+        const N = Math.max(2, parseInt(els.elementCountInput.value, 10) || 4);
+        const d = Math.max(0.1, parseFloat(els.spacingInput.value) || 0.5);
+        const beta = degToRad(parseFloat(els.phaseInput.value) || 0);
+        const psi = 2 * Math.PI * d * Math.cos(t) + beta;
+        const denom = Math.sin(psi / 2);
+        base = Math.abs(denom) < 1e-9 ? 1 : Math.abs(Math.sin((N * psi) / 2) / (N * denom));
+      } else if (type === 'isotropic') base = 1;
+      else if (type === 'dipole') {
+        const s = Math.sin(t);
+        base = Math.abs(s) < 1e-6 ? 0 : Math.abs(Math.cos((Math.PI / 2) * Math.cos(t)) / s);
+      } else if (type === 'patch') base = Math.pow(Math.max(0, Math.cos(t)), 1.8);
+      else if (type === 'yagi') base = Math.pow(Math.max(0, Math.cos(t)), 4) + 0.18 * Math.pow(Math.max(0, Math.cos(t + Math.PI)), 2);
+
+      if (els.planeMode.value === 'h') {
+        if (type === 'isotropic') base = 1;
+        else if (type === 'dipole') base = 0.85 + 0.15 * Math.abs(Math.cos(t));
+        else if (type === 'patch') base = Math.pow(Math.max(0, Math.cos(t)), 1.0);
+        else if (type === 'yagi') base = Math.pow(Math.max(0, Math.cos(t)), 2.6) + 0.1 * Math.pow(Math.max(0, Math.cos(t + Math.PI)), 2);
+      }
+      return amp * base;
+    }
+
+    function getFormulaText() {
+      const n = parseInt(els.harmonicSlider.value, 10) || 2;
+      const amp = Math.max(0.1, parseFloat(els.amplitudeInput.value) || 1);
+      const type = els.patternType.value;
+      const planeLabel = els.planeMode.value === 'e' ? 'E-plane' : 'H-plane';
+      if (type === 'sin') return `${planeLabel}: r(θ) = ${amp.toFixed(1)} · |sin(θ)|`;
+      if (type === 'sin2') return `${planeLabel}: r(θ) = ${amp.toFixed(1)} · sin²(θ)`;
+      if (type === 'cos') return `${planeLabel}: r(θ) = ${amp.toFixed(1)} · |cos(θ)|`;
+      if (type === 'cardioid') return `${planeLabel}: r(θ) = ${amp.toFixed(1)} · (1 + cos(θ)) / 2`;
+      if (type === 'custom') return `${planeLabel}: r(θ) = ${amp.toFixed(1)} · |sin(${n}θ)|`;
+      if (type === 'array') return `${planeLabel}: AF(θ) = ${amp.toFixed(1)} · |sin(Nψ/2)/(Nsin(ψ/2))|`;
+      if (type === 'isotropic') return `${planeLabel}: r(θ) = ${amp.toFixed(1)} (모든 방향 동일)`;
+      if (type === 'dipole') return `${planeLabel}: 다이폴 근사 패턴`;
+      if (type === 'patch') return `${planeLabel}: 패치 안테나 근사 패턴`;
+      return `${planeLabel}: 지향성 안테나 근사 패턴`;
+    }
+
+    function buildData() {
+      const sampleCount = Math.max(181, parseInt(els.samplesInput.value, 10) || 721);
+      const displayAngles = [];
+      const radiiLinear = [];
+      for (let i = 0; i < sampleCount; i++) {
+        const displayTheta = -180 + (360 * i) / (sampleCount - 1);
+        displayAngles.push(displayTheta);
+        radiiLinear.push(getPatternValue(displayAngleToPatternAngle(displayTheta)));
+      }
+      const peak = Math.max(...radiiLinear, 1e-9);
+      const radii = radiiLinear.map(v => els.scaleMode.value === 'db' ? Math.max(-40, 20 * Math.log10(Math.max(v / peak, 1e-6))) : v);
+      return { displayAngles, radii, radiiLinear, peak };
+    }
+
+    function getPeakValue() {
+      let peak = 0;
+      for (let i = 0; i < 1441; i++) peak = Math.max(peak, getPatternValue((360 * i) / 1440));
+      return peak;
+    }
+
+    function getSelectedPoint() {
+      const displayTheta = wrapTo180(state.angleDeg);
+      const theta = displayAngleToPatternAngle(displayTheta);
+      const linear = getPatternValue(theta);
+      const peak = getPeakValue();
+      const displayValue = els.scaleMode.value === 'db' ? Math.max(-40, 20 * Math.log10(Math.max(linear / Math.max(peak, 1e-9), 1e-6))) : linear;
+      return { theta, displayTheta, r: displayValue, linear };
+    }
+
+    function analyzePattern() {
+      const { displayAngles, radiiLinear, peak } = buildData();
+      let peakIndex = 0;
+      const nullAngles = [];
+      const localPeaks = [];
+      for (let i = 1; i < displayAngles.length - 1; i++) {
+        if (radiiLinear[i] > radiiLinear[peakIndex]) peakIndex = i;
+        if (radiiLinear[i] < peak * 0.02) {
+          if (nullAngles.length === 0 || Math.abs(displayAngles[i] - nullAngles[nullAngles.length - 1]) > 2) nullAngles.push(displayAngles[i]);
+        }
+        if (radiiLinear[i] > radiiLinear[i - 1] && radiiLinear[i] > radiiLinear[i + 1]) localPeaks.push({ angle: displayAngles[i], value: radiiLinear[i] });
+      }
+      const peakAngle = displayAngles[peakIndex];
+      const sideLobes = localPeaks.filter(item => Math.abs(item.angle - peakAngle) > 5).sort((a, b) => b.value - a.value);
+      const highestSideLobe = sideLobes.length ? sideLobes[0] : null;
+      const sllDb = highestSideLobe ? 20 * Math.log10(Math.max(highestSideLobe.value / peak, 1e-6)) : null;
+      const threshold = peak / Math.sqrt(2);
+      let left = peakIndex, right = peakIndex;
+      while (left > 0 && radiiLinear[left] > threshold) left--;
+      while (right < displayAngles.length - 1 && radiiLinear[right] > threshold) right++;
+      const beamwidth = Math.abs(displayAngles[right] - displayAngles[left]);
+      return { peak, peakAngle, nullCount: nullAngles.length, nullAngles, beamwidth, highestSideLobe, sllDb };
+    }
+
+    function updateReadouts() {
+      const { displayTheta, r, linear } = getSelectedPoint();
+      const analysis = analyzePattern();
+      const isKo = els.languageMode.value === 'ko';
+      const orientationVal = parseFloat(els.antennaOrientation.value || 0);
+      const axisDelta = Math.abs(wrapTo180(analysis.peakAngle - orientationVal));
+      els.readoutOrientation.textContent = `${orientationVal.toFixed(0)}°`;
+      els.readoutAxisDelta.textContent = `${axisDelta.toFixed(0)}°`;
+      if (axisDelta <= 10) {
+        els.readoutAlignment.textContent = '정렬';
+        els.readoutAlignment.style.color = '#15803d';
+      } else if (axisDelta <= 30) {
+        els.readoutAlignment.textContent = '부분 정렬';
+        els.readoutAlignment.style.color = '#c2410c';
+      } else {
+        els.readoutAlignment.textContent = '불일치';
+        els.readoutAlignment.style.color = '#b91c1c';
+      }
+      els.angleSlider.value = Math.round(displayTheta);
+      els.angleSliderValue.textContent = Math.round(displayTheta);
+      els.harmonicValue.textContent = els.harmonicSlider.value;
+      els.formulaText.textContent = getFormulaText();
+      els.helpPanel.style.display = els.helpMode.value === 'on' ? 'block' : 'none';
+      document.title = isKo ? '안테나 방사패턴 이론 학습기' : 'Antenna Radiation Pattern Learning Tool';
+      const heroTitle = document.querySelector('.hero h1');
+      const heroDesc = document.querySelector('.hero p');
+      if (heroTitle) heroTitle.textContent = isKo ? '안테나 방사패턴 이론 학습기' : 'Antenna Radiation Pattern Learning Tool';
+      if (heroDesc) heroDesc.textContent = isKo
+        ? '직각좌표계와 극좌표계를 함께 보면서 방사패턴을 학습할 수 있습니다. E-plane / H-plane 전환, 3D 회전, 메인로브 방향 화살표, 특정 컷 단면 보기, 실제 안테나 패턴 라이브러리까지 포함한 교육용 확장판입니다.'
+        : 'Learn antenna radiation patterns through linked rectangular and polar views, E/H-plane switching, 3D rotation, main-lobe direction arrows, cut views, and a practical antenna pattern library.';
+    }
+
+    function renderArrayVisual() {
+      const type = els.patternType.value;
+      const isArrayMode = type === 'array';
+      const N = Math.max(2, parseInt(els.elementCountInput.value, 10) || 4);
+      const d = Math.max(0.1, parseFloat(els.spacingInput.value) || 0.5);
+      const betaDeg = parseFloat(els.phaseInput.value) || 0;
+      const orientation = parseFloat(els.antennaOrientation.value || 0);
+      const rad = degToRad(orientation);
+      let traces = [];
+      let annotationText = '';
+
+      if (isArrayMode) {
+        const xs = [], ys = [], labels = [];
+        for (let i = 0; i < N; i++) {
+          const pos = i * d - ((N - 1) * d) / 2;
+          xs.push(pos * Math.cos(rad));
+          ys.push(pos * Math.sin(rad));
+          labels.push(`E${i + 1}`);
+        }
+        traces.push({ x: xs, y: ys, mode: 'markers+text+lines', text: labels, textposition: 'top center', marker: { size: 16, color: xs.map((_, i) => i + 1), colorscale: 'Blues', line: { width: 1, color: '#1e3a8a' } }, line: { color: '#60a5fa', width: 3 }, hovertemplate: '%{text}<br>x: %{x:.2f}<br>y: %{y:.2f}<extra></extra>' });
+        traces.push({ x: [0, 1.3 * Math.cos(rad)], y: [0, 1.3 * Math.sin(rad)], mode: 'lines+text', text: ['', 'array axis'], textposition: 'top center', line: { width: 2, color: '#ef4444', dash: 'dash' }, hoverinfo: 'skip' });
+        annotationText = `배열 축 방향 = ${orientation.toFixed(0)}° (array axis), N=${N}, d/λ=${d.toFixed(2)}, β=${betaDeg.toFixed(1)}°`;
+      } else if (type === 'dipole') {
+        const L = 1.2;
+        traces.push({ x: [-L * Math.cos(rad), L * Math.cos(rad)], y: [-L * Math.sin(rad), L * Math.sin(rad)], mode: 'lines+markers', marker: { size: 10, color: '#2563eb' }, line: { width: 6, color: '#1d4ed8' }, hovertemplate: 'Dipole axis<extra></extra>' });
+        traces.push({ x: [0, 1.4 * Math.cos(rad)], y: [0, 1.4 * Math.sin(rad)], mode: 'lines+text', text: ['', 'dipole axis'], textposition: 'top center', line: { width: 2, color: '#ef4444', dash: 'dash' }, hoverinfo: 'skip' });
+        annotationText = `다이폴 폴 축 방향 = ${orientation.toFixed(0)}° (dipole axis)`;
+      } else if (type === 'patch') {
+        const w = 1.6, h = 0.9;
+        const corners = [[-w/2, -h/2], [w/2, -h/2], [w/2, h/2], [-w/2, h/2], [-w/2, -h/2]].map(([x, y]) => [x * Math.cos(rad) - y * Math.sin(rad), x * Math.sin(rad) + y * Math.cos(rad)]);
+        traces.push({ x: corners.map(c => c[0]), y: corners.map(c => c[1]), mode: 'lines', line: { width: 4, color: '#0f766e' }, fill: 'toself', fillcolor: 'rgba(45,212,191,0.25)', hovertemplate: 'Patch surface<extra></extra>' });
+        traces.push({ x: [0, 1.3 * Math.cos(rad)], y: [0, 1.3 * Math.sin(rad)], mode: 'lines+text', text: ['', 'boresight'], textposition: 'top center', line: { width: 2, color: '#ef4444', dash: 'dash' }, hoverinfo: 'skip' });
+        annotationText = `패치 면 방향 = ${orientation.toFixed(0)}° (boresight)`;
+      } else if (type === 'yagi') {
+        const boomL = 2.2, perp = rad + Math.PI/2;
+        traces.push({ x: [-boomL/2 * Math.cos(rad), boomL/2 * Math.cos(rad)], y: [-boomL/2 * Math.sin(rad), boomL/2 * Math.sin(rad)], mode: 'lines', line: { width: 4, color: '#7c3aed' }, hoverinfo: 'skip' });
+        [-0.7, 0.1, 0.7].forEach((p, idx) => {
+          const cx = p * Math.cos(rad), cy = p * Math.sin(rad), len = idx === 0 ? 0.6 : (idx === 1 ? 0.45 : 0.35);
+          traces.push({ x: [cx - len*Math.cos(perp), cx + len*Math.cos(perp)], y: [cy - len*Math.sin(perp), cy + len*Math.sin(perp)], mode: 'lines', line: { width: 3, color: '#8b5cf6' }, hoverinfo: 'skip' });
+        });
+        traces.push({ x: [0, 1.4 * Math.cos(rad)], y: [0, 1.4 * Math.sin(rad)], mode: 'lines+text', text: ['', 'forward axis'], textposition: 'top center', line: { width: 2, color: '#ef4444', dash: 'dash' }, hoverinfo: 'skip' });
+        annotationText = `지향성 안테나 전방 방향 = ${orientation.toFixed(0)}° (forward axis)`;
+      } else {
+        traces.push({ x: [0], y: [0], mode: 'markers+text', text: ['ANT'], textposition: 'top center', marker: { size: 22, color: [1], colorscale: 'Viridis', line: { width: 1, color: '#1e3a8a' } }, hovertemplate: 'Antenna<extra></extra>' });
+        traces.push({ x: [0, 1.2 * Math.cos(rad)], y: [0, 1.2 * Math.sin(rad)], mode: 'lines+text', text: ['', 'reference'], textposition: 'top center', line: { width: 2, color: '#ef4444', dash: 'dash' }, hoverinfo: 'skip' });
+        annotationText = type === 'isotropic' ? `등방성 안테나 기준 방향 표시 = ${orientation.toFixed(0)}°` : `기본 패턴 기준 방향 = ${orientation.toFixed(0)}°`;
+      }
+
+      const layout = { margin: { l: 40, r: 20, t: 30, b: 40 }, xaxis: { title: 'X', showgrid: true, gridcolor: '#e2e8f0', zeroline: true, zerolinecolor: '#94a3b8', scaleanchor: 'y', scaleratio: 1 }, yaxis: { title: 'Y', showgrid: true, gridcolor: '#e2e8f0', zeroline: true, zerolinecolor: '#94a3b8' }, paper_bgcolor: '#fff', plot_bgcolor: '#fff', annotations: [{ xref: 'paper', yref: 'paper', x: 0.02, y: 0.94, text: annotationText, showarrow: false, font: { size: 14, color: '#0f172a' } }], showlegend: false };
+      Plotly.react('arrayVisual', traces, layout, { responsive: true, displayModeBar: false });
+    }
+
+    function render3DPattern() {
+      const phiSteps = 60, thetaSteps = 60;
+      const x = [], y = [], z = [];
+      const peak = Math.max(getPeakValue(), 1e-9);
+      const selected = getSelectedPoint();
+      const analysis = analyzePattern();
+      const cutPhi = degToRad(parseFloat(els.cutAngleInput.value || 0));
+      const orientation = parseFloat(els.antennaOrientation.value || 0);
+      const orientRad = degToRad(orientation);
+
+      for (let i = 0; i < thetaSteps; i++) {
+        const theta = Math.PI * i / (thetaSteps - 1);
+        const rowX = [], rowY = [], rowZ = [];
+        for (let j = 0; j < phiSteps; j++) {
+          const phi = 2 * Math.PI * j / (phiSteps - 1);
+          let thetaDeg = theta * 180 / Math.PI;
+          if (els.planeMode.value === 'h') thetaDeg = 90 - thetaDeg;
+          let r = getPatternValue(normalizeAngle(thetaDeg));
+          r = els.scaleMode.value === 'db' ? (Math.max(-40, 20 * Math.log10(Math.max(r / peak, 1e-6))) + 40) / 40 : r / peak;
+          rowX.push(r * Math.sin(theta) * Math.cos(phi));
+          rowY.push(r * Math.sin(theta) * Math.sin(phi));
+          rowZ.push(r * Math.cos(theta));
+        }
+        x.push(rowX); y.push(rowY); z.push(rowZ);
+      }
+
+      if (state.animating && els.rotate3D.value === 'on') state.spinAngle += 0.03;
+
+      const selectedTheta = degToRad(displayAngleToPatternAngle(selected.displayTheta));
+      const mainArrowLen = 1.15;
+      const mainArrowX = [0, mainArrowLen * Math.sin(selectedTheta) * Math.cos(cutPhi)];
+      const mainArrowY = [0, mainArrowLen * Math.sin(selectedTheta) * Math.sin(cutPhi)];
+      const mainArrowZ = [0, mainArrowLen * Math.cos(selectedTheta)];
+      const axisLen = 1.05;
+      const axisX = [0, axisLen * Math.cos(orientRad)];
+      const axisY = [0, axisLen * Math.sin(orientRad)];
+      const axisZ = [0, 0];
+
+      const data = [
+        { type: 'surface', x, y, z, colorscale: 'Viridis', showscale: false, opacity: 0.95, hovertemplate: 'x: %{x:.2f}<br>y: %{y:.2f}<br>z: %{z:.2f}<extra></extra>' },
+        { type: 'scatter3d', mode: 'lines+markers+text', x: mainArrowX, y: mainArrowY, z: mainArrowZ, text: ['', 'Main Lobe'], textposition: 'top center', line: { width: 8, color: '#dc2626' }, marker: { size: 4, color: '#dc2626' }, hoverinfo: 'skip' },
+        { type: 'scatter3d', mode: 'lines+markers+text', x: axisX, y: axisY, z: axisZ, text: ['', 'Antenna Axis'], textposition: 'top center', line: { width: 6, color: '#2563eb', dash: 'dash' }, marker: { size: 3, color: '#2563eb' }, hoverinfo: 'skip' }
+      ];
+
+      const spin = state.spinAngle, eyeR = 1.8;
+      const eye = els.rotate3D.value === 'on' ? { x: eyeR * Math.cos(spin), y: eyeR * Math.sin(spin), z: 1.1 } : { x: 1.4, y: 1.4, z: 1.1 };
+      const layout = {
+        margin: { l: 0, r: 0, t: 10, b: 0 },
+        scene: {
+          xaxis: { title: 'X' }, yaxis: { title: 'Y' }, zaxis: { title: 'Z' }, aspectmode: 'cube', camera: { eye },
+          annotations: [
+            { x: mainArrowX[1], y: mainArrowY[1], z: mainArrowZ[1], text: `Main Lobe ${analysis.peakAngle.toFixed(1)}°`, showarrow: true, arrowhead: 2, ax: 20, ay: -20, font: { color: '#dc2626', size: 12 } },
+            { x: axisX[1], y: axisY[1], z: axisZ[1], text: `Antenna Axis ${orientation.toFixed(0)}°`, showarrow: true, arrowhead: 2, ax: -20, ay: 20, font: { color: '#2563eb', size: 12 } }
+          ]
+        },
+        paper_bgcolor: '#fff', showlegend: false
+      };
+      Plotly.react('pattern3D', data, layout, { responsive: true, displayModeBar: false });
+    }
+
+    function renderCutPlot() {
+      const { displayAngles, radii } = buildData();
+      const selected = getSelectedPoint();
+      const cutAngle = parseFloat(els.cutAngleInput.value || 0);
+      const titleText = els.cutMode.value === 'azimuth' ? `Azimuth Cut @ ${cutAngle.toFixed(0)}°` : `Elevation Cut @ ${cutAngle.toFixed(0)}°`;
+      const data = [
+        { x: displayAngles, y: radii, mode: 'lines', line: { width: 3, color: '#0ea5e9' }, hovertemplate: 'θ: %{x:.1f}°<br>값: %{y:.3f}<extra></extra>' },
+        { x: [selected.displayTheta], y: [selected.r], mode: 'markers', marker: { size: 12, color: '#ef4444' }, hovertemplate: '선택 θ: %{x:.1f}°<br>값: %{y:.3f}<extra></extra>' },
+        { x: [cutAngle, cutAngle], y: els.scaleMode.value === 'db' ? [-40, 0] : [0, Math.max(...radii, 1) * 1.1], mode: 'lines', line: { color: '#f59e0b', width: 2, dash: 'dash' }, hoverinfo: 'skip' }
+      ];
+      const layout = { title: { text: titleText, font: { size: 16 } }, margin: { l: 55, r: 20, t: 50, b: 50 }, xaxis: { title: '각도 θ (deg)', range: [-180, 180], dtick: 30, gridcolor: '#e2e8f0', zeroline: true, zerolinecolor: '#94a3b8' }, yaxis: els.scaleMode.value === 'db' ? { title: '정규화 이득 (dB)', range: [-40, 0], dtick: 5, gridcolor: '#e2e8f0' } : { title: '반경 r', range: [0, Math.max(...radii, 1) * 1.1], gridcolor: '#e2e8f0' }, plot_bgcolor: '#fff', paper_bgcolor: '#fff', showlegend: false };
+      Plotly.react('cutPlot', data, layout, { responsive: true, displayModeBar: false });
+    }
+
+    function getQuizPool() {
+      return [
+        { key: 'sin', question: '영점(null)이 0°와 ±180° 부근에 있고, ±90° 부근에서 최대가 되는 기본 학습 패턴은 무엇일까요?', apply: () => { els.patternType.value = 'sin'; els.planeMode.value = 'e'; els.scaleMode.value = 'linear'; }, explanation: '기본 |sin(θ)| 패턴은 broadside 방향에서 최대이고 축 방향에서 0이 됩니다.' },
+        { key: 'dipole', question: 'broadside 최대, 축 방향 null 특성을 보이는 대표적인 실제 안테나는 무엇일까요?', apply: () => { els.patternType.value = 'dipole'; els.planeMode.value = 'e'; els.scaleMode.value = 'linear'; }, explanation: '반파장 다이폴은 전형적인 8자형 broadside 패턴을 가집니다.' },
+        { key: 'patch', question: '한쪽 방향으로 넓은 메인로브가 형성되는 평판형 안테나 근사 패턴은 무엇일까요?', apply: () => { els.patternType.value = 'patch'; els.planeMode.value = 'e'; els.scaleMode.value = 'linear'; }, explanation: '패치 안테나는 전방 중심의 비교적 넓은 메인로브를 갖는 경우가 많습니다.' },
+        { key: 'array', question: '소자 수 N, 간격 d/λ, 위상차 β에 따라 빔 조향과 빔폭이 달라지는 패턴은 무엇일까요?', apply: () => { els.patternType.value = 'array'; els.elementCountInput.value = 6; els.spacingInput.value = 0.5; els.phaseInput.value = 0; els.planeMode.value = 'e'; els.scaleMode.value = 'linear'; }, explanation: '배열 안테나는 소자 수와 위상차에 따라 메인로브 방향과 사이드로브가 달라집니다.' }
+      ];
+    }
+
+    function startNewQuiz() {
+      const pool = getQuizPool();
+      const item = pool[Math.floor(Math.random() * pool.length)];
+      state.quizAnswer = item.key;
+      item.apply();
+      state.angleDeg = 45;
+      els.quizQuestion.textContent = item.question;
+      els.quizFeedback.textContent = '패턴을 관찰한 뒤 보기 중 하나를 선택하세요.';
+      document.querySelectorAll('.quiz-option').forEach(btn => { btn.disabled = false; btn.style.background = ''; btn.style.color = ''; btn.style.borderColor = ''; });
+      renderPlots();
+    }
+
+    function submitQuizAnswer(answer) {
+      if (!state.quizAnswer) return;
+      state.quizTotal += 1;
+      const item = getQuizPool().find(q => q.key === state.quizAnswer);
+      if (answer === state.quizAnswer) {
+        state.quizCorrect += 1;
+        els.quizFeedback.textContent = `정답입니다. ${item.explanation}`;
+      } else {
+        els.quizFeedback.textContent = `오답입니다. 정답은 ${state.quizAnswer}이며, ${item.explanation}`;
+      }
+      els.quizCorrectCount.textContent = String(state.quizCorrect);
+      els.quizTotalCount.textContent = String(state.quizTotal);
+      document.querySelectorAll('.quiz-option').forEach(btn => {
+        if (btn.dataset.answer === state.quizAnswer) { btn.style.background = '#dcfce7'; btn.style.color = '#166534'; btn.style.borderColor = '#86efac'; }
+        else if (btn.dataset.answer === answer) { btn.style.background = '#fee2e2'; btn.style.color = '#991b1b'; btn.style.borderColor = '#fca5a5'; }
+        btn.disabled = true;
+      });
+    }
+
+    function showQuizAnswer() {
+      if (!state.quizAnswer) return;
+      const item = getQuizPool().find(q => q.key === state.quizAnswer);
+      els.quizFeedback.textContent = `정답은 ${state.quizAnswer}입니다. ${item.explanation}`;
+      document.querySelectorAll('.quiz-option').forEach(btn => {
+        if (btn.dataset.answer === state.quizAnswer) { btn.style.background = '#dcfce7'; btn.style.color = '#166534'; btn.style.borderColor = '#86efac'; }
+      });
+    }
+
+    function renderPlots() {
+      const { displayAngles, radii, peak } = buildData();
+      const selected = getSelectedPoint();
+      const analysis = analyzePattern();
+      const maxRadius = els.scaleMode.value === 'db' ? 0 : Math.max(...radii, 1);
+      const mainLobeY = els.scaleMode.value === 'db' ? Math.max(-40, 20 * Math.log10(Math.max(analysis.peak / Math.max(peak, 1e-9), 1e-6))) : analysis.peak;
+      const cutAngle = parseFloat(els.cutAngleInput.value || 0);
+      const cartesianData = [
+        { x: displayAngles, y: radii, mode: 'lines', line: { width: 3, color: '#2563eb' }, hovertemplate: 'θ: %{x:.1f}°<br>값: %{y:.3f}<extra></extra>' },
+        { x: [selected.displayTheta], y: [selected.r], mode: 'markers', marker: { size: 12, color: '#dc2626' }, hovertemplate: '선택 θ: %{x:.1f}°<br>값: %{y:.3f}<extra></extra>' },
+        { x: [analysis.peakAngle], y: [mainLobeY], mode: 'markers', marker: { size: 12, color: '#16a34a', symbol: 'diamond' }, hovertemplate: '메인로브 θ: %{x:.1f}°<extra></extra>' },
+        { x: analysis.nullAngles, y: analysis.nullAngles.map(() => els.scaleMode.value === 'db' ? -40 : 0), mode: 'markers', marker: { size: 7, color: '#7c3aed' }, hovertemplate: 'Null θ: %{x:.1f}°<extra></extra>' },
+        { x: [cutAngle, cutAngle], y: els.scaleMode.value === 'db' ? [-40, 0] : [0, maxRadius * 1.1], mode: 'lines', line: { color: '#f59e0b', width: 2, dash: 'dot' }, hoverinfo: 'skip' }
+      ];
+      const cartesianLayout = { margin: { l: 55, r: 20, t: 20, b: 50 }, xaxis: { title: '각도 θ (deg)', range: [-180, 180], dtick: 30, gridcolor: '#e2e8f0', zeroline: true, zerolinecolor: '#94a3b8' }, yaxis: els.scaleMode.value === 'db' ? { title: '정규화 이득 (dB)', range: [-40, 0], dtick: 5, gridcolor: '#e2e8f0' } : { title: '반경 r', range: [0, maxRadius * 1.1], gridcolor: '#e2e8f0' }, plot_bgcolor: '#fff', paper_bgcolor: '#fff', showlegend: false };
+      const polarData = [
+        { type: 'scatterpolar', mode: 'lines', theta: displayAngles, r: radii, line: { width: 3, color: '#0f766e' }, hovertemplate: 'θ: %{theta:.1f}°<br>값: %{r:.3f}<extra></extra>' },
+        { type: 'scatterpolar', mode: 'markers', theta: [selected.displayTheta], r: [selected.r], marker: { size: 12, color: '#dc2626' }, hovertemplate: '선택 θ: %{theta:.1f}°<br>값: %{r:.3f}<extra></extra>' },
+        { type: 'scatterpolar', mode: 'markers', theta: [analysis.peakAngle], r: [els.scaleMode.value === 'db' ? 0 : analysis.peak], marker: { size: 12, color: '#16a34a', symbol: 'diamond' }, hovertemplate: '메인로브 θ: %{theta:.1f}°<extra></extra>' },
+        { type: 'scatterpolar', mode: 'lines', theta: [cutAngle, cutAngle], r: els.scaleMode.value === 'db' ? [-40, 0] : [0, maxRadius * 1.1], line: { color: '#f59e0b', width: 2, dash: 'dot' }, hoverinfo: 'skip' }
+      ];
+      const polarLayout = { margin: { l: 20, r: 20, t: 20, b: 20 }, showlegend: false, paper_bgcolor: '#fff', polar: { bgcolor: '#fff', radialaxis: els.scaleMode.value === 'db' ? { visible: true, range: [-40, 0], dtick: 5, gridcolor: '#cbd5e1' } : { visible: true, range: [0, maxRadius * 1.1], gridcolor: '#cbd5e1' }, angularaxis: { direction: 'counterclockwise', rotation: 90, gridcolor: '#cbd5e1' } } };
+      Plotly.react('cartesianPlot', cartesianData, cartesianLayout, { responsive: true, displayModeBar: false });
+      Plotly.react('polarPlot', polarData, polarLayout, { responsive: true, displayModeBar: false });
+      renderArrayVisual();
+      render3DPattern();
+      renderCutPlot();
+      updateReadouts();
+    }
+
+    function setAngleFromCartesian(evt) { if (!evt?.points?.length) return; state.angleDeg = wrapTo180(evt.points[0].x); renderPlots(); }
+    function setAngleFromPolar(evt) { if (!evt?.points?.length) return; state.angleDeg = wrapTo180(evt.points[0].theta); renderPlots(); }
+    function stopAnimation() { state.animating = false; els.animateBtn.textContent = '자동 이동'; if (state.timer) { clearInterval(state.timer); state.timer = null; } }
+    function startAnimation() { stopAnimation(); state.animating = true; els.animateBtn.textContent = '정지'; state.timer = setInterval(() => { state.angleDeg = wrapTo180(state.angleDeg + 2); renderPlots(); }, 80); }
+
+    function bindEvents() {
+      [els.patternType, els.harmonicSlider, els.amplitudeInput, els.samplesInput, els.elementCountInput, els.spacingInput, els.phaseInput, els.scaleMode, els.planeMode, els.cutMode, els.cutAngleInput, els.rotate3D, els.antennaOrientation, els.languageMode, els.helpMode].forEach(el => el.addEventListener('input', renderPlots));
+      els.angleSlider.addEventListener('input', e => { state.angleDeg = wrapTo180(parseFloat(e.target.value) || 0); renderPlots(); });
+      els.resetBtn.addEventListener('click', () => {
+        stopAnimation();
+        els.patternType.value = 'sin';
+        els.harmonicSlider.value = 2;
+        els.amplitudeInput.value = 1;
+        els.samplesInput.value = 721;
+        els.elementCountInput.value = 4;
+        els.spacingInput.value = 0.5;
+        els.phaseInput.value = 0;
+        els.scaleMode.value = 'linear';
+        els.planeMode.value = 'e';
+        els.cutMode.value = 'azimuth';
+        els.cutAngleInput.value = 0;
+        els.rotate3D.value = 'off';
+        els.antennaOrientation.value = 0;
+        els.languageMode.value = 'ko';
+        els.helpMode.value = 'on';
+        state.angleDeg = 45;
+        state.spinAngle = 0;
+        state.quizAnswer = null;
+        state.quizCorrect = 0;
+        state.quizTotal = 0;
+        els.quizCorrectCount.textContent = '0';
+        els.quizTotalCount.textContent = '0';
+        els.quizFeedback.textContent = '새 문제를 눌러 퀴즈를 시작하세요.';
+        els.quizQuestion.textContent = '이 패턴은 어떤 안테나 또는 패턴 형태에 가장 가까울까요?';
+        renderPlots();
+      });
+      els.animateBtn.addEventListener('click', () => { if (state.animating) stopAnimation(); else startAnimation(); });
+      els.savePngBtn.addEventListener('click', async () => {
+        const gd = document.getElementById('cartesianPlot');
+        try {
+          const url = await Plotly.toImage(gd, { format: 'png', width: 1400, height: 800, scale: 2 });
+          const a = document.createElement('a');
+          a.href = url;
+          a.download = 'antenna-pattern-cartesian.png';
+          a.click();
+        } catch (e) { console.error(e); }
+      });
+      els.fullscreenBtn.addEventListener('click', async () => {
+        const page = document.documentElement;
+        if (!document.fullscreenElement) await page.requestFullscreen();
+        else await document.exitFullscreen();
+      });
+      els.newQuizBtn.addEventListener('click', startNewQuiz);
+      els.showAnswerBtn.addEventListener('click', showQuizAnswer);
+      document.querySelectorAll('.quiz-option').forEach(btn => btn.addEventListener('click', () => submitQuizAnswer(btn.dataset.answer)));
+      document.querySelectorAll('.orientation-preset').forEach(btn => {
+        btn.addEventListener('click', () => {
+          els.antennaOrientation.value = btn.dataset.angle;
+          renderPlots();
+        });
+      });
+      document.getElementById('cartesianPlot').on('plotly_click', setAngleFromCartesian);
+      document.getElementById('polarPlot').on('plotly_click', setAngleFromPolar);
+    }
+
+    renderPlots();
+    bindEvents();
+  </script>
+</body>
+</html>
