@@ -1,0 +1,554 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>07. 안테나 페어 · 패턴 — ILS 기초 개념</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700;900&family=JetBrains+Mono:wght@400;700&family=Bebas+Neue&display=swap');
+:root {
+  --bg:#0a0e1a; --bg2:#111827; --bg3:#1a2236;
+  --accent:#00d4ff; --accent2:#ff6b35; --accent3:#7c3aed;
+  --green:#10b981; --yellow:#f59e0b; --red:#ef4444;
+  --text:#e2e8f0; --text-dim:#94a3b8; --border:rgba(0,212,255,0.15);
+  --sb-w:260px; --tb-h:52px;
+}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:'Noto Sans KR',sans-serif;background:var(--bg);color:var(--text);line-height:1.7;font-size:16px;display:flex;flex-direction:column;min-height:100vh;overflow-x:hidden;}
+.topbar{height:var(--tb-h);background:rgba(10,14,26,0.98);border-bottom:1px solid var(--border);display:flex;align-items:center;padding:0 16px;gap:12px;position:fixed;top:0;left:0;right:0;z-index:500;}
+.tb-btn{width:32px;height:32px;display:flex;flex-direction:column;justify-content:center;align-items:center;gap:5px;cursor:pointer;border-radius:6px;flex-shrink:0;transition:background 0.15s;border:none;background:transparent;}
+.tb-btn:hover{background:rgba(255,255,255,0.07);}
+.tb-btn span{display:block;width:18px;height:2px;background:var(--text-dim);border-radius:2px;transition:all 0.25s;transform-origin:center;}
+body.sb-open .tb-btn span:nth-child(1){transform:translateY(7px) rotate(45deg);}
+body.sb-open .tb-btn span:nth-child(2){opacity:0;transform:scaleX(0);}
+body.sb-open .tb-btn span:nth-child(3){transform:translateY(-7px) rotate(-45deg);}
+.tb-logo{font-family:'Bebas Neue',sans-serif;font-size:20px;letter-spacing:3px;color:#fff;white-space:nowrap;text-decoration:none;}
+.tb-logo span{color:var(--accent);}
+.tb-divider{width:1px;height:20px;background:rgba(255,255,255,0.12);flex-shrink:0;}
+.tb-breadcrumb{font-size:13px;color:var(--text-dim);display:flex;align-items:center;gap:6px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;flex:1;min-width:0;}
+.tb-breadcrumb .sep{opacity:0.4;}
+.tb-breadcrumb .cur{color:var(--text);font-weight:600;}
+.tb-actions{display:flex;align-items:center;gap:6px;margin-left:auto;flex-shrink:0;}
+.tb-nav-btn{display:flex;align-items:center;gap:5px;background:rgba(0,212,255,0.07);border:1px solid rgba(0,212,255,0.2);color:var(--text-dim);padding:5px 12px;border-radius:6px;font-size:12px;font-weight:500;text-decoration:none;transition:all 0.15s;white-space:nowrap;}
+.tb-nav-btn:hover{color:var(--accent);border-color:var(--accent);background:rgba(0,212,255,0.12);}
+.tb-nav-btn.disabled{opacity:0.3;pointer-events:none;}
+.tb-nav-btn.home{background:transparent;border-color:rgba(255,255,255,0.1);}
+.tb-fs-btn{width:30px;height:30px;display:flex;align-items:center;justify-content:center;background:transparent;border:1px solid rgba(255,255,255,0.1);color:var(--text-dim);border-radius:6px;cursor:pointer;font-size:13px;transition:all 0.15s;flex-shrink:0;}
+.tb-fs-btn:hover{color:var(--accent);border-color:var(--accent);}
+.layout{display:flex;flex:1;padding-top:var(--tb-h);}
+.sidebar{width:var(--sb-w);flex-shrink:0;background:var(--bg2);border-right:1px solid rgba(255,255,255,0.06);position:fixed;top:var(--tb-h);left:0;height:calc(100vh - var(--tb-h));overflow-y:auto;overflow-x:hidden;padding:12px 0 40px;transition:transform 0.25s ease,opacity 0.25s ease;z-index:400;}
+.sidebar::-webkit-scrollbar{width:3px;}
+.sidebar::-webkit-scrollbar-thumb{background:rgba(255,255,255,0.1);border-radius:3px;}
+.sidebar.collapsed{transform:translateX(-100%);opacity:0;pointer-events:none;}
+.sb-info{padding:14px 16px 12px;border-bottom:1px solid rgba(255,255,255,0.06);margin-bottom:8px;}
+.sb-info-tag{font-size:10px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:var(--accent);opacity:0.7;margin-bottom:4px;}
+.sb-info-title{font-size:14px;font-weight:700;color:var(--text);line-height:1.3;margin-bottom:4px;}
+.sb-info-sub{font-size:11px;color:var(--text-dim);line-height:1.5;}
+.sb-section-label{padding:12px 14px 5px;font-size:10px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:var(--text-dim);}
+.sb-divider{margin:8px 14px;border:none;border-top:1px solid rgba(255,255,255,0.08);}
+.sb-list-label{padding:10px 14px 5px;font-size:10px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:var(--text-dim);}
+.sb-toc-item{display:flex;align-items:center;gap:6px;padding:5px 14px 5px 16px;text-decoration:none;color:var(--text-dim);font-size:12px;transition:all 0.15s;border-left:2px solid transparent;}
+.sb-toc-item:hover{color:var(--accent);border-left-color:var(--border);}
+.sb-toc-item.active{color:var(--accent);border-left-color:var(--accent);font-weight:600;}
+.sb-group{margin-bottom:2px;}
+.sb-group-header{display:flex;align-items:center;gap:8px;padding:10px 14px 5px;cursor:pointer;user-select:none;}
+.sb-group-header:hover .sb-cat-name{color:var(--text);}
+.sb-cat-dot{width:6px;height:6px;border-radius:50%;flex-shrink:0;}
+.sb-cat-name{font-size:10px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:var(--text-dim);flex:1;white-space:nowrap;transition:color 0.15s;}
+.sb-chevron{font-size:9px;color:var(--text-dim);transition:transform 0.2s;flex-shrink:0;}
+.sb-group.closed .sb-chevron{transform:rotate(-90deg);}
+.sb-items{overflow:hidden;max-height:600px;transition:max-height 0.25s ease,opacity 0.2s ease;opacity:1;}
+.sb-group.closed .sb-items{max-height:0;opacity:0;}
+.sb-item{display:flex;align-items:center;gap:8px;padding:6px 14px 6px 20px;text-decoration:none;color:var(--text-dim);font-size:12px;transition:all 0.15s;border-left:2px solid transparent;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.sb-item:hover{color:var(--text);background:rgba(255,255,255,0.04);border-left-color:rgba(255,255,255,0.15);}
+.sb-item.active{color:var(--accent);background:rgba(0,212,255,0.07);border-left-color:var(--accent);font-weight:600;}
+.sb-num{font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--accent);opacity:0.45;min-width:18px;flex-shrink:0;}
+.sb-check{margin-left:auto;font-size:10px;color:var(--green);flex-shrink:0;}
+.main{flex:1;margin-left:var(--sb-w);min-width:0;transition:margin-left 0.25s ease;padding-bottom:80px;}
+body:not(.sb-open) .main{margin-left:0;}
+.container{max-width:1000px;margin:0 auto;padding:0 40px;}
+.section{padding:64px 0 0;animation:fadeIn 0.35s ease both;}
+.section-header{display:flex;align-items:center;gap:20px;margin-bottom:36px;padding-bottom:18px;border-bottom:1px solid var(--border);}
+.section-num{font-family:'Bebas Neue',sans-serif;font-size:56px;color:var(--accent);opacity:0.2;line-height:1;min-width:64px;}
+.section-title{font-size:26px;font-weight:700;color:#fff;}
+.section-subtitle{font-size:14px;color:var(--text-dim);margin-top:4px;}
+.callout{border-left:3px solid var(--accent);background:rgba(0,212,255,0.05);padding:18px 22px;margin:22px 0;border-radius:0 8px 8px 0;}
+.callout.orange{border-color:var(--accent2);background:rgba(255,107,53,0.05);}
+.callout.green{border-color:var(--green);background:rgba(16,185,129,0.05);}
+.callout.purple{border-color:var(--accent3);background:rgba(124,58,237,0.05);}
+.callout.yellow{border-color:var(--yellow);background:rgba(245,158,11,0.05);}
+.callout-title{font-size:12px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:var(--accent);margin-bottom:8px;}
+.callout.orange .callout-title{color:var(--accent2);}
+.callout.green .callout-title{color:var(--green);}
+.callout.purple .callout-title{color:var(--accent3);}
+.callout.yellow .callout-title{color:var(--yellow);}
+.formula-box{background:var(--bg3);border:1px solid var(--border);border-radius:12px;padding:26px 30px;margin:22px 0;text-align:center;position:relative;}
+.formula-label{position:absolute;top:-11px;left:18px;background:var(--bg);padding:0 10px;font-size:11px;color:var(--accent);letter-spacing:1px;font-weight:700;}
+.formula{font-family:'JetBrains Mono',monospace;font-size:20px;color:var(--accent);margin:8px 0;}
+.formula-desc{font-size:13px;color:var(--text-dim);margin-top:12px;text-align:left;}
+.grid-2{display:grid;grid-template-columns:1fr 1fr;gap:18px;margin:22px 0;}
+.grid-3{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin:22px 0;}
+@media(max-width:768px){.grid-2,.grid-3{grid-template-columns:1fr;}}
+.card{background:var(--bg2);border:1px solid rgba(255,255,255,0.07);border-radius:12px;padding:22px;transition:border-color 0.2s;}
+.card:hover{border-color:var(--border);}
+.card-title{font-size:14px;font-weight:700;color:var(--accent);margin-bottom:10px;display:flex;align-items:center;gap:8px;}
+.card-icon{font-size:18px;}
+.diagram-wrap{background:var(--bg2);border:1px solid var(--border);border-radius:12px;padding:28px;margin:22px 0;display:flex;flex-direction:column;align-items:center;}
+.diagram-title{font-size:12px;color:var(--text-dim);text-transform:uppercase;letter-spacing:1px;margin-bottom:22px;font-weight:700;}
+.table-wrap{overflow-x:auto;margin:22px 0;}
+table{width:100%;border-collapse:collapse;font-size:14px;}
+th{background:rgba(0,212,255,0.08);padding:11px 14px;text-align:left;font-weight:700;font-size:12px;color:var(--accent);letter-spacing:0.5px;border-bottom:1px solid var(--border);}
+td{padding:11px 14px;border-bottom:1px solid rgba(255,255,255,0.05);vertical-align:top;}
+tr:last-child td{border-bottom:none;}
+tr:hover td{background:rgba(255,255,255,0.02);}
+.mono{font-family:'JetBrains Mono',monospace;font-size:13px;}
+.quiz-box{background:linear-gradient(135deg,rgba(124,58,237,0.08),rgba(0,212,255,0.04));border:1px solid rgba(124,58,237,0.3);border-radius:12px;padding:26px;margin:28px 0;}
+.quiz-title{font-size:12px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:var(--accent3);margin-bottom:16px;}
+.quiz-q{font-size:15px;font-weight:500;color:#fff;margin-bottom:12px;padding-left:18px;border-left:2px solid var(--accent3);}
+.quiz-a{font-size:14px;color:var(--text-dim);margin-bottom:8px;padding-left:18px;display:none;}
+.quiz-toggle{background:rgba(124,58,237,0.15);border:1px solid rgba(124,58,237,0.3);color:var(--accent3);padding:7px 18px;border-radius:6px;cursor:pointer;font-size:12px;font-weight:700;letter-spacing:0.5px;transition:all 0.2s;margin-top:8px;}
+.quiz-toggle:hover{background:rgba(124,58,237,0.25);}
+.hl-blue{color:var(--accent);font-weight:700;}
+.hl-orange{color:var(--accent2);font-weight:700;}
+.hl-green{color:var(--green);font-weight:700;}
+.hl-yellow{color:var(--yellow);font-weight:700;}
+.hl-purple{color:var(--accent3);font-weight:700;}
+p{margin-bottom:14px;}
+h3{font-size:19px;font-weight:700;color:#fff;margin:26px 0 11px;}
+h4{font-size:15px;font-weight:700;color:var(--accent);margin:18px 0 8px;}
+ul,ol{padding-left:20px;margin-bottom:14px;}
+li{margin-bottom:6px;}
+strong{color:var(--text);}
+.steps{counter-reset:step;}
+.step{display:flex;gap:18px;margin-bottom:18px;align-items:flex-start;}
+.step-num{min-width:34px;height:34px;background:var(--accent);color:var(--bg);border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:900;font-size:14px;flex-shrink:0;}
+.step-content{flex:1;}
+.step-title{font-weight:700;color:#fff;margin-bottom:4px;}
+footer{background:var(--bg2);border-top:1px solid rgba(255,255,255,0.07);padding:24px 40px;margin-left:var(--sb-w);transition:margin-left 0.25s ease;}
+body:not(.sb-open) footer{margin-left:0;}
+.footer-inner{max-width:1000px;margin:0 auto;display:flex;justify-content:space-between;align-items:center;gap:20px;flex-wrap:wrap;}
+.footer-left{line-height:1.6;}
+.footer-org{font-size:13px;font-weight:700;color:var(--text);}
+.footer-name{font-size:12px;color:var(--text-dim);margin-top:2px;}
+.footer-right{text-align:right;}
+.footer-course{font-size:11px;color:var(--text-dim);}
+.footer-source{font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--accent);opacity:0.5;margin-top:2px;}
+body.fullscreen .sidebar,body.fullscreen footer{display:none!important;}
+body.fullscreen .main{margin-left:0;}
+@keyframes fadeIn{from{opacity:0;transform:translateY(12px);}to{opacity:1;transform:translateY(0);}}
+@media(max-width:680px){
+  .sidebar{display:none;}
+  .main{margin-left:0!important;}
+  footer{margin-left:0!important;}
+  .container{padding:0 20px;}
+  .tb-breadcrumb .cur{display:none;}
+}
+</style>
+</head>
+<body class="sb-open">
+
+<header class="topbar">
+  <button class="tb-btn" onclick="toggleSidebar()" title="목차" aria-label="목차">
+    <span></span><span></span><span></span>
+  </button>
+  <a class="tb-logo" href="index.html">ILS <span>Concepts</span></a>
+  <div class="tb-divider"></div>
+  <div class="tb-breadcrumb">
+    <span>③ 안테나</span>
+    <span class="sep">›</span>
+    <span class="cur">07. 안테나 페어 · 패턴</span>
+  </div>
+  <div class="tb-actions">
+    <a class="tb-nav-btn home" href="index.html">☰ 목록</a>
+    <a class="tb-nav-btn" id="btn-prev" href="06_ddm.html">← 이전</a>
+    <a class="tb-nav-btn" id="btn-next" href="08_loc.html">다음 →</a>
+    <button class="tb-fs-btn" onclick="toggleFullscreen()" title="전체화면" id="fsBtn">⛶</button>
+  </div>
+</header>
+
+<div class="layout">
+  <aside class="sidebar" id="sidebar">
+    <div class="sb-info">
+      <div class="sb-info-tag">ILS 기초 개념 · 07</div>
+      <div class="sb-info-title">안테나 페어 · 패턴</div>
+      <div class="sb-info-sub">교재: CH3·4·5</div>
+    </div>
+
+    <div class="sb-section-label">이 페이지 목차</div>
+    <a class="sb-toc-item" href="#ch1">① 기본 안테나 쌍</a>
+    <a class="sb-toc-item" href="#ch2">② SIP 패턴</a>
+    <a class="sb-toc-item" href="#ch3">③ SOP 패턴</a>
+    <a class="sb-toc-item" href="#ch4">④ 다중 배열</a>
+    <a class="sb-toc-item" href="#ch5">⑤ 이미지 안테나</a>
+    <a class="sb-toc-item" href="#quiz">⑥ 연습문제</a>
+
+    <hr class="sb-divider">
+    <div class="sb-list-label">전체 강의 목록</div>
+
+    <div class="sb-group" id="grp1">
+      <div class="sb-group-header" onclick="toggleGroup('grp1')">
+        <div class="sb-cat-dot" style="background:#10b981"></div>
+        <span class="sb-cat-name">① 기초 개념</span>
+        <span class="sb-chevron">▾</span>
+      </div>
+      <div class="sb-items">
+        <a class="sb-item" href="01_wave.html"><span class="sb-num">01</span>전자기파 전파 원리<span class="sb-check">✓</span></a>
+        <a class="sb-item" href="02_phasor.html"><span class="sb-num">02</span>페이서 · 벡터 합성<span class="sb-check">✓</span></a>
+        <a class="sb-item" href="03_phase.html"><span class="sb-num">03</span>위상 (Phase)<span class="sb-check">✓</span></a>
+      </div>
+    </div>
+    <div class="sb-group" id="grp2">
+      <div class="sb-group-header" onclick="toggleGroup('grp2')">
+        <div class="sb-cat-dot" style="background:#00d4ff"></div>
+        <span class="sb-cat-name">② 신호 원리</span>
+        <span class="sb-chevron">▾</span>
+      </div>
+      <div class="sb-items">
+        <a class="sb-item" href="04_modulation.html"><span class="sb-num">04</span>AM 변조 · 측파대<span class="sb-check">✓</span></a>
+        <a class="sb-item" href="05_spacemod.html"><span class="sb-num">05</span>공간변조 CSB·SBO<span class="sb-check">✓</span></a>
+        <a class="sb-item" href="06_ddm.html"><span class="sb-num">06</span>DDM · 코스폭<span class="sb-check">✓</span></a>
+      </div>
+    </div>
+    <div class="sb-group" id="grp3">
+      <div class="sb-group-header" onclick="toggleGroup('grp3')">
+        <div class="sb-cat-dot" style="background:#f59e0b"></div>
+        <span class="sb-cat-name">③ 안테나</span>
+        <span class="sb-chevron">▾</span>
+      </div>
+      <div class="sb-items">
+        <a class="sb-item active" href="07_antenna.html"><span class="sb-num">07</span>안테나 페어 · 패턴<span class="sb-check">✓</span></a>
+        <a class="sb-item" href="08_loc.html"><span class="sb-num">08</span>LOC 배열 · 패턴<span class="sb-check">✓</span></a>
+        <a class="sb-item" href="09_gp.html"><span class="sb-num">09</span>GP · Null Reference<span class="sb-check">✓</span></a>
+      </div>
+    </div>
+    <div class="sb-group" id="grp4">
+      <div class="sb-group-header" onclick="toggleGroup('grp4')">
+        <div class="sb-cat-dot" style="background:#ff6b35"></div>
+        <span class="sb-cat-name">④ 운용·점검</span>
+        <span class="sb-chevron">▾</span>
+      </div>
+      <div class="sb-items">
+        <a class="sb-item" href="10_monitor.html"><span class="sb-num">10</span>모니터링 · 알람<span class="sb-check">✓</span></a>
+        <a class="sb-item" href="11_flight.html"><span class="sb-num">11</span>비행검사 해석<span class="sb-check">✓</span></a>
+      </div>
+    </div>
+  </aside>
+
+  <main class="main">
+    <div class="container">
+<div class="section" id="ch1">
+  <div class="section-header"><div class="section-num">01</div><div>
+    <div class="section-title">기본 안테나 쌍 (Basic Antenna Pair)</div>
+    <div class="section-subtitle">두 안테나에 신호를 공급하면 방사패턴이 만들어진다</div>
+  </div></div>
+  <div class="callout yellow"><div class="callout-title">⚡ 핵심 질문</div>
+  단일 안테나는 모든 방향으로 균일하게 방사한다. 그런데 두 안테나를 나란히 놓고 신호를 공급하면 왜 특정 방향에는 강하고, 다른 방향에는 0(Null)이 될까?</div>
+  <p>두 안테나에서 방사된 신호는 공간의 각 지점에서 합성된다. 합성 결과는 두 신호의 위상 관계에 따라 결정된다.</p>
+  <div class="formula-box">
+    <div class="formula-label">합성 전계강도 계산 (일반식)</div>
+    <div class="formula">E_t = E₁∠β₁ + E₂∠β₂</div>
+    <div class="formula-desc">
+      β₁ = φ₁ + a·sinθ &nbsp;&nbsp; (안테나 1 신호의 P점 위상)<br>
+      β₂ = φ₂ − a·sinθ &nbsp;&nbsp; (안테나 2 신호의 P점 위상)<br>
+      <strong>a</strong> = 안테나간 반거리 (전기각), <strong>θ</strong> = 관측 방향각
+    </div>
+  </div>
+</div>
+
+<div class="section" id="ch2">
+  <div class="section-header"><div class="section-num">02</div><div>
+    <div class="section-title">동위상 쌍 — SIP (Specific In-phase Pair)</div>
+    <div class="section-subtitle">같은 위상을 공급하면 정면이 최대, CSB에 사용</div>
+  </div></div>
+  <p>두 안테나에 동일한 위상(φ₁=φ₂=0°)의 전류를 공급한다.</p>
+  <div class="formula-box">
+    <div class="formula-label">SIP 합성 전계강도</div>
+    <div class="formula">E_SIP = 2I · cos(a · sinθ)</div>
+    <div class="formula-desc">
+      <strong>θ=0° (정면):</strong> cos(0)=1 → E=2I (최대)<br>
+      <strong>a·sinθ=90°일 때:</strong> cos(90°)=0 → Null<br>
+      Null 방향: θ = arcsin(90°/a)
+    </div>
+  </div>
+  <div class="diagram-wrap">
+    <div class="diagram-title">SIP 방사패턴 — 정면(0°) 최대</div>
+    <svg viewBox="0 0 400 260" width="100%" style="max-width:400px">
+      <circle cx="200" cy="130" r="3" fill="#4a5568"/>
+      <circle cx="180" cy="130" r="5" fill="#00d4ff"/>
+      <circle cx="220" cy="130" r="5" fill="#00d4ff"/>
+      <path d="M200,130 C200,130 330,80 330,130 C330,180 200,130 200,130" fill="rgba(16,185,129,0.15)" stroke="#10b981" stroke-width="2"/>
+      <path d="M200,130 C200,130 70,80 70,130 C70,180 200,130 200,130" fill="rgba(16,185,129,0.15)" stroke="#10b981" stroke-width="2"/>
+      <line x1="200" y1="130" x2="200" y2="20" stroke="#4a5568" stroke-width="1" stroke-dasharray="3,3"/>
+      <line x1="200" y1="130" x2="200" y2="240" stroke="#4a5568" stroke-width="1" stroke-dasharray="3,3"/>
+      <text x="200" y="15" text-anchor="middle" fill="#4a5568" font-size="11">0° 정면</text>
+      <text x="335" y="134" fill="#10b981" font-size="12">최대</text>
+      <text x="15" y="134" fill="#10b981" font-size="12">최대</text>
+      <text x="200" y="250" text-anchor="middle" fill="#94a3b8" font-size="12">CSB 안테나로 사용 — 정면 균일</text>
+    </svg>
+  </div>
+</div>
+
+<div class="section" id="ch3">
+  <div class="section-header"><div class="section-num">03</div><div>
+    <div class="section-title">역위상 쌍 — SOP (Specific Out-of-phase Pair)</div>
+    <div class="section-subtitle">반대 위상을 공급하면 정면 Null, SBO에 사용</div>
+  </div></div>
+  <p>한 안테나에 0°, 다른 안테나에 180° 위상의 전류를 공급한다.</p>
+  <div class="formula-box">
+    <div class="formula-label">SOP 합성 전계강도</div>
+    <div class="formula">E_SOP = 2I · sin(a · sinθ)</div>
+    <div class="formula-desc">
+      <strong>θ=0° (정면):</strong> sin(0)=0 → <span style="color:#ef4444">항상 Null!</span><br>
+      <strong>a·sinθ=90°일 때:</strong> sin(90°)=1 → 최대<br>
+      좌측 로브와 우측 로브는 <span style="color:#ff6b35">180° 역위상</span> 관계 (Bi-phase 패턴)
+    </div>
+  </div>
+  <div class="diagram-wrap">
+    <div class="diagram-title">SOP 방사패턴 — 정면 Null, 좌우 역위상</div>
+    <svg viewBox="0 0 400 260" width="100%" style="max-width:400px">
+      <circle cx="200" cy="130" r="3" fill="#4a5568"/>
+      <circle cx="180" cy="130" r="5" fill="#ff6b35"/>
+      <circle cx="220" cy="130" r="5" fill="#ff6b35"/>
+      <path d="M200,130 C200,130 155,55 200,30 C245,55 200,130 200,130" fill="rgba(255,107,53,0.15)" stroke="#ff6b35" stroke-width="2"/>
+      <path d="M200,130 C200,130 155,205 200,230 C245,205 200,130 200,130" fill="rgba(255,107,53,0.15)" stroke="#ff6b35" stroke-width="2"/>
+      <circle cx="200" cy="130" r="9" fill="none" stroke="#ef4444" stroke-width="2" stroke-dasharray="3,2"/>
+      <text x="213" y="128" fill="#ef4444" font-size="11">Null!</text>
+      <line x1="200" y1="130" x2="200" y2="20" stroke="#4a5568" stroke-width="1" stroke-dasharray="3,3"/>
+      <text x="200" y="15" text-anchor="middle" fill="#ef4444" font-size="11">0° 정면 = Null</text>
+      <text x="200" y="250" text-anchor="middle" fill="#94a3b8" font-size="12">SBO 안테나로 사용 — 중심선 Null</text>
+      <text x="200" y="26" text-anchor="middle" fill="#ff6b35" font-size="11">최대 (+위상)</text>
+      <text x="200" y="245" text-anchor="middle" fill="#7c3aed" font-size="11">최대 (−위상, 역위상)</text>
+    </svg>
+  </div>
+  <div class="callout orange"><div class="callout-title">⚡ SOP의 Bi-phase 특성이 핵심!</div>
+  SOP 패턴에서 위쪽 로브와 아래쪽 로브(또는 왼쪽·오른쪽)는 180° 역위상이다. 이것이 CSB와 합성될 때 한쪽은 90Hz 우세, 반대쪽은 150Hz 우세가 되는 원리다.</div>
+</div>
+
+<div class="section" id="ch4">
+  <div class="section-header"><div class="section-num">04</div><div>
+    <div class="section-title">다중 안테나 배열</div>
+    <div class="section-subtitle">여러 쌍을 조합하면 더 정밀한 패턴을 만든다</div>
+  </div></div>
+  <p>여러 안테나 쌍을 조합하면 개별 패턴의 합성으로 더 복잡하고 정밀한 방사패턴을 형성할 수 있다.</p>
+  <div class="callout"><div class="callout-title">📌 다중 배열의 합성 패턴 계산</div>
+  <ul>
+    <li>각 안테나 쌍의 패턴을 개별 계산</li>
+    <li>관측 방향 θ에서 각 쌍의 합성 페이서를 구함</li>
+    <li>모든 쌍의 페이서를 벡터합 → 최종 패턴</li>
+    <li>페이서의 합이 0인 방향 = Null</li>
+  </ul></div>
+  <div class="grid-2">
+    <div class="card"><div class="card-title">LOC 배열 (8~16 소자)</div>
+      <ul>
+        <li>중앙 소자: CSB 강함 (SIP)</li>
+        <li>외곽 소자: SBO 강함 (SOP)</li>
+        <li>정밀한 코스폭·클리어런스 패턴</li>
+        <li>분배망(Distribution Unit)으로 위상·진폭 배분</li>
+      </ul>
+    </div>
+    <div class="card"><div class="card-title">GP 배열 (2~3 소자)</div>
+      <ul>
+        <li>Lower·Upper 안테나 (Null Reference)</li>
+        <li>또는 Lower·Upper·Reference (Sideband Reference)</li>
+        <li>지면 반사 활용 (이미지 안테나)</li>
+        <li>높이비 = 1:2로 3° Null 형성</li>
+      </ul>
+    </div>
+  </div>
+</div>
+
+<div class="section" id="ch5">
+  <div class="section-header"><div class="section-num">05</div><div>
+    <div class="section-title">이미지 안테나 (Image Antenna)</div>
+    <div class="section-subtitle">지면을 거울로 사용해 가상의 안테나를 만든다</div>
+  </div></div>
+  <p>지면 위에 설치된 안테나가 방사하면, 지면이 전파를 반사한다. 이 반사파는 마치 지면 아래 대칭 위치에 가상의 안테나가 있는 것처럼 분석할 수 있다.</p>
+  <div class="grid-2">
+    <div class="card"><div class="card-title">수직편파의 이미지 안테나</div>
+      <p>지면 반사 시 위상 보존<br>→ 이미지 안테나 전류 = 실제 안테나와 <span class="hl-green">동위상</span><br>→ 실제 안테나+이미지 안테나 = SIP 구성</p>
+    </div>
+    <div class="card"><div class="card-title">수평편파의 이미지 안테나</div>
+      <p>지면 반사 시 위상 180° 반전<br>→ 이미지 안테나 전류 = 실제 안테나와 <span class="hl-orange">역위상</span><br>→ 실제 안테나+이미지 안테나 = SOP 구성</p>
+    </div>
+  </div>
+  <div class="callout green"><div class="callout-title">💡 GP Null Reference의 원리</div>
+  GP는 <strong>수직편파</strong>를 사용한다. Lower 안테나의 이미지 안테나는 지면 아래에 동위상으로 존재한다. Lower 실제+이미지 = SIP 구성 → 반송파 패턴<br>
+  Upper 안테나의 측파대 신호는 Lower 반송파와 역위상으로 공급 = SOP 구성 → 활공각에 Null 형성</div>
+</div>
+
+<div class="section" id="quiz">
+  <div class="section-header"><div class="section-num">06</div><div>
+    <div class="section-title">연습문제</div><div class="section-subtitle">버튼을 눌러 정답 확인</div>
+  </div></div>
+  <div class="quiz-box">
+    <div class="quiz-title">📝 연습문제</div>
+    <div class="quiz-q">Q1. a=90°인 SIP 안테나 쌍에서 θ=30° 방향의 합성 전계강도를 기준값(θ=0°)의 비율로 구하라.</div>
+    <div class="quiz-a" id="an1">E_SIP(θ=30°) = 2I·cos(90°×sin30°) = 2I·cos(90°×0.5) = 2I·cos(45°) = 2I×0.707 = 1.414I<br>기준값(θ=0°) = 2I·cos(0) = 2I<br>비율 = 1.414I / 2I = <span style="color:#10b981">70.7%</span></div>
+    <button class="quiz-toggle" onclick="toggle('an1')">정답 보기</button>
+    <hr style="border:none;border-top:1px solid rgba(255,255,255,0.05);margin:20px 0">
+    <div class="quiz-q">Q2. SOP 방사패턴이 Bi-phase(양상) 패턴인 이유를 설명하라.</div>
+    <div class="quiz-a" id="an2">SOP 수식 E_SOP = 2I·sin(a·sinθ)에서, θ&gt;0° 방향에서는 sin이 양수이므로 합성 전계는 양의 위상을 갖는다. 그러나 θ&lt;0° (반대 방향)에서는 sin이 음수가 되어 합성 전계는 음의 값, 즉 180° 반전 위상이 된다. 따라서 SOP 패턴의 두 로브는 항상 서로 역위상 — Bi-phase 패턴이다.</div>
+    <button class="quiz-toggle" onclick="toggle('an2')">정답 보기</button>
+  </div>
+</div>
+</div>
+<footer><p>07. 안테나 페어 · 방사패턴 &nbsp;|&nbsp; 교재: CH3·CH4·CH5 — 안테나 페어, 이미지 안테나</p></footer>
+<script>
+/* ===========================
+   ILS 개념 사이트 — 공통 JS
+   nav.js
+=========================== */
+
+/* 페이지 목록 — 순서·파일명·제목 관리 */
+const PAGES = [
+  { file: 'index.html',        title: '전체 목록',           cat: null },
+  { file: '01_wave.html',      title: '전자기파 전파 원리',  cat: '기초 개념' },
+  { file: '02_phasor.html',    title: '페이서 · 벡터 합성', cat: '기초 개념' },
+  { file: '03_phase.html',     title: '위상 (Phase)',        cat: '기초 개념' },
+  { file: '04_modulation.html',title: 'AM 변조 · 측파대',   cat: '신호 원리' },
+  { file: '05_spacemod.html',  title: '공간변조 CSB·SBO',   cat: '신호 원리' },
+  { file: '06_ddm.html',       title: 'DDM · 코스폭',       cat: '신호 원리' },
+  { file: '07_antenna.html',   title: '안테나 페어 · 패턴', cat: '안테나' },
+  { file: '08_loc.html',       title: 'LOC 배열 · 패턴',    cat: '안테나' },
+  { file: '09_gp.html',        title: 'GP · Null Reference',cat: '안테나' },
+  { file: '10_monitor.html',   title: '모니터링 · 알람',    cat: '운용·점검' },
+  { file: '11_flight.html',    title: '비행검사 해석',       cat: '운용·점검' },
+];
+
+/* 현재 파일명 감지 */
+function currentFile() {
+  const parts = location.pathname.split('/');
+  return parts[parts.length - 1] || 'index.html';
+}
+
+/* 이전/다음 버튼 렌더링 */
+function renderSitenav(containerId) {
+  const cur = currentFile();
+  const idx = PAGES.findIndex(p => p.file === cur);
+  if (idx < 0) return;
+
+  const prev = idx > 1 ? PAGES[idx - 1] : null;
+  const next = idx < PAGES.length - 1 ? PAGES[idx + 1] : null;
+
+  const prevHtml = prev
+    ? `<a class="sitenav-btn" href="${prev.file}">
+        ← <span><div class="sitenav-label">이전</div><div class="sitenav-title">${prev.title}</div></span>
+       </a>`
+    : `<span class="sitenav-btn disabled">← 이전</span>`;
+
+  const nextHtml = next
+    ? `<a class="sitenav-btn" href="${next.file}">
+        <span><div class="sitenav-label">다음</div><div class="sitenav-title">${next.title}</div></span> →
+       </a>`
+    : `<span class="sitenav-btn disabled">다음 →</span>`;
+
+  const el = document.getElementById(containerId);
+  if (el) el.innerHTML = `
+    ${prevHtml}
+    <a class="sitenav-home" href="index.html">☰ 전체 목록</a>
+    ${nextHtml}
+  `;
+}
+
+/* 퀴즈 정답 토글 (공통 함수) */
+function toggle(id) {
+  const el = document.getElementById(id);
+  const btn = el.nextElementSibling;
+  if (el.style.display === 'block') {
+    el.style.display = 'none';
+    btn.textContent = '정답 보기';
+  } else {
+    el.style.display = 'block';
+    btn.textContent = '정답 숨기기';
+  }
+}
+
+/* 섹션 네비 활성화 (스크롤 연동) */
+function initScrollNav() {
+  const sections = document.querySelectorAll('.section');
+  const navLinks = document.querySelectorAll('.nav a');
+  if (!sections.length || !navLinks.length) return;
+  window.addEventListener('scroll', () => {
+    let cur = '';
+    sections.forEach(s => { if (window.scrollY >= s.offsetTop - 120) cur = s.id; });
+    navLinks.forEach(a => {
+      const active = a.getAttribute('href') === '#' + cur;
+      a.classList.toggle('active', active);
+    });
+  }, { passive: true });
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+  renderSitenav('sitenav');
+  initScrollNav();
+});
+
+</script>
+</body>
+</html>
+    </div>
+  </main>
+</div>
+
+<footer>
+  <div class="footer-inner">
+    <div class="footer-left">
+      <div class="footer-org">KAC 한국공항공사 항공기술훈련원</div>
+      <div class="footer-name">항법시설 교수 &nbsp;|&nbsp; 손우람</div>
+    </div>
+    <div class="footer-right">
+      <div class="footer-course">계기착륙시설(ILS) 초기과정 기초 개념 학습 자료</div>
+      <div class="footer-source">교재: ILS이론교재 CH3·4·5 기반</div>
+    </div>
+  </div>
+</footer>
+
+<script>
+const PAGES=[
+  {file:'index.html',title:'전체 목록',cat:null},
+  {file:'01_wave.html',title:'전자기파 전파 원리',cat:'기초 개념'},
+  {file:'02_phasor.html',title:'페이서 · 벡터 합성',cat:'기초 개념'},
+  {file:'03_phase.html',title:'위상 (Phase)',cat:'기초 개념'},
+  {file:'04_modulation.html',title:'AM 변조 · 측파대',cat:'신호 원리'},
+  {file:'05_spacemod.html',title:'공간변조 CSB·SBO',cat:'신호 원리'},
+  {file:'06_ddm.html',title:'DDM · 코스폭',cat:'신호 원리'},
+  {file:'07_antenna.html',title:'안테나 페어 · 패턴',cat:'안테나'},
+  {file:'08_loc.html',title:'LOC 배열 · 패턴',cat:'안테나'},
+  {file:'09_gp.html',title:'GP · Null Reference',cat:'안테나'},
+  {file:'10_monitor.html',title:'모니터링 · 알람',cat:'운용·점검'},
+  {file:'11_flight.html',title:'비행검사 해석',cat:'운용·점검'},
+];
+function toggleSidebar(){
+  const sb=document.getElementById('sidebar');
+  sb.classList.toggle('collapsed');
+  document.body.classList.toggle('sb-open',!sb.classList.contains('collapsed'));
+}
+function toggleGroup(id){document.getElementById(id).classList.toggle('closed');}
+function toggleFullscreen(){
+  document.body.classList.toggle('fullscreen');
+  document.getElementById('fsBtn').textContent=document.body.classList.contains('fullscreen')?'✕':'⛶';
+}
+function toggle(id){
+  const el=document.getElementById(id);
+  const btn=el.nextElementSibling;
+  if(el.style.display==='block'){el.style.display='none';btn.textContent='정답 보기';}
+  else{el.style.display='block';btn.textContent='정답 숨기기';}
+}
+function initScrollToc(){
+  const sections=document.querySelectorAll('.section');
+  const tocLinks=document.querySelectorAll('.sb-toc-item');
+  if(!sections.length||!tocLinks.length)return;
+  const obs=new IntersectionObserver(entries=>{
+    entries.forEach(e=>{
+      if(e.isIntersecting){
+        const id=e.target.id;
+        tocLinks.forEach(a=>a.classList.toggle('active',a.getAttribute('href')==='#'+id));
+      }
+    });
+  },{rootMargin:'-20% 0px -65% 0px'});
+  sections.forEach(s=>obs.observe(s));
+}
+document.addEventListener('DOMContentLoaded',()=>{initScrollToc();});
+</script>
+</body>
+</html>
