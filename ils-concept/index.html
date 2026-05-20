@@ -206,6 +206,84 @@ body.sb-open .tb-toggle span:nth-child(3) { transform: translateY(-7px) rotate(-
 }
 .sb-check { margin-left: auto; font-size: 10px; color: var(--green); flex-shrink: 0; }
 
+/* 시뮬레이터 버튼 (사이드바 하단) */
+.sb-sim-section {
+  margin-top: 16px;
+  padding-top: 16px;
+  border-top: 1px solid rgba(255,255,255,0.08);
+}
+.sb-sim-label {
+  padding: 0 14px 8px;
+  font-size: 10px;
+  font-family: 'JetBrains Mono', monospace;
+  color: var(--text-dim);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  opacity: 0.7;
+}
+.sb-sim {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 4px 10px;
+  padding: 10px 12px;
+  text-decoration: none;
+  color: var(--text);
+  font-size: 13px;
+  font-weight: 500;
+  border-radius: 6px;
+  background: linear-gradient(135deg, rgba(0,212,255,0.08), rgba(124,58,237,0.06));
+  border: 1px solid rgba(0,212,255,0.18);
+  transition: all 0.2s;
+}
+.sb-sim:hover {
+  background: linear-gradient(135deg, rgba(0,212,255,0.18), rgba(124,58,237,0.12));
+  border-color: rgba(0,212,255,0.4);
+  transform: translateX(2px);
+  box-shadow: 0 2px 8px rgba(0,212,255,0.15);
+}
+.sb-sim-icon {
+  font-size: 16px;
+  flex-shrink: 0;
+}
+.sb-sim-text {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  line-height: 1.25;
+}
+.sb-sim-title {
+  font-weight: 600;
+  color: #fff;
+}
+.sb-sim-sub {
+  font-size: 10px;
+  color: var(--text-dim);
+  font-family: 'JetBrains Mono', monospace;
+}
+.sb-sim-arrow {
+  color: var(--accent);
+  font-size: 14px;
+  opacity: 0.6;
+  transition: all 0.2s;
+}
+.sb-sim:hover .sb-sim-arrow {
+  opacity: 1;
+  transform: translateX(3px);
+}
+.sb-sim.gp {
+  background: linear-gradient(135deg, rgba(255,107,53,0.08), rgba(245,158,11,0.06));
+  border-color: rgba(255,107,53,0.18);
+}
+.sb-sim.gp:hover {
+  background: linear-gradient(135deg, rgba(255,107,53,0.18), rgba(245,158,11,0.12));
+  border-color: rgba(255,107,53,0.4);
+  box-shadow: 0 2px 8px rgba(255,107,53,0.15);
+}
+.sb-sim.gp .sb-sim-arrow {
+  color: var(--accent2);
+}
+
 /* 홈 링크 */
 .sb-home {
   display: flex;
@@ -421,6 +499,27 @@ footer {
         <a class="sb-item" href="10_monitor.html"><span class="sb-num">10</span>모니터링 · 알람<span class="sb-check">✓</span></a>
         <a class="sb-item" href="11_flight.html"><span class="sb-num">11</span>비행검사 해석<span class="sb-check">✓</span></a>
       </div>
+    </div>
+
+    <!-- 시뮬레이터 -->
+    <div class="sb-sim-section">
+      <div class="sb-sim-label">⚡ 인터랙티브 시뮬레이터</div>
+      <a class="sb-sim" href="loc-simulator.html">
+        <span class="sb-sim-icon">📡</span>
+        <span class="sb-sim-text">
+          <span class="sb-sim-title">LOC 전파 시뮬레이터</span>
+          <span class="sb-sim-sub">Localizer · LPDA Array</span>
+        </span>
+        <span class="sb-sim-arrow">→</span>
+      </a>
+      <a class="sb-sim gp" href="gp-simulator.html">
+        <span class="sb-sim-icon">🛬</span>
+        <span class="sb-sim-text">
+          <span class="sb-sim-title">GP 전파 시뮬레이터</span>
+          <span class="sb-sim-sub">Glide Path · NRGP/CEGP</span>
+        </span>
+        <span class="sb-sim-arrow">→</span>
+      </a>
     </div>
 
   </aside>

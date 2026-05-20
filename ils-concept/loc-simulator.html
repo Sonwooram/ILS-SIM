@@ -1,0 +1,3232 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>LOC 방사패턴 시뮬레이터 — 8소자 LPDA</title>
+<style>
+  :root {
+    --bg-0: #0a0e14;
+    --bg-1: #11161f;
+    --bg-2: #1a2230;
+    --bg-3: #232d3e;
+    --line: #2a3548;
+    --line-bright: #3d4d68;
+    --text-0: #e6ecf5;
+    --text-1: #a8b5cc;
+    --text-2: #6c7a93;
+    --accent: #4ea8de;
+    --accent-bright: #6cc4ff;
+    --hot-90: #ff5a5f;
+    --hot-150: #00b4a0;
+    --csb: #ffc857;
+    --sbo: #b388ff;
+    --warn: #ff8c42;
+    --p1: #ff5a5f;
+    --p2: #ffc857;
+    --p3: #00b4a0;
+    --p4: #b388ff;
+    --mono: 'JetBrains Mono', 'Consolas', monospace;
+    --sans: 'Noto Sans KR', system-ui, sans-serif;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  html, body {
+    background: var(--bg-0);
+    color: var(--text-0);
+    font-family: var(--sans);
+    font-size: 14px;
+    line-height: 1.5;
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background: 
+      radial-gradient(ellipse at top, rgba(78,168,222,0.06) 0%, transparent 50%),
+      radial-gradient(ellipse at bottom, rgba(179,136,255,0.04) 0%, transparent 50%);
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  header {
+    position: relative;
+    z-index: 10;
+    border-bottom: 1px solid var(--line);
+    background: linear-gradient(180deg, var(--bg-1) 0%, var(--bg-0) 100%);
+    padding: 16px 28px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 24px;
+  }
+  .brand { display: flex; align-items: baseline; gap: 14px; }
+  .brand-mark {
+    font-family: var(--mono);
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--accent);
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    padding: 4px 8px;
+    border: 1px solid var(--accent);
+    border-radius: 2px;
+  }
+  .brand-title { font-size: 17px; font-weight: 700; letter-spacing: -0.01em; }
+  .brand-sub { font-family: var(--mono); font-size: 11px; color: var(--text-2); letter-spacing: 0.05em; }
+  .header-meta { display: flex; gap: 20px; font-family: var(--mono); font-size: 11px; color: var(--text-2); }
+  .header-meta strong { color: var(--text-1); font-weight: 500; }
+
+  .tabbar {
+    position: relative;
+    z-index: 10;
+    background: var(--bg-1);
+    border-bottom: 1px solid var(--line);
+    padding: 0 28px;
+    display: flex;
+  }
+  .tab {
+    background: transparent;
+    border: none;
+    color: var(--text-2);
+    font-family: var(--mono);
+    font-size: 12px;
+    letter-spacing: 0.08em;
+    padding: 14px 22px;
+    cursor: pointer;
+    position: relative;
+    transition: color 0.2s;
+    text-transform: uppercase;
+  }
+  .tab:hover { color: var(--text-1); }
+  .tab.active { color: var(--accent-bright); }
+  .tab.active::after {
+    content: '';
+    position: absolute;
+    left: 0; right: 0; bottom: -1px;
+    height: 2px;
+    background: var(--accent-bright);
+  }
+
+  main {
+    position: relative;
+    z-index: 1;
+    display: grid;
+    grid-template-columns: 320px 1fr;
+    gap: 1px;
+    background: var(--line);
+    min-height: calc(100vh - 108px);
+  }
+
+  .controls {
+    background: var(--bg-1);
+    padding: 22px 20px;
+    overflow-y: auto;
+    max-height: calc(100vh - 108px);
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+  }
+  .controls::-webkit-scrollbar { display: none; width: 0; height: 0; }
+  .section-label {
+    font-family: var(--mono);
+    font-size: 10px;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: var(--text-2);
+    margin-bottom: 12px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid var(--line);
+  }
+  .section { margin-bottom: 24px; }
+
+  .pair-row {
+    display: grid;
+    grid-template-columns: 18px 32px 1fr 64px;
+    align-items: center;
+    gap: 8px;
+    padding: 7px 0;
+    border-bottom: 1px dashed var(--line);
+  }
+  .pair-row:last-child { border-bottom: none; }
+  .pair-label {
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--text-1);
+    font-weight: 600;
+  }
+  .pair-label small {
+    display: block;
+    font-size: 8px;
+    color: var(--text-2);
+    font-weight: 400;
+    margin-top: 1px;
+  }
+
+  /* Custom checkbox */
+  .pair-check {
+    width: 14px;
+    height: 14px;
+    border: 1.5px solid var(--line-bright);
+    border-radius: 2px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.15s;
+    background: var(--bg-2);
+  }
+  .pair-check.on { border-color: currentColor; background: currentColor; }
+  .pair-check.on::after {
+    content: '';
+    width: 4px; height: 7px;
+    border: solid var(--bg-0);
+    border-width: 0 1.5px 1.5px 0;
+    transform: rotate(45deg) translate(-1px, -1px);
+  }
+  .pair-row[data-pair="0"] .pair-check.on { color: var(--p1); }
+  .pair-row[data-pair="1"] .pair-check.on { color: var(--p2); }
+  .pair-row[data-pair="2"] .pair-check.on { color: var(--p3); }
+  .pair-row[data-pair="3"] .pair-check.on { color: var(--p4); }
+  .pair-row[data-pair="4"] .pair-check.on { color: #ff8c42; }
+  .pair-row[data-pair="5"] .pair-check.on { color: #4ea8de; }
+  .pair-row[data-pair="6"] .pair-check.on { color: #a0e060; }
+  .pair-row[data-pair="7"] .pair-check.on { color: #ff6fa8; }
+  .pair-row[data-pair="8"] .pair-check.on { color: #9affff; }
+  .pair-row[data-pair="9"] .pair-check.on { color: #e0c4a0; }
+  .pair-row[data-pair="0"] .pair-label { color: var(--p1); }
+  .pair-row[data-pair="1"] .pair-label { color: var(--p2); }
+  .pair-row[data-pair="2"] .pair-label { color: var(--p3); }
+  .pair-row[data-pair="3"] .pair-label { color: var(--p4); }
+  .pair-row[data-pair="4"] .pair-label { color: #ff8c42; }
+  .pair-row[data-pair="5"] .pair-label { color: #4ea8de; }
+  .pair-row[data-pair="6"] .pair-label { color: #a0e060; }
+  .pair-row[data-pair="7"] .pair-label { color: #ff6fa8; }
+  .pair-row[data-pair="8"] .pair-label { color: #9affff; }
+  .pair-row[data-pair="9"] .pair-label { color: #e0c4a0; }
+
+  .pair-row.off { opacity: 0.4; }
+  .pair-row.off input[type="range"] { pointer-events: none; }
+
+  input[type="range"] {
+    width: 100%;
+    -webkit-appearance: none;
+    background: transparent;
+    cursor: pointer;
+  }
+  input[type="range"]::-webkit-slider-runnable-track { height: 3px; background: var(--bg-3); border-radius: 2px; }
+  input[type="range"]::-moz-range-track { height: 3px; background: var(--bg-3); border-radius: 2px; }
+  input[type="range"]::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    width: 13px;
+    height: 13px;
+    background: var(--accent-bright);
+    border-radius: 50%;
+    margin-top: -5px;
+    box-shadow: 0 0 0 3px rgba(108,196,255,0.15);
+  }
+  input[type="range"]::-moz-range-thumb {
+    width: 13px;
+    height: 13px;
+    background: var(--accent-bright);
+    border: none;
+    border-radius: 50%;
+    box-shadow: 0 0 0 3px rgba(108,196,255,0.15);
+  }
+  .value-readout {
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--accent-bright);
+    text-align: right;
+    font-weight: 600;
+  }
+  .global-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 10px;
+  }
+  .global-row label { font-size: 12px; color: var(--text-1); }
+  .global-row input[type="range"] { width: 130px; }
+
+  .reset-btn {
+    width: 100%;
+    background: var(--bg-2);
+    border: 1px solid var(--line);
+    color: var(--text-1);
+    padding: 9px;
+    font-family: var(--mono);
+    font-size: 11px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    cursor: pointer;
+    transition: all 0.15s;
+    border-radius: 2px;
+  }
+  .reset-btn:hover { background: var(--bg-3); border-color: var(--accent); color: var(--accent-bright); }
+  
+  /* Array size dropdown */
+  .array-select {
+    width: 100%;
+    background: var(--bg-2);
+    border: 1px solid var(--line-bright);
+    color: var(--accent-bright);
+    padding: 9px 10px;
+    font-family: var(--mono);
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: 0.05em;
+    cursor: pointer;
+    border-radius: 2px;
+    appearance: none;
+    -webkit-appearance: none;
+    background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'><path fill='%236cc4ff' d='M0 0l5 6 5-6z'/></svg>");
+    background-repeat: no-repeat;
+    background-position: right 12px center;
+    padding-right: 28px;
+  }
+  .array-select:hover { border-color: var(--accent); }
+  .array-select option {
+    background: var(--bg-2);
+    color: var(--text-0);
+  }
+
+  /* SF/CE mode toggle */
+  .mode-toggle-group {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 4px;
+  }
+  .mode-btn {
+    background: var(--bg-2);
+    border: 1px solid var(--line);
+    color: var(--text-2);
+    padding: 8px 6px;
+    font-family: var(--mono);
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.05em;
+    cursor: pointer;
+    border-radius: 2px;
+    transition: all 0.15s;
+  }
+  .mode-btn small {
+    display: block;
+    font-size: 8px;
+    font-weight: 400;
+    color: inherit;
+    opacity: 0.7;
+    margin-top: 2px;
+  }
+  .mode-btn:hover {
+    border-color: var(--line-bright);
+    color: var(--text-1);
+  }
+  .mode-btn.active {
+    background: rgba(78,168,222,0.1);
+    border-color: var(--accent);
+    color: var(--accent-bright);
+  }
+
+  /* Edit tab (코스/클리어런스) - 슬라이더 위 작은 탭 */
+  .edit-tab-group {
+    display: flex;
+    gap: 2px;
+    background: var(--bg-2);
+    border: 1px solid var(--line);
+    border-radius: 2px;
+    padding: 2px;
+  }
+  .edit-tab {
+    background: transparent;
+    border: none;
+    color: var(--text-2);
+    font-family: var(--mono);
+    font-size: 9px;
+    font-weight: 600;
+    letter-spacing: 0.05em;
+    padding: 3px 8px;
+    cursor: pointer;
+    border-radius: 1px;
+    transition: all 0.15s;
+  }
+  .edit-tab:hover { color: var(--text-1); }
+  .edit-tab.active {
+    background: var(--bg-3);
+    color: var(--accent-bright);
+  }
+  .edit-tab[data-edit-tab="clearance"].active {
+    color: #6cc4ff;
+  }
+  .preset-btns {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 5px;
+    margin-top: 8px;
+  }
+  .preset-btn {
+    background: var(--bg-2);
+    border: 1px solid var(--line);
+    color: var(--text-1);
+    padding: 7px 4px;
+    font-family: var(--mono);
+    font-size: 10px;
+    cursor: pointer;
+    border-radius: 2px;
+    transition: all 0.15s;
+  }
+  .preset-btn:hover { background: var(--bg-3); color: var(--accent-bright); border-color: var(--accent); }
+
+  /* === Display === */
+  .display {
+    background: var(--bg-0);
+    padding: 22px 26px 40px;
+    overflow-y: auto;
+    max-height: calc(100vh - 108px);
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+  }
+  .display::-webkit-scrollbar { display: none; width: 0; height: 0; }
+  .view { display: none; }
+  .view.active {
+    display: block;
+    animation: fadeIn 0.3s ease-out;
+  }
+  @keyframes fadeIn {
+    from { opacity: 0; transform: translateY(6px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  .chart-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 18px;
+    margin-bottom: 18px;
+  }
+  .chart-card {
+    background: var(--bg-1);
+    border: 1px solid var(--line);
+    border-radius: 4px;
+    padding: 14px 16px 18px;
+    position: relative;
+  }
+  .chart-title {
+    font-size: 12px;
+    color: var(--text-1);
+    margin-bottom: 4px;
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    gap: 12px;
+  }
+  .chart-title-main {
+    font-family: var(--mono);
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    font-weight: 600;
+  }
+  .chart-subtitle {
+    font-size: 10px;
+    color: var(--text-2);
+    margin-bottom: 10px;
+    font-family: var(--mono);
+  }
+  .chart-canvas {
+    width: 100%;
+    height: 280px;
+    display: block;
+  }
+  .chart-canvas.tall { height: 340px; }
+
+  /* Chart toggle (absolute value, etc) */
+  .chart-toggle {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-family: var(--mono);
+    font-size: 10px;
+    color: var(--text-2);
+    cursor: pointer;
+    user-select: none;
+    padding: 3px 8px;
+    border: 1px solid var(--line);
+    border-radius: 2px;
+    background: var(--bg-2);
+    transition: all 0.15s;
+  }
+  .chart-toggle:hover {
+    border-color: var(--line-bright);
+    color: var(--text-1);
+  }
+  .chart-toggle .tgl-box {
+    width: 10px;
+    height: 10px;
+    border: 1.5px solid var(--line-bright);
+    border-radius: 2px;
+    background: transparent;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.15s;
+  }
+  .chart-toggle.on {
+    border-color: var(--accent);
+    color: var(--accent-bright);
+    background: rgba(78,168,222,0.08);
+  }
+  .chart-toggle.on .tgl-box {
+    background: var(--accent-bright);
+    border-color: var(--accent-bright);
+  }
+  .chart-toggle.on .tgl-box::after {
+    content: '';
+    width: 3px;
+    height: 5px;
+    border: solid var(--bg-0);
+    border-width: 0 1.5px 1.5px 0;
+    transform: rotate(45deg) translate(-1px, -1px);
+  }
+  
+  /* CE 모드 전용 토글 - SF 모드에서는 숨김 */
+  body.mode-SF .ce-only { display: none !important; }
+
+  .concept-canvas {
+    width: 100%;
+    height: 700px;
+    display: block;
+  }
+  .concept-legend {
+    display: flex;
+    gap: 18px;
+    margin-top: 12px;
+    flex-wrap: wrap;
+    font-size: 11px;
+    color: var(--text-1);
+    font-family: var(--mono);
+  }
+  .legend-item { display: flex; align-items: center; gap: 6px; }
+  .legend-swatch { width: 14px; height: 3px; border-radius: 1px; }
+
+  .info-card {
+    background: var(--bg-1);
+    border: 1px solid var(--line);
+    border-left: 3px solid var(--accent);
+    border-radius: 2px;
+    padding: 14px 16px;
+    font-size: 12px;
+    color: var(--text-1);
+    line-height: 1.7;
+  }
+  .info-card strong { color: var(--accent-bright); }
+  .info-card code {
+    font-family: var(--mono);
+    background: var(--bg-2);
+    padding: 1px 6px;
+    border-radius: 2px;
+    color: var(--csb);
+    font-size: 11px;
+  }
+
+  .stat-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 12px;
+    margin-bottom: 18px;
+  }
+  .stat-card {
+    background: var(--bg-1);
+    border: 1px solid var(--line);
+    border-radius: 3px;
+    padding: 12px 14px;
+  }
+  .stat-label {
+    font-family: var(--mono);
+    font-size: 10px;
+    color: var(--text-2);
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    margin-bottom: 6px;
+  }
+  .stat-value {
+    font-family: var(--mono);
+    font-size: 20px;
+    font-weight: 600;
+    color: var(--accent-bright);
+    letter-spacing: -0.01em;
+  }
+  .stat-value .unit { font-size: 11px; color: var(--text-2); margin-left: 3px; font-weight: 400; }
+  
+  .stat-sub {
+    margin-top: 4px;
+    font-family: var(--mono);
+    font-size: 10px;
+    color: var(--text-2);
+    letter-spacing: 0.02em;
+  }
+  
+  /* DDM + CDI 그리드 */
+  .ddm-cdi-grid {
+    display: grid;
+    grid-template-columns: 1fr 320px;
+    gap: 18px;
+    margin-bottom: 18px;
+  }
+  
+  /* DDM 차트 위 툴팁 */
+  .ddm-tooltip {
+    position: absolute;
+    pointer-events: none;
+    background: rgba(20, 28, 42, 0.95);
+    border: 1px solid var(--line-bright);
+    padding: 8px 12px;
+    border-radius: 3px;
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--text-0);
+    opacity: 0;
+    transition: opacity 0.1s;
+    z-index: 50;
+    white-space: nowrap;
+    backdrop-filter: blur(6px);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.4);
+  }
+  .ddm-tooltip.visible { opacity: 1; }
+  .ddm-tooltip .tt-angle { color: var(--accent-bright); font-weight: 600; }
+  .ddm-tooltip .tt-ddm { color: var(--csb); font-weight: 600; margin-left: 8px; }
+  .ddm-tooltip .tt-status { display:block; font-size: 9px; color: var(--text-2); margin-top: 2px; }
+  
+  /* CDI 카드 */
+  .cdi-card { display: flex; flex-direction: column; }
+  .cdi-wrap {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: radial-gradient(ellipse at center, #1a2230 0%, #0a0e14 70%);
+    border-radius: 4px;
+    padding: 8px;
+    min-height: 320px;
+  }
+  #cdi-canvas {
+    width: 100%;
+    max-width: 280px;
+    aspect-ratio: 1;
+    display: block;
+  }
+  #cdi-readout {
+    font-family: var(--mono);
+    font-size: 11px;
+    transition: color 0.15s;
+  }
+
+  .stat-card-clickable {
+    cursor: pointer;
+    transition: background 0.15s;
+  }
+  .stat-card-clickable:hover {
+    background: var(--bg-2);
+    border-color: var(--line-bright);
+  }
+  .stat-card-clickable::after {
+    content: '▾';
+    position: absolute;
+    top: 10px;
+    right: 12px;
+    font-size: 9px;
+    color: var(--text-2);
+    transition: transform 0.2s;
+  }
+  .stat-card-clickable.expanded::after {
+    transform: rotate(180deg);
+  }
+  .stat-card-clickable {
+    position: relative;
+  }
+  .null-list {
+    display: none;
+    margin-top: 8px;
+    padding-top: 8px;
+    border-top: 1px dashed var(--line);
+    font-family: var(--mono);
+    font-size: 10px;
+    color: var(--text-1);
+    line-height: 1.7;
+    max-height: 160px;
+    overflow-y: auto;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+  }
+  .null-list::-webkit-scrollbar { display: none; width: 0; height: 0; }
+  .null-list.show { display: block; }
+  .null-list .null-item {
+    display: inline-block;
+    background: var(--bg-2);
+    border: 1px solid var(--line);
+    padding: 1px 6px;
+    border-radius: 2px;
+    margin: 2px 3px 2px 0;
+    color: var(--text-1);
+  }
+
+  .placeholder-3d {
+    height: 500px;
+    background: var(--bg-1);
+    border: 1px dashed var(--line-bright);
+    border-radius: 4px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+    color: var(--text-2);
+    font-family: var(--mono);
+  }
+  .placeholder-3d-icon {
+    width: 56px; height: 56px;
+    border: 2px solid var(--line-bright);
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 22px;
+    color: var(--text-1);
+  }
+  
+  /* 3D canvas */
+  #canvas-3d {
+    width: 100%;
+    height: 600px;
+    display: block;
+    background: radial-gradient(ellipse at center, #0d1419 0%, #050709 80%);
+    border-radius: 4px;
+    cursor: grab;
+  }
+  #canvas-3d:active { cursor: grabbing; }
+</style>
+</head>
+<body class="mode-SF">
+
+<header>
+  <div class="brand">
+    <span class="brand-mark">LOC-SIM</span>
+    <span class="brand-title">로컬라이저 방사패턴 시뮬레이터</span>
+    <span class="brand-sub" id="brand-sub">8-Element LPDA Array</span>
+  </div>
+  <div class="header-meta">
+    <span>교재 <strong>CH17</strong></span>
+    <span>KAC 항공기술훈련원</span>
+  </div>
+</header>
+
+<nav class="tabbar">
+  <button class="tab active" data-view="view-2d">2D · 방사패턴</button>
+  <button class="tab" data-view="view-concept">시설 개념도</button>
+  <button class="tab" data-view="view-3d">3D · 공간 패턴</button>
+</nav>
+
+<main>
+  <aside class="controls">
+    <div class="section">
+      <div class="section-label">배열 타입</div>
+      <select class="array-select" id="array-size">
+        <option value="8">8소자 LPDA (4쌍) — 교재 기준</option>
+        <option value="14">14소자 LPDA (7쌍) — Cat II/III</option>
+        <option value="20">20소자 LPDA (10쌍) — 국내 표준</option>
+      </select>
+    </div>
+
+    <div class="section">
+      <div class="section-label">송신 방식</div>
+      <div class="mode-toggle-group">
+        <button class="mode-btn active" data-mode="SF">SF<small>단일주파수</small></button>
+        <button class="mode-btn" data-mode="CE">CE<small>Capture Effect</small></button>
+      </div>
+    </div>
+
+    <div class="section">
+      <div class="section-label">전체 파라미터</div>
+      <div class="global-row">
+        <label>주파수 (MHz)</label>
+        <input type="range" id="g-freq" min="108.10" max="111.95" step="0.05" value="109.1">
+        <span class="value-readout" id="g-freq-val">109.10</span>
+      </div>
+      <div style="margin-top:4px;margin-bottom:10px;font-family:var(--mono);font-size:10px;color:var(--text-2);text-align:right;">
+        λ = <span id="lambda-val">2.749</span> m
+      </div>
+      <div class="global-row">
+        <label>K (지향성)</label>
+        <input type="range" id="g-k" min="0" max="1" step="0.05" value="1">
+        <span class="value-readout" id="g-k-val">on</span>
+      </div>
+    </div>
+
+    <div class="section">
+      <div class="section-label" style="display:flex;justify-content:space-between;align-items:center;padding-bottom:0;border-bottom:none;">
+        <span>안테나 쌍 · 표시 / 전류 (I)</span>
+        <div class="edit-tab-group ce-only">
+          <button class="edit-tab active" data-edit-tab="course">코스</button>
+          <button class="edit-tab" data-edit-tab="clearance">CLR</button>
+        </div>
+      </div>
+      <div style="border-bottom:1px solid var(--line);margin-bottom:12px;height:1px;"></div>
+      <div id="i-sliders"></div>
+    </div>
+
+    <div class="section">
+      <div class="section-label">안테나 쌍 간격 (a, λ단위)</div>
+      <div id="a-sliders"></div>
+    </div>
+
+    <div class="section">
+      <div class="section-label">프리셋</div>
+      <div class="preset-btns">
+        <button class="preset-btn" data-preset="textbook">교재 17-4</button>
+        <button class="preset-btn" data-preset="narrow">좁은 코스</button>
+        <button class="preset-btn" data-preset="wide">넓은 코스</button>
+        <button class="preset-btn" data-preset="fault">전류 이상</button>
+      </div>
+      <button class="reset-btn" style="margin-top: 8px;" id="reset-btn">초기화</button>
+    </div>
+  </aside>
+
+  <section class="display">
+
+    <div class="view active" id="view-2d">
+      
+      <div class="stat-grid">
+        <div class="stat-card">
+          <div class="stat-label">코스 폭 / 시단거리</div>
+          <div class="stat-value" id="stat-cw">─<span class="unit">°</span></div>
+          <div class="stat-sub" id="stat-cw-sub">활주로 시단 ─m</div>
+        </div>
+        <div class="stat-card stat-card-clickable" id="stat-null-csb-card">
+          <div class="stat-label">CSB Null</div>
+          <div class="stat-value" id="stat-null-csb"><span style="color:var(--csb);">0</span><span class="unit">개</span></div>
+          <div class="stat-sub" id="stat-null-csb-preview" style="color:var(--csb);">─</div>
+          <div class="null-list" id="null-list-csb"></div>
+        </div>
+        <div class="stat-card stat-card-clickable" id="stat-null-sbo-card">
+          <div class="stat-label">SBO Null</div>
+          <div class="stat-value" id="stat-null-sbo"><span style="color:var(--sbo);">0</span><span class="unit">개</span></div>
+          <div class="stat-sub" id="stat-null-sbo-preview" style="color:var(--sbo);">─</div>
+          <div class="null-list" id="null-list-sbo"></div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">활성 쌍</div>
+          <div class="stat-value" id="stat-active">4<span class="unit">/4</span></div>
+          <div class="stat-sub" id="stat-active-sub">─</div>
+        </div>
+      </div>
+
+      <div class="chart-card" style="margin-bottom: 18px;">
+        <div class="chart-title">
+          <span class="chart-title-main">CSB · SBO 합성 패턴 비교</span>
+          <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
+            <div class="chart-toggle on" data-tgl="showCourseCSB"><div class="tgl-box"></div><span style="color:var(--csb);">코스 CSB</span></div>
+            <div class="chart-toggle on" data-tgl="showCourseSBO"><div class="tgl-box"></div><span style="color:var(--sbo);">코스 SBO</span></div>
+            <div class="chart-toggle on ce-only" data-tgl="showClearCSB"><div class="tgl-box"></div><span style="color:#6cc4ff;">CLR CSB</span></div>
+            <div class="chart-toggle on ce-only" data-tgl="showClearSBO"><div class="tgl-box"></div><span style="color:#ff6fa8;">CLR SBO</span></div>
+            <div class="chart-toggle" data-tgl="showPairs"><div class="tgl-box"></div><span>개별 쌍</span></div>
+            <div class="chart-toggle" data-tgl="absMode"><div class="tgl-box"></div><span>절대값</span></div>
+            <div class="chart-toggle" data-tgl="polarMode"><div class="tgl-box"></div><span>극좌표</span></div>
+          </div>
+        </div>
+        <div class="chart-subtitle">Y축: 상대 전계강도 E · <span style="color:var(--csb);">CSB = K·2I·cos(a·sinθ)</span> · <span style="color:var(--sbo);">SBO = K·2I·sin(a·sinθ)</span> <span class="ce-only" id="capture-margin-info" style="color:var(--text-2);margin-left:12px;"></span></div>
+        <canvas class="chart-canvas tall" id="combined-chart"></canvas>
+      </div>
+
+      <div class="ddm-cdi-grid">
+        <div class="chart-card">
+          <div class="chart-title">
+            <span class="chart-title-main">DDM 분포 — 90Hz vs 150Hz 우세도</span>
+            <span style="font-family:var(--mono);font-size:10px;color:var(--text-2);">코스 중심선 = DDM 0, 경계 = ±0.155</span>
+          </div>
+          <div class="chart-subtitle">마우스를 그래프 위에 올리면 항공기 위치 시뮬레이션</div>
+          <div style="position:relative;">
+            <canvas class="chart-canvas tall" id="ddm-chart"></canvas>
+            <div class="ddm-tooltip" id="ddm-tooltip"></div>
+          </div>
+        </div>
+        
+        <div class="chart-card cdi-card">
+          <div class="chart-title">
+            <span class="chart-title-main">CDI · 항공기 계기판</span>
+            <span style="font-family:var(--mono);font-size:10px;color:var(--text-2);">Course Deviation Indicator</span>
+          </div>
+          <div class="chart-subtitle" id="cdi-readout">마우스를 DDM 차트 위로 ←</div>
+          <div class="cdi-wrap">
+            <canvas id="cdi-canvas"></canvas>
+          </div>
+        </div>
+      </div>
+
+      <div class="info-card">
+        <strong>💡 관찰 포인트</strong><br>
+        • 차트 우상단 토글로 <strong>CSB / SBO / 개별 쌍 / 절대값</strong>을 자유롭게 조합해 보세요<br>
+        • <strong>CSB는 0°에서 최대, SBO는 0°에서 0(Null)</strong> — 같은 축에서 직관적으로 비교됨<br>
+        • <strong>"개별 쌍" 토글</strong>: CSB 개별쌍은 실선, SBO 개별쌍은 점선으로 구분 표시<br>
+        • <strong>"절대값" 토글</strong>: 실제 방사 강도(|E|) 형태로 변환 — 교재 그림 17-13 같은 형태<br>
+        • 좌측 체크박스로 P1~P4 쌍을 ON/OFF 하면 합성 결과가 실시간으로 변화
+      </div>
+    </div>
+
+    <div class="view" id="view-concept">
+      <div class="chart-card">
+        <div class="chart-title">
+          <span class="chart-title-main">활주로 + LOC 배열 + 코스 영역</span>
+          <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
+            <span style="font-family:var(--mono);font-size:10px;color:var(--text-2);">탑뷰 · 활주로 종단</span>
+            <div class="chart-toggle" data-tgl="showPatternOverlay"><div class="tgl-box"></div><span>방사패턴 오버레이</span></div>
+          </div>
+        </div>
+        <div class="chart-subtitle">실시간으로 좌측 슬라이더/체크박스 값을 반영합니다</div>
+        <canvas class="concept-canvas" id="concept-canvas"></canvas>
+        <div class="concept-legend">
+          <div class="legend-item"><div class="legend-swatch" style="background:var(--accent-bright);"></div>코스 라인 (DDM=0)</div>
+          <div class="legend-item"><div class="legend-swatch" style="background:var(--warn);"></div>코스 경계 (±0.155 DDM)</div>
+          <div class="legend-item"><div class="legend-swatch" style="background:var(--text-1);"></div>±10° 코스 섹터</div>
+          <div class="legend-item"><div class="legend-swatch" style="background:var(--text-2);"></div>±35° 클리어런스 한계</div>
+          <div class="legend-item"><div class="legend-swatch" style="background:#ffc857;"></div>90Hz (좌, Yellow zone)</div>
+          <div class="legend-item"><div class="legend-swatch" style="background:#4ea8de;"></div>150Hz (우, Blue zone)</div>
+          <div class="legend-item ce-only"><div class="legend-swatch" style="background:#9affff;border-radius:50%;height:8px;width:8px;"></div>캡쳐 포인트</div>
+        </div>
+      </div>
+
+      <div style="margin-top: 18px;" class="info-card">
+        <strong>📡 시설 개념도 해설</strong><br>
+        활주로 종단에 설치된 <strong>8소자 LPDA 배열</strong>이 항공기 진입 방향(우측)으로 신호를 방사합니다.
+        활주로 중심선의 연장선이 <strong>코스 라인(DDM=0)</strong>이며, 그 주변 <strong>코스 존(±0.155 DDM 이내)</strong>은 항공기가 정상 진입 가능한 영역입니다.
+        그 외측 <strong>±10°까지는 코스 섹터</strong>, <strong>±35°까지는 클리어런스 영역</strong>으로 90Hz/150Hz 우세를 통해 항공기에 좌/우 방향을 알려줍니다.
+      </div>
+    </div>
+
+    <div class="view" id="view-3d">
+      <div class="chart-card">
+        <div class="chart-title">
+          <span class="chart-title-main">3D 공간 방사패턴</span>
+          <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
+            <div class="chart-toggle on" data-tgl="show3D_CourseCSB"><div class="tgl-box"></div><span style="color:var(--csb);">코스 CSB</span></div>
+            <div class="chart-toggle on" data-tgl="show3D_CourseSBO"><div class="tgl-box"></div><span style="color:var(--sbo);">코스 SBO</span></div>
+            <div class="chart-toggle on ce-only" data-tgl="show3D_ClearCSB"><div class="tgl-box"></div><span style="color:#6cc4ff;">CLR CSB</span></div>
+            <div class="chart-toggle on" data-tgl="show3D_Ground"><div class="tgl-box"></div><span style="color:#a0e060;">지면 반사</span></div>
+            <div class="chart-toggle on" data-tgl="show3D_Wireframe"><div class="tgl-box"></div><span>와이어프레임</span></div>
+            <div class="chart-toggle on" data-tgl="show3D_Runway"><div class="tgl-box"></div><span>활주로</span></div>
+          </div>
+        </div>
+        <div class="chart-subtitle">
+          마우스 드래그 회전 · 휠 줌 · 우클릭 드래그 이동
+          <span style="margin-left:14px;" id="height-slider-container">
+            안테나 높이: <input type="range" id="antenna-height-3d" min="1" max="6" step="0.1" value="2.5" style="width:120px;vertical-align:middle;">
+            <span id="height-3d-val" style="font-family:var(--mono);color:var(--accent-bright);">2.5m</span>
+          </span>
+        </div>
+        <canvas id="canvas-3d"></canvas>
+        <div style="margin-top: 14px;" class="info-card">
+          <strong>🌐 3D 패턴 해설 (지면 반사 포함)</strong><br>
+          • <strong>지면 반사 ON</strong>: 안테나 + 이미지 안테나 합성 → 수직 방향에 lobing 패턴 형성<br>
+          • <strong>이미지 안테나</strong>: 지면 아래 거울 대칭 위치 + 반대 위상<br>
+          • <strong>수직 인자</strong>: 2·sin(2π·h·sinθ/λ) — h=안테나 높이, λ=파장<br>
+          • <strong>안테나 높이</strong> 변경 시 lobe 개수/각도 변화 → 직접 만져보세요
+        </div>
+      </div>
+    </div>
+
+  </section>
+</main>
+
+<script>
+  /* ============ State ============ */
+  /* ============ State ============ */
+  // 8/14/20 소자별 기본 파라미터 (코스/클리어런스 각각)
+  // 코스: 중심 강, 외곽 약 (전방 지향성 빔)
+  // 클리어런스: 외곽 강, 중심 약 (피크가 ±20° 부근에 형성됨)
+  const DEFAULTS = {
+    8: {
+      I_course:    [1.00, 0.85, 0.55, 0.30],
+      I_clearance: [0.83, 0.99, 0.00, 0.00],
+      a:           [0.50, 1.20, 2.10, 3.00],
+    },
+    14: {
+      I_course:    [1.00, 0.92, 0.78, 0.60, 0.42, 0.26, 0.14],
+      I_clearance: [0.83, 0.99, 0.60, 0.00, 0.00, 0.00, 0.00],
+      a:           [0.45, 1.00, 1.70, 2.45, 3.25, 4.10, 5.00],
+    },
+    20: {
+      I_course:    [1.00, 0.95, 0.86, 0.74, 0.60, 0.46, 0.33, 0.22, 0.13, 0.07],
+      I_clearance: [0.83, 0.99, 0.60, 0.00, 0.00, 0.00, 0.00, 0.00, 0.00, 0.00],
+      a:           [0.42, 0.90, 1.45, 2.05, 2.70, 3.40, 4.15, 4.95, 5.80, 6.70],
+    }
+  };
+
+  const state = {
+    N: 8,
+    nPairs: 4,
+    I: [...DEFAULTS[8].I_course],          // 코스 전류 (기존 슬라이더가 이걸 편집)
+    I_clear: [...DEFAULTS[8].I_clearance], // 클리어런스 전류 (별도 슬라이더)
+    a: [...DEFAULTS[8].a],
+    enabled: [true, true, true, true],
+    useK: 1.0,
+    showCourseCSB: true,
+    showCourseSBO: true,
+    showClearCSB: true,
+    showClearSBO: true,
+    showPairs: false,
+    absMode: false,
+    polarMode: false,
+    frequency: 109.1,
+    mode: 'SF',
+    editTab: 'course',
+    hoverAngle: null,
+    showPatternOverlay: false,
+    // 3D 뷰 설정
+    show3D_CourseCSB: true,
+    show3D_CourseSBO: true,
+    show3D_ClearCSB: true,
+    show3D_Wireframe: true,
+    show3D_Runway: true,
+    show3D_Ground: true,        // 지면 반사 효과 (이미지 안테나)
+    antennaHeight: 2.5,          // LOC 안테나 지면 위 높이 (m)
+    cam3D: {
+      // 카메라 회전 (라디안)
+      azimuth: -0.6,   // 좌우 회전 (Y축)
+      elevation: 0.4,  // 상하 회전 (X축)
+      distance: 5.5,   // 카메라 거리
+      panX: 0,
+      panY: 0,
+    },
+  };
+
+  // 파장 계산: λ = c / f
+  function lambda() {
+    return 299.792458 / state.frequency;  // meters
+  }
+
+  // Pair colors — 최대 10쌍 지원 (P1~P10)
+  const PAIR_COLORS = [
+    '#ff5a5f',  // P1 - 빨강
+    '#ffc857',  // P2 - 노랑
+    '#00b4a0',  // P3 - 청록
+    '#b388ff',  // P4 - 보라
+    '#ff8c42',  // P5 - 주황
+    '#4ea8de',  // P6 - 청색
+    '#a0e060',  // P7 - 연두
+    '#ff6fa8',  // P8 - 분홍
+    '#9affff',  // P9 - 시안
+    '#e0c4a0',  // P10 - 베이지
+  ];
+
+  function K(thetaDeg) {
+    const t = Math.abs(thetaDeg);
+    if (t >= 90) return 0;
+    const base = Math.cos(t * Math.PI / 180);
+    const k = Math.pow(Math.max(0, base), 1.8);
+    return 1.0 * (1 - state.useK) + k * state.useK;
+  }
+
+  function E_csb(pairIdx, thetaDeg) {
+    if (!state.enabled[pairIdx]) return 0;
+    const I = state.I[pairIdx];
+    const a = state.a[pairIdx];
+    const th = thetaDeg * Math.PI / 180;
+    const phase = a * 2 * Math.PI * Math.sin(th);
+    return K(thetaDeg) * 2 * I * Math.cos(phase);
+  }
+  function E_sbo(pairIdx, thetaDeg) {
+    if (!state.enabled[pairIdx]) return 0;
+    const I = state.I[pairIdx];
+    const a = state.a[pairIdx];
+    const th = thetaDeg * Math.PI / 180;
+    const phase = a * 2 * Math.PI * Math.sin(th);
+    return K(thetaDeg) * 2 * I * Math.sin(phase);
+  }
+  function E_csb_total(th) { let s=0; for(let i=0;i<state.nPairs;i++) s+=E_csb(i,th); return s; }
+  function E_sbo_total(th) { let s=0; for(let i=0;i<state.nPairs;i++) s+=E_sbo(i,th); return s; }
+
+  /* === Capture Effect 클리어런스 신호 ===
+   * 클리어런스는 별도의 분배망을 통해 코스와 다른 전류비로 공급된다.
+   * 그래서 외곽 안테나가 더 강하고, 피크가 ±20° 근처에 형성된다.
+   * 전체 강도는 코스의 약 60% 수준으로 모델링 (FAA: 코스 대비 15% 전력 이하)
+   */
+  const CLEAR_GAIN = 0.60;
+  
+  function E_csb_clearance(pairIdx, thetaDeg) {
+    if (!state.enabled[pairIdx]) return 0;
+    const I = state.I_clear[pairIdx];
+    const a = state.a[pairIdx];
+    const th = thetaDeg * Math.PI / 180;
+    const phase = a * 2 * Math.PI * Math.sin(th);
+    return K(thetaDeg) * 2 * I * Math.cos(phase) * CLEAR_GAIN;
+  }
+  function E_sbo_clearance(pairIdx, thetaDeg) {
+    if (!state.enabled[pairIdx]) return 0;
+    const I = state.I_clear[pairIdx];
+    const a = state.a[pairIdx];
+    const th = thetaDeg * Math.PI / 180;
+    const phase = a * 2 * Math.PI * Math.sin(th);
+    return K(thetaDeg) * 2 * I * Math.sin(phase) * CLEAR_GAIN;
+  }
+  function E_csb_clear_total(th) { let s=0; for(let i=0;i<state.nPairs;i++) s+=E_csb_clearance(i,th); return s; }
+  function E_sbo_clear_total(th) { let s=0; for(let i=0;i<state.nPairs;i++) s+=E_sbo_clearance(i,th); return s; }
+
+  /* ============ Dynamic slider generation ============ */
+  function buildSliders() {
+    const n = state.nPairs;
+    const iCont = document.getElementById('i-sliders');
+    const aCont = document.getElementById('a-sliders');
+    iCont.innerHTML = '';
+    aCont.innerHTML = '';
+    
+    // 어느 I 배열을 편집할지 결정
+    const editingClearance = (state.editTab === 'clearance');
+    const targetI = editingClearance ? state.I_clear : state.I;
+    const tabColor = editingClearance ? '#6cc4ff' : 'var(--accent-bright)';
+    
+    for (let p = 0; p < n; p++) {
+      const labelText = p === 0 ? `P${p+1}<small>중심</small>` 
+                      : p === n-1 ? `P${p+1}<small>외곽</small>` 
+                      : `P${p+1}`;
+      
+      // I slider row
+      const iRow = document.createElement('div');
+      iRow.className = 'pair-row';
+      iRow.dataset.pair = p;
+      iRow.innerHTML = `
+        <div class="pair-check on" data-check="${p}"></div>
+        <span class="pair-label">${labelText}</span>
+        <input type="range" data-i="${p}" min="0" max="1.5" step="0.01" value="${targetI[p]}" style="--thumb-color:${tabColor};">
+        <span class="value-readout" data-i-val="${p}" style="color:${tabColor};">${targetI[p].toFixed(2)}</span>
+      `;
+      iCont.appendChild(iRow);
+      
+      // a slider row
+      const aRow = document.createElement('div');
+      aRow.className = 'pair-row';
+      aRow.dataset.pair = p;
+      const aMax = Math.max(4.0, Math.ceil(state.a[p] + 1.5));
+      const aMeters = (state.a[p] * lambda()).toFixed(2);
+      aRow.innerHTML = `
+        <div></div>
+        <span class="pair-label">P${p+1}</span>
+        <input type="range" data-a="${p}" min="0.3" max="${aMax}" step="0.05" value="${state.a[p]}">
+        <span class="value-readout" data-a-val="${p}" style="font-size:10px;line-height:1.1;">${state.a[p].toFixed(2)}λ<br><span style="color:var(--text-2);font-weight:400;">${aMeters}m</span></span>
+      `;
+      aCont.appendChild(aRow);
+    }
+    
+    // Wire up new sliders
+    iCont.querySelectorAll('input[data-i]').forEach(inp => {
+      inp.addEventListener('input', e => {
+        const idx = parseInt(e.target.dataset.i);
+        const val = parseFloat(e.target.value);
+        if (state.editTab === 'clearance') {
+          state.I_clear[idx] = val;
+        } else {
+          state.I[idx] = val;
+        }
+        document.querySelector(`[data-i-val="${idx}"]`).textContent = val.toFixed(2);
+        renderAll();
+      });
+    });
+    aCont.querySelectorAll('input[data-a]').forEach(inp => {
+      inp.addEventListener('input', e => {
+        const idx = parseInt(e.target.dataset.a);
+        state.a[idx] = parseFloat(e.target.value);
+        const meters = (state.a[idx] * lambda()).toFixed(2);
+        document.querySelector(`[data-a-val="${idx}"]`).innerHTML = 
+          `${state.a[idx].toFixed(2)}λ<br><span style="color:var(--text-2);font-weight:400;">${meters}m</span>`;
+        renderAll();
+      });
+    });
+    iCont.querySelectorAll('.pair-check').forEach(box => {
+      box.addEventListener('click', () => {
+        const idx = parseInt(box.dataset.check);
+        state.enabled[idx] = !state.enabled[idx];
+        document.querySelectorAll(`.pair-check[data-check="${idx}"]`).forEach(b => {
+          if (state.enabled[idx]) b.classList.add('on'); else b.classList.remove('on');
+        });
+        document.querySelectorAll(`.pair-row[data-pair="${idx}"]`).forEach(r => {
+          if (state.enabled[idx]) r.classList.remove('off'); else r.classList.add('off');
+        });
+        renderAll();
+      });
+    });
+  }
+
+  /* Change array size (8/14/20) */
+  function setArraySize(N) {
+    state.N = N;
+    state.nPairs = N / 2;
+    state.I = [...DEFAULTS[N].I_course];
+    state.I_clear = [...DEFAULTS[N].I_clearance];
+    state.a = [...DEFAULTS[N].a];
+    state.enabled = new Array(state.nPairs).fill(true);
+    document.getElementById('brand-sub').textContent = `${N}-Element LPDA Array`;
+    buildSliders();
+    renderAll();
+  }
+  
+  /* 
+   * DDM 계산 - ICAO 변조도 차이 방식
+   * M_90 = 0.20 × (CSB + SBO) / CSB_ref  (90Hz 변조 깊이)
+   * M_150 = 0.20 × (CSB - SBO) / CSB_ref  (150Hz 변조 깊이)
+   * DDM = M_150 - M_90 → SBO/CSB_ref 비율로 단순화 가능하지만 saturation 필요
+   * 실제로는 |SBO/CSB|가 커지면 0.4 부근에서 포화 (modulation cannot exceed 100%)
+   */
+  function DDM(th) {
+    const csb = E_csb_total(th);
+    const sbo = E_sbo_total(th);
+    // CSB가 매우 작은 영역 (Null 등) 에서도 실제로는 신호 자체가 약해서 발산 안 함
+    // → CSB 절댓값에 floor 적용 + saturation
+    const csbRef = Math.max(Math.abs(csb), 0.05 * Math.abs(E_csb_total(0)));
+    if (csbRef < 0.001) return 0;
+    let raw = 0.4 * sbo / csbRef;
+    // Saturation: |DDM| <= 0.4 (변조도 차이가 최대 변조도를 못 넘음)
+    const SAT = 0.4;
+    raw = SAT * Math.tanh(raw / SAT);
+    return raw;
+  }
+
+  /* ============ Canvas helpers ============ */
+  function setupCanvas(canvas) {
+    const dpr = window.devicePixelRatio || 1;
+    const rect = canvas.getBoundingClientRect();
+    canvas.width = rect.width * dpr;
+    canvas.height = rect.height * dpr;
+    const ctx = canvas.getContext('2d');
+    ctx.scale(dpr, dpr);
+    return { ctx, w: rect.width, h: rect.height };
+  }
+
+  function drawGrid(ctx, w, h, opts) {
+    const { xMin, xMax, yMin, yMax, xStep, yStep, padding } = opts;
+    const padL = padding.l, padR = padding.r, padT = padding.t, padB = padding.b;
+    const plotW = w - padL - padR;
+    const plotH = h - padT - padB;
+
+    ctx.fillStyle = '#0d1219';
+    ctx.fillRect(padL, padT, plotW, plotH);
+
+    ctx.strokeStyle = 'rgba(255,255,255,0.05)';
+    ctx.lineWidth = 1;
+    for (let x = xMin; x <= xMax + 0.01; x += xStep) {
+      const px = padL + ((x - xMin) / (xMax - xMin)) * plotW;
+      ctx.beginPath(); ctx.moveTo(px, padT); ctx.lineTo(px, padT + plotH); ctx.stroke();
+    }
+    for (let y = yMin; y <= yMax + 0.01; y += yStep) {
+      const py = padT + plotH - ((y - yMin) / (yMax - yMin)) * plotH;
+      ctx.beginPath(); ctx.moveTo(padL, py); ctx.lineTo(padL + plotW, py); ctx.stroke();
+    }
+    if (yMin < 0 && yMax > 0) {
+      const py = padT + plotH - ((0 - yMin) / (yMax - yMin)) * plotH;
+      ctx.strokeStyle = 'rgba(255,255,255,0.25)';
+      ctx.beginPath(); ctx.moveTo(padL, py); ctx.lineTo(padL + plotW, py); ctx.stroke();
+    }
+
+    ctx.fillStyle = '#6c7a93';
+    ctx.font = '10px JetBrains Mono, monospace';
+    ctx.textAlign = 'center';
+    for (let x = xMin; x <= xMax + 0.01; x += xStep) {
+      const px = padL + ((x - xMin) / (xMax - xMin)) * plotW;
+      ctx.fillText(x + '°', px, padT + plotH + 14);
+    }
+    ctx.textAlign = 'right';
+    for (let y = yMin; y <= yMax + 0.01; y += yStep) {
+      const py = padT + plotH - ((y - yMin) / (yMax - yMin)) * plotH;
+      ctx.fillText(Math.abs(y) < 0.001 ? '0' : y.toFixed(yStep < 1 ? 2 : 1), padL - 6, py + 3);
+    }
+
+    return {
+      x2px: (x) => padL + ((x - xMin) / (xMax - xMin)) * plotW,
+      y2py: (y) => padT + plotH - ((y - yMin) / (yMax - yMin)) * plotH,
+      padL, padT, plotW, plotH
+    };
+  }
+
+  function plotLine(ctx, scale, fn, xMin, xMax, color, lineWidth, alpha) {
+    ctx.strokeStyle = color;
+    ctx.lineWidth = lineWidth;
+    ctx.globalAlpha = alpha || 1;
+    ctx.beginPath();
+    let first = true;
+    const step = (xMax - xMin) / 400;
+    for (let x = xMin; x <= xMax; x += step) {
+      const y = fn(x);
+      const px = scale.x2px(x);
+      const py = scale.y2py(y);
+      if (first) { ctx.moveTo(px, py); first = false; }
+      else ctx.lineTo(px, py);
+    }
+    ctx.stroke();
+    ctx.globalAlpha = 1;
+  }
+
+  /* ============ Combined CSB+SBO Chart ============ */
+  function drawCombined() {
+    if (state.polarMode) {
+      drawCombinedPolar();
+    } else {
+      drawCombinedRect();
+    }
+  }
+
+  /* ============ Rectangular mode ============ */
+  function drawCombinedRect() {
+    const canvas = document.getElementById('combined-chart');
+    const { ctx, w, h } = setupCanvas(canvas);
+    ctx.clearRect(0, 0, w, h);
+
+    const abs = state.absMode;
+    // Y축 스케일 - N소자에 따라 확장 (소자 수 ↑ → 합성 피크 ↑)
+    const yPeakByN = { 8: 6, 14: 9, 20: 12 };
+    const yMax = yPeakByN[state.N] || 6;
+    const yMin = abs ? 0 : -yMax * 0.7;
+    const yStep = state.N === 20 ? 2 : (state.N === 14 ? 1.5 : 1);
+
+    const scale = drawGrid(ctx, w, h, {
+      xMin: -40, xMax: 40, yMin, yMax,
+      xStep: 10, yStep,
+      padding: { l: 44, r: 16, t: 24, b: 28 }
+    });
+
+    // Clip to plot area
+    ctx.save();
+    ctx.beginPath();
+    ctx.rect(scale.padL, scale.padT, scale.plotW, scale.plotH);
+    ctx.clip();
+
+    const transform = abs ? Math.abs : (v) => v;
+
+    // === Individual pairs (optional) ===
+    if (state.showPairs) {
+      for (let i = 0; i < state.nPairs; i++) {
+        if (!state.enabled[i]) continue;
+        if (state.showCourseCSB) {
+          plotLine(ctx, scale, (th) => transform(E_csb(i, th)), -40, 40, PAIR_COLORS[i], 1.2, 0.5);
+        }
+        if (state.showCourseSBO) {
+          ctx.setLineDash([4, 3]);
+          plotLine(ctx, scale, (th) => transform(E_sbo(i, th)), -40, 40, PAIR_COLORS[i], 1.2, 0.5);
+          ctx.setLineDash([]);
+        }
+      }
+    }
+
+    // === Course Composite curves (두꺼운 실선) ===
+    if (state.showCourseCSB) {
+      plotLine(ctx, scale, (th) => transform(E_csb_total(th)), -40, 40, '#ffc857', 2.8, 1);
+    }
+    if (state.showCourseSBO) {
+      plotLine(ctx, scale, (th) => transform(E_sbo_total(th)), -40, 40, '#b388ff', 2.8, 1);
+    }
+    
+    // === Clearance Composite curves (CE 모드만, 점선) ===
+    const isCE = state.mode === 'CE';
+    if (isCE && state.showClearCSB) {
+      ctx.setLineDash([7, 4]);
+      plotLine(ctx, scale, (th) => transform(E_csb_clear_total(th)), -40, 40, '#6cc4ff', 2.2, 0.95);
+      ctx.setLineDash([]);
+    }
+    if (isCE && state.showClearSBO) {
+      ctx.setLineDash([7, 4]);
+      plotLine(ctx, scale, (th) => transform(E_sbo_clear_total(th)), -40, 40, '#ff6fa8', 2.2, 0.95);
+      ctx.setLineDash([]);
+    }
+
+    ctx.restore();
+
+    // Center vertical line (0° = 활주로 중심선)
+    ctx.strokeStyle = 'rgba(108,196,255,0.4)';
+    ctx.lineWidth = 1;
+    ctx.setLineDash([2, 3]);
+    ctx.beginPath();
+    ctx.moveTo(scale.x2px(0), scale.padT);
+    ctx.lineTo(scale.x2px(0), scale.padT + scale.plotH);
+    ctx.stroke();
+    ctx.setLineDash([]);
+
+    // Legend
+    ctx.font = '10px JetBrains Mono';
+    ctx.textAlign = 'left';
+    let lx = scale.padL + 8;
+    let ly = scale.padT + 14;
+    if (state.showCourseCSB) {
+      ctx.fillStyle = '#ffc857';
+      ctx.fillText(abs ? '|Ecst| 코스' : 'Ecst 코스', lx, ly);
+      ly += 13;
+    }
+    if (state.showCourseSBO) {
+      ctx.fillStyle = '#b388ff';
+      ctx.fillText(abs ? '|Esst| 코스' : 'Esst 코스', lx, ly);
+      ly += 13;
+    }
+    if (isCE && state.showClearCSB) {
+      ctx.fillStyle = '#6cc4ff';
+      ctx.fillText(abs ? '|Ecst| CLR' : 'Ecst CLR', lx, ly);
+      ly += 13;
+    }
+    if (isCE && state.showClearSBO) {
+      ctx.fillStyle = '#ff6fa8';
+      ctx.fillText(abs ? '|Esst| CLR' : 'Esst CLR', lx, ly);
+      ly += 13;
+    }
+    if (state.showPairs) {
+      ctx.fillStyle = 'rgba(255,255,255,0.5)';
+      ctx.font = '9px JetBrains Mono';
+      let activeIdx = [];
+      for (let i = 0; i < state.nPairs; i++) if (state.enabled[i]) activeIdx.push(i+1);
+      const csbStr = state.showCourseCSB ? `E${activeIdx.join('')} (실선)` : '';
+      const sboStr = state.showCourseSBO ? `Ess${activeIdx.join('')} (점선)` : '';
+      const parts = [csbStr, sboStr].filter(Boolean);
+      parts.forEach(p => { ctx.fillText(p, lx, ly); ly += 11; });
+    }
+
+    // 0° label
+    ctx.fillStyle = '#6cc4ff';
+    ctx.font = '9px JetBrains Mono';
+    ctx.textAlign = 'center';
+    ctx.fillText('0° (활주로 중심선)', scale.x2px(0), scale.padT + scale.plotH + 18);
+  }
+
+  /* ============ Polar mode ============ */
+  function drawCombinedPolar() {
+    const canvas = document.getElementById('combined-chart');
+    const { ctx, w, h } = setupCanvas(canvas);
+    ctx.clearRect(0, 0, w, h);
+
+    // Background
+    ctx.fillStyle = '#0d1219';
+    ctx.fillRect(0, 0, w, h);
+
+    // 극좌표 중심: 하단 중앙 (안테나 위치), 위로 0° 방향
+    // ±90° 반원 전체를 표시
+    const cx = w / 2;
+    const cy = h - 40;
+    const maxR = Math.min(cx - 50, h - 70);
+
+    // 극좌표는 항상 절대값 표현
+    const transform = Math.abs;
+
+    // Y축 스케일은 N에 따라 (직각좌표와 일치시킴)
+    const yPeakByN = { 8: 6, 14: 9, 20: 12 };
+    const yMaxScale = yPeakByN[state.N] || 6;
+    const yStepScale = state.N === 20 ? 2 : (state.N === 14 ? 1.5 : 1);
+    const rScale = maxR / yMaxScale;
+
+    // === Radial grid (concentric arcs, top semicircle ±90°) ===
+    ctx.strokeStyle = 'rgba(255,255,255,0.06)';
+    ctx.lineWidth = 1;
+    for (let val = yStepScale; val <= yMaxScale + 0.01; val += yStepScale) {
+      const r = val * rScale;
+      ctx.beginPath();
+      // ±90° = full upper semicircle: from -180° (left) to 0° (right) in canvas
+      ctx.arc(cx, cy, r, Math.PI, 0, false);
+      ctx.stroke();
+    }
+
+    // Radial value labels (along -90° = left horizontal)
+    ctx.fillStyle = '#6c7a93';
+    ctx.font = '9px JetBrains Mono';
+    ctx.textAlign = 'right';
+    for (let val = yStepScale; val <= yMaxScale + 0.01; val += yStepScale) {
+      const r = val * rScale;
+      ctx.fillText(val % 1 === 0 ? val : val.toFixed(1), cx - r - 4, cy + 3);
+    }
+
+    // === Angular grid (radial lines, every 15°) ===
+    ctx.strokeStyle = 'rgba(255,255,255,0.07)';
+    ctx.lineWidth = 1;
+    for (let deg = -90; deg <= 90; deg += 15) {
+      const ang = -Math.PI/2 + deg * Math.PI/180;
+      ctx.beginPath();
+      ctx.moveTo(cx, cy);
+      ctx.lineTo(cx + maxR * Math.cos(ang), cy + maxR * Math.sin(ang));
+      ctx.stroke();
+    }
+
+    // Bold reference lines at key angles
+    [-90, -35, -10, 0, 10, 35, 90].forEach(deg => {
+      const ang = -Math.PI/2 + deg * Math.PI/180;
+      ctx.strokeStyle = deg === 0 ? 'rgba(108,196,255,0.4)' : 'rgba(168,181,204,0.18)';
+      ctx.lineWidth = deg === 0 ? 1.2 : 1;
+      if (deg === 0) ctx.setLineDash([3, 4]);
+      ctx.beginPath();
+      ctx.moveTo(cx, cy);
+      ctx.lineTo(cx + maxR * Math.cos(ang), cy + maxR * Math.sin(ang));
+      ctx.stroke();
+      ctx.setLineDash([]);
+    });
+
+    // Angle labels (every 15°)
+    ctx.fillStyle = '#a8b5cc';
+    ctx.font = '10px JetBrains Mono';
+    ctx.textAlign = 'center';
+    for (let deg = -90; deg <= 90; deg += 15) {
+      const ang = -Math.PI/2 + deg * Math.PI/180;
+      const lx = cx + (maxR + 16) * Math.cos(ang);
+      const ly = cy + (maxR + 16) * Math.sin(ang) + 3;
+      const txt = (deg > 0 ? '+' : '') + deg + '°';
+      ctx.fillText(txt, lx, ly);
+    }
+
+    // === Plot helper for polar ===
+    function plotPolar(fn, color, lineWidth, alpha, dash) {
+      ctx.strokeStyle = color;
+      ctx.lineWidth = lineWidth;
+      ctx.globalAlpha = alpha;
+      if (dash) ctx.setLineDash(dash);
+      ctx.beginPath();
+      let first = true;
+      const step = 0.3;
+      for (let deg = -90; deg <= 90; deg += step) {
+        const val = transform(fn(deg));
+        const r = Math.min(val * rScale, maxR);
+        const ang = -Math.PI/2 + deg * Math.PI/180;
+        const px = cx + r * Math.cos(ang);
+        const py = cy + r * Math.sin(ang);
+        if (first) { ctx.moveTo(px, py); first = false; }
+        else ctx.lineTo(px, py);
+      }
+      ctx.stroke();
+      if (dash) ctx.setLineDash([]);
+      ctx.globalAlpha = 1;
+    }
+
+    // === Individual pairs ===
+    if (state.showPairs) {
+      for (let i = 0; i < state.nPairs; i++) {
+        if (!state.enabled[i]) continue;
+        if (state.showCourseCSB) plotPolar((th) => E_csb(i, th), PAIR_COLORS[i], 1.2, 0.5);
+        if (state.showCourseSBO) plotPolar((th) => E_sbo(i, th), PAIR_COLORS[i], 1.2, 0.5, [4, 3]);
+      }
+    }
+
+    // === Composite curves ===
+    if (state.showCourseCSB) plotPolar(E_csb_total, '#ffc857', 2.6, 1);
+    if (state.showCourseSBO) plotPolar(E_sbo_total, '#b388ff', 2.6, 1);
+    
+    // === Clearance curves (CE 모드만, 점선) ===
+    const isCE = state.mode === 'CE';
+    if (isCE && state.showClearCSB) plotPolar(E_csb_clear_total, '#6cc4ff', 2.2, 0.95, [7, 4]);
+    if (isCE && state.showClearSBO) plotPolar(E_sbo_clear_total, '#ff6fa8', 2.2, 0.95, [7, 4]);
+
+    // === CSB-SBO crossing points (CSB와 SBO 절대값이 만나는 각도) ===
+    if (state.showCourseCSB && state.showCourseSBO) {
+      const crossings = [];
+      const stepC = 0.5;
+      let prevDiff = null;
+      for (let deg = -90; deg <= 90; deg += stepC) {
+        const csbV = Math.abs(E_csb_total(deg));
+        const sboV = Math.abs(E_sbo_total(deg));
+        const diff = csbV - sboV;
+        if (prevDiff !== null && Math.sign(prevDiff) !== Math.sign(diff) && prevDiff !== 0) {
+          // Linear interpolation for finer crossing
+          const ratio = Math.abs(prevDiff) / (Math.abs(prevDiff) + Math.abs(diff));
+          const crossDeg = (deg - stepC) + stepC * ratio;
+          const crossVal = (Math.abs(E_csb_total(crossDeg)) + Math.abs(E_sbo_total(crossDeg))) / 2;
+          crossings.push({ deg: crossDeg, val: crossVal });
+        }
+        prevDiff = diff;
+      }
+      
+      // Draw crossing markers + dashed guide lines + angle labels
+      crossings.forEach(c => {
+        const r = Math.min(c.val * rScale, maxR);
+        const ang = -Math.PI/2 + c.deg * Math.PI/180;
+        const px = cx + r * Math.cos(ang);
+        const py = cy + r * Math.sin(ang);
+        
+        // Dashed guide line from center
+        ctx.strokeStyle = 'rgba(255,140,66,0.6)';
+        ctx.lineWidth = 1;
+        ctx.setLineDash([3, 3]);
+        ctx.beginPath();
+        ctx.moveTo(cx, cy);
+        ctx.lineTo(px, py);
+        ctx.stroke();
+        ctx.setLineDash([]);
+        
+        // Marker
+        ctx.fillStyle = '#ff8c42';
+        ctx.beginPath();
+        ctx.arc(px, py, 4, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.strokeStyle = '#fff';
+        ctx.lineWidth = 1;
+        ctx.stroke();
+        
+        // Angle label (offset outward)
+        const labelR = r + 18;
+        const lx = cx + labelR * Math.cos(ang);
+        const ly = cy + labelR * Math.sin(ang) + 3;
+        ctx.fillStyle = '#ff8c42';
+        ctx.font = 'bold 10px JetBrains Mono';
+        ctx.textAlign = 'center';
+        const sign = c.deg > 0 ? '+' : '';
+        ctx.fillText(`${sign}${c.deg.toFixed(1)}°`, lx, ly);
+      });
+    }
+
+    // === Antenna marker at center ===
+    ctx.fillStyle = '#6cc4ff';
+    ctx.beginPath();
+    ctx.arc(cx, cy, 4, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = '#6cc4ff';
+    ctx.font = '9px JetBrains Mono';
+    ctx.textAlign = 'center';
+    ctx.fillText('LOC', cx, cy + 22);
+
+    // === Legend (top-left) ===
+    ctx.font = '10px JetBrains Mono';
+    ctx.textAlign = 'left';
+    let lx = 16;
+    let ly = 20;
+    if (state.showCourseCSB) {
+      ctx.fillStyle = '#ffc857';
+      ctx.fillText('|Ecst| 코스', lx, ly);
+      ly += 13;
+    }
+    if (state.showCourseSBO) {
+      ctx.fillStyle = '#b388ff';
+      ctx.fillText('|Esst| 코스', lx, ly);
+      ly += 13;
+    }
+    if (isCE && state.showClearCSB) {
+      ctx.fillStyle = '#6cc4ff';
+      ctx.fillText('|Ecst| CLR', lx, ly);
+      ly += 13;
+    }
+    if (isCE && state.showClearSBO) {
+      ctx.fillStyle = '#ff6fa8';
+      ctx.fillText('|Esst| CLR', lx, ly);
+      ly += 13;
+    }
+    if (state.showCourseCSB && state.showCourseSBO) {
+      ctx.fillStyle = '#ff8c42';
+      ctx.font = '9px JetBrains Mono';
+      ctx.fillText('● 코스 CSB=SBO 교점', lx, ly);
+      ly += 12;
+    }
+    if (state.showPairs) {
+      ctx.fillStyle = 'rgba(255,255,255,0.5)';
+      ctx.font = '9px JetBrains Mono';
+      let activeIdx = [];
+      for (let i = 0; i < state.nPairs; i++) if (state.enabled[i]) activeIdx.push(i+1);
+      if (state.showCourseCSB) { ctx.fillText(`E${activeIdx.join('')} (실선)`, lx, ly); ly += 11; }
+      if (state.showCourseSBO) { ctx.fillText(`Ess${activeIdx.join('')} (점선)`, lx, ly); ly += 11; }
+    }
+    ctx.fillStyle = '#6c7a93';
+    ctx.font = '9px JetBrains Mono';
+    ctx.fillText('극좌표 · |E| · ±90°', lx, ly);
+  }
+
+  /* ============ DDM Chart ============ */
+  function drawDDM() {
+    const canvas = document.getElementById('ddm-chart');
+    const { ctx, w, h } = setupCanvas(canvas);
+    ctx.clearRect(0, 0, w, h);
+
+    const scale = drawGrid(ctx, w, h, {
+      xMin: -15, xMax: 15, yMin: -0.5, yMax: 0.5,
+      xStep: 5, yStep: 0.1,
+      padding: { l: 44, r: 14, t: 22, b: 28 }
+    });
+
+    // Clip drawing to plot area (방어적: 어떤 경우에도 차트 밖으로 못 나감)
+    ctx.save();
+    ctx.beginPath();
+    ctx.rect(scale.padL, scale.padT, scale.plotW, scale.plotH);
+    ctx.clip();
+
+    // ±0.155 reference lines
+    ctx.strokeStyle = 'rgba(255,140,66,0.4)';
+    ctx.setLineDash([4, 4]);
+    ctx.lineWidth = 1;
+    [0.155, -0.155].forEach(y => {
+      ctx.beginPath();
+      ctx.moveTo(scale.padL, scale.y2py(y));
+      ctx.lineTo(scale.padL + scale.plotW, scale.y2py(y));
+      ctx.stroke();
+    });
+    ctx.setLineDash([]);
+
+    // Filled area for visualization
+    ctx.beginPath();
+    const step = 0.1;
+    let started = false;
+    for (let x = -15; x <= 15; x += step) {
+      const y = DDM(x);
+      if (!started) { ctx.moveTo(scale.x2px(x), scale.y2py(0)); ctx.lineTo(scale.x2px(x), scale.y2py(y)); started = true; }
+      else ctx.lineTo(scale.x2px(x), scale.y2py(y));
+    }
+    ctx.lineTo(scale.x2px(15), scale.y2py(0));
+    ctx.closePath();
+    const grad = ctx.createLinearGradient(0, scale.y2py(0.5), 0, scale.y2py(-0.5));
+    grad.addColorStop(0, 'rgba(255,90,95,0.18)');
+    grad.addColorStop(0.5, 'rgba(78,168,222,0.08)');
+    grad.addColorStop(1, 'rgba(0,180,160,0.18)');
+    ctx.fillStyle = grad;
+    ctx.fill();
+
+    plotLine(ctx, scale, DDM, -15, 15, '#6cc4ff', 2.4, 1);
+
+    ctx.restore(); // end clip
+
+    // Center vertical line (clip 밖에서 그림)
+    ctx.strokeStyle = 'rgba(108,196,255,0.6)';
+    ctx.lineWidth = 1;
+    ctx.setLineDash([2, 3]);
+    ctx.beginPath();
+    ctx.moveTo(scale.x2px(0), scale.padT);
+    ctx.lineTo(scale.x2px(0), scale.padT + scale.plotH);
+    ctx.stroke();
+    ctx.setLineDash([]);
+
+    // Labels
+    ctx.font = '10px JetBrains Mono';
+    ctx.fillStyle = '#ff5a5f';
+    ctx.textAlign = 'left';
+    ctx.fillText('← 90Hz 우세', scale.padL + 6, scale.padT + 14);
+    ctx.fillStyle = '#00b4a0';
+    ctx.textAlign = 'right';
+    ctx.fillText('150Hz 우세 →', scale.padL + scale.plotW - 6, scale.padT + 14);
+
+    ctx.fillStyle = '#ff8c42';
+    ctx.font = '9px JetBrains Mono';
+    ctx.textAlign = 'left';
+    ctx.fillText('+0.155 (코스 경계)', scale.padL + 6, scale.y2py(0.155) - 3);
+    ctx.fillText('−0.155', scale.padL + 6, scale.y2py(-0.155) + 11);
+    
+    // === Width Points (±0.155 DDM 도달 각도) - 수직선 표시 ===
+    let leftWP = 0, rightWP = 0;
+    for (let a = 0.1; a < 15; a += 0.02) {
+      if (DDM(-a) <= -0.155 && leftWP === 0) leftWP = -a;
+      if (DDM(a) >= 0.155 && rightWP === 0) rightWP = a;
+    }
+    
+    [leftWP, rightWP].forEach((wp, idx) => {
+      if (wp === 0) return;
+      // 수직선 (위에서 아래로)
+      ctx.strokeStyle = 'rgba(255,140,66,0.7)';
+      ctx.lineWidth = 1.5;
+      ctx.setLineDash([5, 3]);
+      ctx.beginPath();
+      ctx.moveTo(scale.x2px(wp), scale.padT);
+      ctx.lineTo(scale.x2px(wp), scale.padT + scale.plotH);
+      ctx.stroke();
+      ctx.setLineDash([]);
+      
+      // 교차점 마커 (DDM 곡선과 만나는 곳)
+      const ddmAtWP = DDM(wp);
+      const py = scale.y2py(ddmAtWP);
+      ctx.fillStyle = '#ff8c42';
+      ctx.beginPath();
+      ctx.arc(scale.x2px(wp), py, 4.5, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.strokeStyle = '#fff';
+      ctx.lineWidth = 1.2;
+      ctx.stroke();
+      
+      // 각도와 DDM 값을 상단 라벨로
+      ctx.fillStyle = '#ff8c42';
+      ctx.font = 'bold 10px JetBrains Mono';
+      ctx.textAlign = idx === 0 ? 'left' : 'right';
+      const xOffset = idx === 0 ? 4 : -4;
+      const sign = wp > 0 ? '+' : '';
+      ctx.fillText(`WP: ${sign}${wp.toFixed(2)}°`, scale.x2px(wp) + xOffset, scale.padT + 32);
+      
+      ctx.font = '9px JetBrains Mono';
+      ctx.fillStyle = '#a8b5cc';
+      const ddmSign = ddmAtWP > 0 ? '+' : '';
+      ctx.fillText(`DDM ${ddmSign}${ddmAtWP.toFixed(3)}`, scale.x2px(wp) + xOffset, scale.padT + 45);
+    });
+    
+    // 가운데 정보 박스: 코스 폭 + 시단 거리
+    if (leftWP !== 0 && rightWP !== 0) {
+      const cw = rightWP - leftWP;
+      const halfRad = (cw / 2) * Math.PI / 180;
+      const distM = halfRad > 0.0001 ? Math.round(107 / Math.tan(halfRad)) : 0;
+      
+      ctx.fillStyle = 'rgba(108,196,255,0.08)';
+      const boxX = scale.x2px(0) - 70;
+      const boxY = scale.padT + scale.plotH - 38;
+      ctx.fillRect(boxX, boxY, 140, 30);
+      ctx.strokeStyle = 'rgba(108,196,255,0.3)';
+      ctx.lineWidth = 1;
+      ctx.strokeRect(boxX, boxY, 140, 30);
+      
+      ctx.fillStyle = '#6cc4ff';
+      ctx.font = 'bold 10px JetBrains Mono';
+      ctx.textAlign = 'center';
+      ctx.fillText(`코스 폭 ${cw.toFixed(2)}°`, scale.x2px(0), boxY + 13);
+      ctx.fillStyle = '#a8b5cc';
+      ctx.font = '9px JetBrains Mono';
+      ctx.fillText(`시단거리 ${distM.toLocaleString()}m`, scale.x2px(0), boxY + 25);
+    }
+    
+    // === Hover marker (마우스 위치 추적) ===
+    if (state.hoverAngle !== null) {
+      const hx = scale.x2px(state.hoverAngle);
+      const hDDM = DDM(state.hoverAngle);
+      const hy = scale.y2py(hDDM);
+      
+      // 세로 추적선
+      ctx.strokeStyle = 'rgba(255,255,255,0.5)';
+      ctx.lineWidth = 1;
+      ctx.setLineDash([2, 3]);
+      ctx.beginPath();
+      ctx.moveTo(hx, scale.padT);
+      ctx.lineTo(hx, scale.padT + scale.plotH);
+      ctx.stroke();
+      ctx.setLineDash([]);
+      
+      // 마커 (DDM 곡선 위 점)
+      ctx.fillStyle = '#6cc4ff';
+      ctx.beginPath();
+      ctx.arc(hx, hy, 5, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.strokeStyle = '#fff';
+      ctx.lineWidth = 1.5;
+      ctx.stroke();
+    }
+  }
+  
+  /* ============ CDI (Course Deviation Indicator) ============ */
+  function drawCDI() {
+    const canvas = document.getElementById('cdi-canvas');
+    if (!canvas) return;
+    const { ctx, w, h } = setupCanvas(canvas);
+    ctx.clearRect(0, 0, w, h);
+    
+    const cx = w / 2;
+    const cy = h / 2;
+    const radius = Math.min(w, h) * 0.45;
+    
+    // === 외곽 베젤 (금속 느낌) ===
+    const bezelGrad = ctx.createRadialGradient(cx, cy - radius * 0.3, radius * 0.4, cx, cy, radius);
+    bezelGrad.addColorStop(0, '#3a4458');
+    bezelGrad.addColorStop(0.7, '#1f2733');
+    bezelGrad.addColorStop(1, '#0a0e14');
+    ctx.fillStyle = bezelGrad;
+    ctx.beginPath();
+    ctx.arc(cx, cy, radius + 6, 0, Math.PI * 2);
+    ctx.fill();
+    
+    // 베젤 외곽선 (강조)
+    ctx.strokeStyle = '#4a5568';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.arc(cx, cy, radius + 6, 0, Math.PI * 2);
+    ctx.stroke();
+    
+    // === 내부 검은 다이얼 ===
+    ctx.fillStyle = '#0a0e14';
+    ctx.beginPath();
+    ctx.arc(cx, cy, radius, 0, Math.PI * 2);
+    ctx.fill();
+    
+    // === 5개 도트 (전형적 ILS CDI 눈금) ===
+    // 좌측 2개 (90Hz 우세 영역 - 점 모양만)
+    // 중앙 (0)
+    // 우측 2개 (150Hz 우세 영역)
+    // 풀스케일 = ±0.155 DDM = ±2 dots (각각의 점이 DDM 0.0775)
+    const dotSpacing = radius * 0.32;
+    ctx.fillStyle = '#e6ecf5';
+    for (let i = -2; i <= 2; i++) {
+      if (i === 0) continue;  // 가운데는 다른 모양으로
+      ctx.beginPath();
+      ctx.arc(cx + i * dotSpacing, cy, 5, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    // 중앙 십자가 (활주로 중심선 표시)
+    ctx.strokeStyle = '#e6ecf5';
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    ctx.moveTo(cx - 8, cy);
+    ctx.lineTo(cx + 8, cy);
+    ctx.moveTo(cx, cy - 8);
+    ctx.lineTo(cx, cy + 8);
+    ctx.stroke();
+    
+    // === ILS 텍스트 (상단) ===
+    ctx.fillStyle = '#a8b5cc';
+    ctx.font = 'bold 10px JetBrains Mono';
+    ctx.textAlign = 'center';
+    ctx.fillText('LOC', cx, cy - radius * 0.75);
+    
+    // === L/R 라벨 ===
+    ctx.fillStyle = '#6c7a93';
+    ctx.font = '9px JetBrains Mono';
+    ctx.fillText('L', cx - radius * 0.78, cy + 3);
+    ctx.fillText('R', cx + radius * 0.78, cy + 3);
+    
+    // 90Hz / 150Hz 작은 라벨
+    ctx.font = '7px JetBrains Mono';
+    ctx.fillStyle = 'rgba(255,90,95,0.6)';
+    ctx.fillText('90', cx - radius * 0.78, cy + 14);
+    ctx.fillStyle = 'rgba(0,180,160,0.6)';
+    ctx.fillText('150', cx + radius * 0.78, cy + 14);
+    
+    // === CDI 니들 ===
+    // DDM ±0.155 → 풀스케일 (니들이 외곽 도트까지)
+    // hoverAngle 없으면 0
+    const currentDDM = state.hoverAngle !== null ? DDM(state.hoverAngle) : 0;
+    const FULL_SCALE = 0.155;
+    let deflection = -currentDDM / FULL_SCALE;  // 음수 DDM(좌측) → 니들 오른쪽으로 (항공기가 좌측이면 코스가 우측이라고 알려줘야 함)
+    // 실제로는: 90Hz 우세 = 항공기가 코스 좌측 = 니들이 우측을 가리켜야 "오른쪽으로 가라"
+    // DDM = M_90 - M_150 또는 그 반대 정의에 따라 다름. 일반적으로 LOC에서:
+    //   - 항공기가 코스 좌측에 있으면 90Hz 우세 → CDI 니들이 우측을 가리킴 (코스 쪽으로 가라)
+    // 우리 시뮬레이터: 음수 각도(왼쪽) = 90Hz 우세 = 음수 DDM. 
+    // 따라서 니들 편향 = -DDM 부호 일치 (음수 DDM → 양의 편향 = 우측)
+    deflection = Math.max(-1.2, Math.min(1.2, deflection));  // 살짝 오버 가능 (full scale 넘으면 깃발)
+    
+    const needleX = cx + deflection * 2 * dotSpacing;
+    
+    // 니들 그림자
+    ctx.strokeStyle = 'rgba(0,0,0,0.5)';
+    ctx.lineWidth = 5;
+    ctx.beginPath();
+    ctx.moveTo(needleX + 1, cy - radius * 0.55);
+    ctx.lineTo(needleX + 1, cy + radius * 0.55);
+    ctx.stroke();
+    
+    // 메인 니들 (노란색 — 실제 ILS CDI 색상, 항상 동일)
+    const needleColor = '#ffc857';
+    ctx.strokeStyle = needleColor;
+    ctx.lineWidth = 3;
+    ctx.lineCap = 'round';
+    ctx.beginPath();
+    ctx.moveTo(needleX, cy - radius * 0.55);
+    ctx.lineTo(needleX, cy + radius * 0.55);
+    ctx.stroke();
+    ctx.lineCap = 'butt';
+    
+    // 니들 중앙 캡
+    ctx.fillStyle = needleColor;
+    ctx.beginPath();
+    ctx.arc(needleX, cy, 4, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.strokeStyle = '#0a0e14';
+    ctx.lineWidth = 1;
+    ctx.stroke();
+    
+    // === 상단 중앙 영역: NAV 플래그 + 풀편향 화살표 ===
+    // 위치: cy - radius * 0.42 (상단 ILS 텍스트 아래)
+    const topY = cy - radius * 0.42;
+    
+    // NAV 플래그 (신호 없음) - 상단 중앙
+    const showNAV = (state.hoverAngle === null);
+    if (showNAV) {
+      ctx.fillStyle = 'rgba(255,90,95,0.95)';
+      ctx.fillRect(cx - 24, topY - 8, 48, 16);
+      ctx.fillStyle = '#0a0e14';
+      ctx.font = 'bold 10px JetBrains Mono';
+      ctx.textAlign = 'center';
+      ctx.fillText('NAV', cx, topY + 3);
+    }
+    
+    // 풀편향 화살표 - 삼각형 2개 겹친 모양 (◄◄ 또는 ►►)
+    // 편향 부호와 같은 방향으로 화살표 (니들이 우측에 박혀있으면 ►► 우측, 좌측이면 ◄◄ 좌측)
+    // 실제 ILS 의미: 니들 = 코스 위치 지시 → 니들이 가리키는 방향이 코스 방향
+    if (state.hoverAngle !== null && Math.abs(deflection) > 1.0) {
+      const arrowDir = deflection > 0 ? 1 : -1;  // 니들 편향과 같은 방향
+      
+      // 삼각형 하나 크기
+      const triW = 8;
+      const triH = 7;
+      
+      // 화살표 시작 위치 - 플래그가 있으면 그 양쪽, 없으면 중앙 양쪽
+      // (지금은 플래그와 화살표 동시 표시 안 됨 — hoverAngle null vs !null 배타적)
+      // 그래도 양쪽 위치를 의미적으로: 화살표는 한쪽 방향으로 두 개
+      
+      // 화살표는 deflection 방향으로 2개의 삼각형
+      // 화살표가 향하는 끝점 위치 (편향 방향으로 멀리)
+      const arrowEndX = cx + arrowDir * (radius * 0.55);
+      
+      ctx.fillStyle = needleColor;
+      ctx.strokeStyle = '#0a0e14';
+      ctx.lineWidth = 1;
+      
+      // 첫 번째 삼각형 (끝쪽, 뾰족한 부분이 arrowEndX)
+      ctx.beginPath();
+      ctx.moveTo(arrowEndX, topY);  // 뾰족한 끝
+      ctx.lineTo(arrowEndX - arrowDir * triW, topY - triH);
+      ctx.lineTo(arrowEndX - arrowDir * triW, topY + triH);
+      ctx.closePath();
+      ctx.fill();
+      ctx.stroke();
+      
+      // 두 번째 삼각형 (안쪽, 같은 방향)
+      const tri2X = arrowEndX - arrowDir * (triW + 3);
+      ctx.beginPath();
+      ctx.moveTo(tri2X, topY);
+      ctx.lineTo(tri2X - arrowDir * triW, topY - triH);
+      ctx.lineTo(tri2X - arrowDir * triW, topY + triH);
+      ctx.closePath();
+      ctx.fill();
+      ctx.stroke();
+    }
+    
+    // 하단 정보 텍스트
+    ctx.fillStyle = '#6c7a93';
+    ctx.font = '8px JetBrains Mono';
+    ctx.textAlign = 'center';
+    ctx.fillText('FULL SCALE = ±0.155 DDM', cx, cy + radius * 0.82);
+  }
+  
+  /* ============ 3D Spatial Pattern View ============ */
+  // 좌표계: X=활주로 방향(전방), Y=수직(위), Z=좌우(우측이 +)
+  // LOC 안테나가 원점(0,0,0), 활주로는 +X 방향
+  
+  // 3D 점을 2D 화면 좌표로 투영
+  function project3D(x, y, z, cam, w, h) {
+    // 카메라 회전 (먼저 azimuth Y축, 다음 elevation X축)
+    const ca = Math.cos(cam.azimuth), sa = Math.sin(cam.azimuth);
+    const ce = Math.cos(cam.elevation), se = Math.sin(cam.elevation);
+    
+    // Y축 회전
+    let x1 = x * ca - z * sa;
+    let z1 = x * sa + z * ca;
+    let y1 = y;
+    
+    // X축 회전 (elevation - 위에서 내려보기)
+    let y2 = y1 * ce - z1 * se;
+    let z2 = y1 * se + z1 * ce;
+    let x2 = x1;
+    
+    // 카메라가 -Z 방향을 바라봄. cam.distance만큼 떨어진 위치에서
+    z2 += cam.distance;
+    
+    // perspective projection
+    if (z2 < 0.1) z2 = 0.1;
+    const fov = 1.5;
+    const px = (x2 / z2) * fov * Math.min(w, h) * 0.5 + w / 2 + cam.panX;
+    const py = -(y2 / z2) * fov * Math.min(w, h) * 0.5 + h / 2 + cam.panY;
+    
+    return { x: px, y: py, depth: z2 };
+  }
+  
+  function draw3D() {
+    const canvas = document.getElementById('canvas-3d');
+    if (!canvas) return;
+    const { ctx, w, h } = setupCanvas(canvas);
+    ctx.clearRect(0, 0, w, h);
+    
+    const cam = state.cam3D;
+    const isCE = state.mode === 'CE';
+    
+    // === 그리드 (지면 평면) ===
+    const gridSize = 5;
+    const gridStep = 1;
+    ctx.strokeStyle = 'rgba(255,255,255,0.08)';
+    ctx.lineWidth = 1;
+    for (let i = -gridSize; i <= gridSize; i += gridStep) {
+      // X 방향 라인
+      const p1 = project3D(i, 0, -gridSize, cam, w, h);
+      const p2 = project3D(i, 0, gridSize, cam, w, h);
+      ctx.beginPath();
+      ctx.moveTo(p1.x, p1.y);
+      ctx.lineTo(p2.x, p2.y);
+      ctx.stroke();
+      // Z 방향 라인
+      const p3 = project3D(-gridSize, 0, i, cam, w, h);
+      const p4 = project3D(gridSize, 0, i, cam, w, h);
+      ctx.beginPath();
+      ctx.moveTo(p3.x, p3.y);
+      ctx.lineTo(p4.x, p4.y);
+      ctx.stroke();
+    }
+    
+    // === 축 표시 (X=전방, Y=위, Z=우측) ===
+    function drawAxis(x, y, z, color, label) {
+      const p0 = project3D(0, 0, 0, cam, w, h);
+      const p1 = project3D(x, y, z, cam, w, h);
+      ctx.strokeStyle = color;
+      ctx.lineWidth = 1.5;
+      ctx.beginPath();
+      ctx.moveTo(p0.x, p0.y);
+      ctx.lineTo(p1.x, p1.y);
+      ctx.stroke();
+      ctx.fillStyle = color;
+      ctx.font = 'bold 11px JetBrains Mono';
+      ctx.fillText(label, p1.x + 4, p1.y);
+    }
+    drawAxis(2.5, 0, 0, 'rgba(108,196,255,0.6)', '활주로 →');
+    drawAxis(0, 1.5, 0, 'rgba(168,181,204,0.5)', '↑');
+    drawAxis(0, 0, 2.5, 'rgba(255,140,66,0.5)', '↘ 우측');
+    drawAxis(0, 0, -2.5, 'rgba(255,140,66,0.5)', '↖ 좌측');
+    
+    // === 활주로 ===
+    if (state.show3D_Runway) {
+      // 활주로: X=1~4 (전방), Z=±0.3 (폭)
+      const rwPoints = [
+        [1.0, 0, -0.3], [4.0, 0, -0.3], [4.0, 0, 0.3], [1.0, 0, 0.3]
+      ].map(([x,y,z]) => project3D(x, y, z, cam, w, h));
+      
+      ctx.fillStyle = 'rgba(30, 38, 52, 0.85)';
+      ctx.strokeStyle = 'rgba(120, 140, 170, 0.4)';
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.moveTo(rwPoints[0].x, rwPoints[0].y);
+      for (let i = 1; i < 4; i++) ctx.lineTo(rwPoints[i].x, rwPoints[i].y);
+      ctx.closePath();
+      ctx.fill();
+      ctx.stroke();
+      
+      // 활주로 중심선 (점선)
+      const cl1 = project3D(1.0, 0.01, 0, cam, w, h);
+      const cl2 = project3D(4.0, 0.01, 0, cam, w, h);
+      ctx.strokeStyle = 'rgba(230, 236, 245, 0.7)';
+      ctx.lineWidth = 1;
+      ctx.setLineDash([4, 5]);
+      ctx.beginPath();
+      ctx.moveTo(cl1.x, cl1.y);
+      ctx.lineTo(cl2.x, cl2.y);
+      ctx.stroke();
+      ctx.setLineDash([]);
+      
+      // LOC 안테나 위치 (작은 사각형)
+      const locPos = project3D(0, 0.05, 0, cam, w, h);
+      ctx.fillStyle = '#6cc4ff';
+      ctx.beginPath();
+      ctx.arc(locPos.x, locPos.y, 5, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = '#6cc4ff';
+      ctx.font = 'bold 10px JetBrains Mono';
+      ctx.fillText('LOC', locPos.x + 8, locPos.y + 4);
+    }
+    
+    // === 코스 라인 (3D) ===
+    if (state.show3D_Runway) {
+      // 활주로 중심선의 연장선이 코스 라인
+      const cp1 = project3D(0, 0.02, 0, cam, w, h);
+      const cp2 = project3D(5, 0.02, 0, cam, w, h);
+      ctx.strokeStyle = 'rgba(108, 196, 255, 0.5)';
+      ctx.lineWidth = 1.5;
+      ctx.setLineDash([6, 4]);
+      ctx.beginPath();
+      ctx.moveTo(cp1.x, cp1.y);
+      ctx.lineTo(cp2.x, cp2.y);
+      ctx.stroke();
+      ctx.setLineDash([]);
+    }
+    
+    // === 방사패턴 표면 그리기 ===
+    // 각 패턴마다 azimuth(좌우) × elevation(상하) 격자로 표면 메시 생성
+    // 결과를 깊이 순으로 정렬해서 painter's algorithm
+    
+    // 패턴 계산 함수: 방위각(azDeg, ±90°)에서의 |E| 값
+    // 3D 표면은 회전체로 근사: 수평 단면이 |E(azDeg)|, 수직 단면은 K(elDeg) 효과로 감소
+    // 즉: 표면 거리 = |E_horiz(azDeg)| × K_vert(elDeg)
+    function K_vertical(elDeg) {
+      const t = Math.abs(elDeg);
+      if (t >= 89) return 0;
+      
+      // 단일 안테나 자체 지향성 (cos 기반)
+      const selfDirectivity = Math.pow(Math.max(0, Math.cos(t * Math.PI / 180)), 1.5);
+      
+      if (!state.show3D_Ground) {
+        // 자유공간: 자체 지향성만
+        return selfDirectivity;
+      }
+      
+      // 지면 반사 (이미지 안테나 효과)
+      // 안테나가 지면 위 h 높이, 이미지 안테나는 -h
+      // 직접파 + 반사파 합성 (반사파 위상 반전 가정 - 완전 도체)
+      // 두 신호의 경로 차이 = 2h·sin(el)
+      // 위상 차이 = (2π/λ) × 2h·sin(el) = 4π·h·sin(el)/λ
+      // 반사파 위상 반전(180°) 포함: |E_total| ∝ |2·sin(2π·h·sin(el)/λ)|
+      const h = state.antennaHeight;
+      const lam = lambda();
+      const elRad = elDeg * Math.PI / 180;
+      const phaseFactor = 2 * Math.PI * h * Math.sin(elRad) / lam;
+      const groundFactor = Math.abs(2 * Math.sin(phaseFactor));
+      
+      // 자체 지향성 × 지면 반사 인자 (지면 아래는 0)
+      if (elDeg < 0) return 0;  // 지면 아래로는 방사 안 됨
+      return selfDirectivity * groundFactor * 0.5;  // 0.5는 정규화
+    }
+    
+    function buildSurfaceMesh(eFn, azRange, elRange, azSteps, elSteps, scaleFactor) {
+      // eFn(azDeg): 수평면 |E| 값 반환
+      // 표면 메시 = 다각형 패치 배열
+      const patches = [];
+      const azStep = (azRange[1] - azRange[0]) / azSteps;
+      const elStep = (elRange[1] - elRange[0]) / elSteps;
+      
+      for (let i = 0; i < azSteps; i++) {
+        for (let j = 0; j < elSteps; j++) {
+          const az1 = azRange[0] + i * azStep;
+          const az2 = azRange[0] + (i + 1) * azStep;
+          const el1 = elRange[0] + j * elStep;
+          const el2 = elRange[0] + (j + 1) * elStep;
+          
+          // 4개 꼭짓점의 3D 좌표
+          // 거리 r = |eFn(az)| × K_vertical(el) × scaleFactor
+          // 방향: az는 X축 기준 Z 평면 회전, el은 Y축 회전
+          // X = r·cos(el)·cos(az), Z = r·cos(el)·sin(az), Y = r·sin(el)
+          function vertex(az, el) {
+            const r = Math.abs(eFn(az)) * K_vertical(el) * scaleFactor;
+            const azRad = az * Math.PI / 180;
+            const elRad = el * Math.PI / 180;
+            const x = r * Math.cos(elRad) * Math.cos(azRad);
+            const z = r * Math.cos(elRad) * Math.sin(azRad);
+            const y = r * Math.sin(elRad);
+            return { x, y, z };
+          }
+          const v00 = vertex(az1, el1);
+          const v01 = vertex(az1, el2);
+          const v10 = vertex(az2, el1);
+          const v11 = vertex(az2, el2);
+          
+          // 평균 깊이 계산 (정렬용)
+          const cx = (v00.x + v01.x + v10.x + v11.x) / 4;
+          const cy = (v00.y + v01.y + v10.y + v11.y) / 4;
+          const cz = (v00.z + v01.z + v10.z + v11.z) / 4;
+          
+          patches.push({ v00, v01, v10, v11, cx, cy, cz, az: (az1+az2)/2, el: (el1+el2)/2 });
+        }
+      }
+      return patches;
+    }
+    
+    function drawSurface(patches, color, fillAlpha, wireframe) {
+      // 카메라 좌표계로 변환 후 깊이 순 정렬 (먼 것부터)
+      patches.forEach(p => {
+        // 카메라 깊이 = project 결과의 depth
+        const proj = project3D(p.cx, p.cy, p.cz, cam, w, h);
+        p._depth = proj.depth;
+      });
+      patches.sort((a, b) => b._depth - a._depth);
+      
+      patches.forEach(p => {
+        const p00 = project3D(p.v00.x, p.v00.y, p.v00.z, cam, w, h);
+        const p01 = project3D(p.v01.x, p.v01.y, p.v01.z, cam, w, h);
+        const p11 = project3D(p.v11.x, p.v11.y, p.v11.z, cam, w, h);
+        const p10 = project3D(p.v10.x, p.v10.y, p.v10.z, cam, w, h);
+        
+        // 패치가 카메라 뒤에 있으면 스킵
+        if (p00.depth < 0.1 || p01.depth < 0.1 || p10.depth < 0.1 || p11.depth < 0.1) return;
+        
+        // 채움 (조명 효과: el이 클수록 어둡게)
+        const lightFactor = Math.max(0.3, 1 - Math.abs(p.el) / 70);
+        ctx.fillStyle = color.replace('FILL_ALPHA', (fillAlpha * lightFactor).toFixed(2));
+        ctx.beginPath();
+        ctx.moveTo(p00.x, p00.y);
+        ctx.lineTo(p01.x, p01.y);
+        ctx.lineTo(p11.x, p11.y);
+        ctx.lineTo(p10.x, p10.y);
+        ctx.closePath();
+        ctx.fill();
+        
+        if (wireframe) {
+          ctx.strokeStyle = color.replace('FILL_ALPHA', '0.35');
+          ctx.lineWidth = 0.5;
+          ctx.stroke();
+        }
+      });
+    }
+    
+    // 패턴 그리기 - 정면(+X) 방향이 az=0, 좌우는 ±90°
+    // 단, 시뮬레이터의 angle 정의와 매핑: angle = az (양수 = 위/좌측)
+    // 3D에서는 az = 수평 방위각, 활주로 방향이 az=0
+    const azRange = [-90, 90];
+    // 지면 반사 모드면 lobing이 위쪽에 형성되니까 더 넓게, 아니면 자유공간이라 ±40°
+    const elRange = state.show3D_Ground ? [0, 80] : [-40, 40];
+    const azSteps = 24;
+    const elSteps = state.show3D_Ground ? 16 : 10;
+    
+    // 스케일: 최대 패턴 값이 3.0 정도가 되도록
+    let peakVal = 0.1;
+    for (let d = -90; d <= 90; d += 2) {
+      peakVal = Math.max(peakVal, Math.abs(E_csb_total(d)), Math.abs(E_sbo_total(d)));
+      if (isCE) peakVal = Math.max(peakVal, Math.abs(E_csb_clear_total(d)));
+    }
+    const scale = 3.0 / peakVal;
+    
+    // 코스 CSB
+    if (state.show3D_CourseCSB) {
+      const patches = buildSurfaceMesh(E_csb_total, azRange, elRange, azSteps, elSteps, scale);
+      drawSurface(patches, 'rgba(255,200,87,FILL_ALPHA)', 0.45, state.show3D_Wireframe);
+    }
+    
+    // 코스 SBO
+    if (state.show3D_CourseSBO) {
+      const patches = buildSurfaceMesh(E_sbo_total, azRange, elRange, azSteps, elSteps, scale);
+      drawSurface(patches, 'rgba(179,136,255,FILL_ALPHA)', 0.40, state.show3D_Wireframe);
+    }
+    
+    // 클리어런스 CSB (CE 모드만)
+    if (isCE && state.show3D_ClearCSB) {
+      const patches = buildSurfaceMesh(E_csb_clear_total, azRange, elRange, azSteps, elSteps, scale);
+      drawSurface(patches, 'rgba(108,196,255,FILL_ALPHA)', 0.35, state.show3D_Wireframe);
+    }
+    
+    // === 좌상단 정보 ===
+    ctx.fillStyle = 'rgba(20,28,42,0.85)';
+    ctx.fillRect(12, 12, 220, 90);
+    ctx.strokeStyle = 'rgba(255,255,255,0.15)';
+    ctx.lineWidth = 1;
+    ctx.strokeRect(12, 12, 220, 90);
+    
+    ctx.fillStyle = '#a8b5cc';
+    ctx.font = 'bold 10px JetBrains Mono';
+    ctx.textAlign = 'left';
+    ctx.fillText('3D SPATIAL PATTERN', 22, 28);
+    
+    ctx.font = '10px JetBrains Mono';
+    ctx.fillStyle = '#6c7a93';
+    ctx.fillText(`${state.N}소자 LPDA · ${state.mode}`, 22, 44);
+    ctx.fillText(`Peak |E| ≈ ${peakVal.toFixed(2)}`, 22, 58);
+    
+    ctx.fillStyle = '#6c7a93';
+    ctx.font = '9px JetBrains Mono';
+    ctx.fillText(`Az ${(cam.azimuth * 180/Math.PI).toFixed(0)}° · El ${(cam.elevation * 180/Math.PI).toFixed(0)}°`, 22, 74);
+    ctx.fillText(`마우스 드래그 회전, 휠로 줌`, 22, 88);
+  }
+  
+  /* 3D 마우스 컨트롤 */
+  function setup3DControls() {
+    const canvas = document.getElementById('canvas-3d');
+    if (!canvas) return;
+    let dragging = false;
+    let panning = false;
+    let lastX = 0, lastY = 0;
+    let pendingFrame = false;
+    
+    function scheduleRedraw() {
+      if (pendingFrame) return;
+      pendingFrame = true;
+      requestAnimationFrame(() => {
+        pendingFrame = false;
+        if (document.getElementById('view-3d').classList.contains('active')) {
+          draw3D();
+        }
+      });
+    }
+    
+    canvas.addEventListener('mousedown', (e) => {
+      e.preventDefault();
+      if (e.button === 2) {
+        panning = true;
+      } else {
+        dragging = true;
+      }
+      lastX = e.clientX;
+      lastY = e.clientY;
+    });
+    
+    canvas.addEventListener('contextmenu', (e) => e.preventDefault());
+    
+    window.addEventListener('mousemove', (e) => {
+      if (!dragging && !panning) return;
+      const dx = e.clientX - lastX;
+      const dy = e.clientY - lastY;
+      lastX = e.clientX;
+      lastY = e.clientY;
+      
+      if (dragging) {
+        state.cam3D.azimuth -= dx * 0.01;
+        state.cam3D.elevation += dy * 0.01;
+        state.cam3D.elevation = Math.max(-Math.PI/2 + 0.1, Math.min(Math.PI/2 - 0.1, state.cam3D.elevation));
+        scheduleRedraw();
+      }
+      if (panning) {
+        state.cam3D.panX += dx;
+        state.cam3D.panY += dy;
+        scheduleRedraw();
+      }
+    });
+    
+    window.addEventListener('mouseup', () => { dragging = false; panning = false; });
+    
+    canvas.addEventListener('wheel', (e) => {
+      e.preventDefault();
+      const delta = e.deltaY > 0 ? 1.1 : 0.9;
+      state.cam3D.distance *= delta;
+      state.cam3D.distance = Math.max(2, Math.min(20, state.cam3D.distance));
+      scheduleRedraw();
+    }, { passive: false });
+  }
+
+  /* ============ DDM Chart Mouse Tracking ============ */
+  function setupDDMHover() {
+    const canvas = document.getElementById('ddm-chart');
+    const tooltip = document.getElementById('ddm-tooltip');
+    if (!canvas || !tooltip) return;
+    
+    // DDM 차트의 plot 영역 좌표 (drawGrid의 padding과 일치해야 함)
+    function getPlotArea() {
+      const rect = canvas.getBoundingClientRect();
+      const padL = 44, padR = 14, padT = 22, padB = 28;
+      return {
+        rect,
+        padL, padR, padT, padB,
+        plotW: rect.width - padL - padR,
+        plotH: rect.height - padT - padB,
+      };
+    }
+    
+    canvas.addEventListener('mousemove', (e) => {
+      const p = getPlotArea();
+      const x = e.clientX - p.rect.left;
+      const y = e.clientY - p.rect.top;
+      
+      // 플롯 영역 밖이면 hover 끔
+      if (x < p.padL || x > p.padL + p.plotW || y < p.padT || y > p.padT + p.plotH) {
+        if (state.hoverAngle !== null) {
+          state.hoverAngle = null;
+          tooltip.classList.remove('visible');
+          drawDDM();
+          drawCDI();
+          updateCDIReadout(null);
+        }
+        return;
+      }
+      
+      // X 좌표 → 각도 변환 (DDM 차트는 -15 ~ +15°)
+      const angle = -15 + ((x - p.padL) / p.plotW) * 30;
+      state.hoverAngle = angle;
+      drawDDM();
+      drawCDI();
+      
+      // 툴팁 위치 + 내용
+      const ddm = DDM(angle);
+      const angleSign = angle > 0 ? '+' : '';
+      const ddmSign = ddm > 0 ? '+' : '';
+      let status = '';
+      if (Math.abs(ddm) <= 0.155) {
+        status = '코스 내 (정상 영역)';
+      } else if (Math.abs(ddm) <= 0.4) {
+        status = ddm > 0 ? '150Hz 우세 (코스 우측)' : '90Hz 우세 (코스 좌측)';
+      }
+      tooltip.innerHTML = `
+        <span class="tt-angle">각도 ${angleSign}${angle.toFixed(2)}°</span>
+        <span class="tt-ddm">DDM ${ddmSign}${ddm.toFixed(3)}</span>
+        <span class="tt-status">${status}</span>
+      `;
+      // 툴팁 위치 조정 - 차트 안에서 따라다님
+      const ttX = x + 12;
+      const ttY = y - 50;
+      tooltip.style.left = Math.min(p.rect.width - 200, ttX) + 'px';
+      tooltip.style.top = Math.max(0, ttY) + 'px';
+      tooltip.classList.add('visible');
+      
+      updateCDIReadout(angle);
+    });
+    
+    canvas.addEventListener('mouseleave', () => {
+      state.hoverAngle = null;
+      tooltip.classList.remove('visible');
+      drawDDM();
+      drawCDI();
+      updateCDIReadout(null);
+    });
+  }
+  
+  function updateCDIReadout(angle) {
+    const elem = document.getElementById('cdi-readout');
+    if (!elem) return;
+    if (angle === null) {
+      elem.innerHTML = '<span style="color:var(--text-2);">마우스를 DDM 차트 위로 ←</span>';
+      return;
+    }
+    const ddm = DDM(angle);
+    const dots = ddm / (0.155 / 2);  // 1 dot = 0.0775 DDM
+    const angleSign = angle > 0 ? '+' : '';
+    const dotSign = dots > 0 ? '+' : '';
+    let statusColor = '#00b4a0';
+    let statusText = 'ON COURSE';
+    if (Math.abs(ddm) > 0.155) {
+      statusColor = '#ff8c42';
+      // ddm > 0 (150Hz 우세, 항공기는 코스 우측) → 니들 좌측 편향 → 화살표 좌측 ◄◄
+      // ddm < 0 (90Hz 우세, 항공기는 코스 좌측) → 니들 우측 편향 → 화살표 우측 ►►
+      statusText = ddm > 0 ? 'FULL DEFLECTION ◄◄' : 'FULL DEFLECTION ►►';
+    } else if (Math.abs(ddm) > 0.05) {
+      statusColor = '#ffc857';
+      statusText = ddm > 0 ? 'FLY LEFT' : 'FLY RIGHT';
+    }
+    elem.innerHTML = `
+      <span style="color:var(--accent-bright);">${angleSign}${angle.toFixed(2)}°</span>
+      <span style="color:var(--text-2);">·</span>
+      <span style="color:var(--csb);">DDM ${dots > 0 ? '+' : ''}${ddm.toFixed(3)}</span>
+      <span style="color:var(--text-2);">·</span>
+      <strong style="color:${statusColor};">${statusText}</strong>
+    `;
+  }
+
+  /* ============ Concept View ============ */
+  function drawConcept() {
+    const canvas = document.getElementById('concept-canvas');
+    const { ctx, w, h } = setupCanvas(canvas);
+    ctx.clearRect(0, 0, w, h);
+
+    const bg = ctx.createLinearGradient(0, 0, 0, h);
+    bg.addColorStop(0, '#0d1219');
+    bg.addColorStop(1, '#11161f');
+    ctx.fillStyle = bg;
+    ctx.fillRect(0, 0, w, h);
+
+    // LOC position - 캔버스 안쪽에 여유 공간 확보
+    const locX = 110;
+    const locY = h / 2;
+    const range = w - 180;  // 우측에 라벨 공간 더 확보
+
+    // === DDM color field ===
+    // 화면 위쪽 = 활주로 우측 = 150Hz Blue zone... 가 아니라
+    // 화면 위쪽 = 노랑 색칠 (시각적 표시)
+    // 화면 아래쪽 = 파랑 색칠
+    const fieldRes = 4;
+    for (let px = locX; px < w - 10; px += fieldRes) {
+      for (let py = 10; py < h - 10; py += fieldRes) {
+        const dx = px - locX;
+        const dy = py - locY;
+        const dist = Math.sqrt(dx * dx + dy * dy);
+        if (dist < 30) continue;
+        const angle = Math.atan2(-dy, dx) * 180 / Math.PI;
+        if (Math.abs(angle) > 50) continue;
+        const ddm = DDM(angle);
+        const intensity = Math.min(1, Math.abs(ddm) / 0.3);
+        if (angle > 1 && Math.abs(ddm) > 0.02) {
+          // 위쪽: 파랑
+          ctx.fillStyle = `rgba(78,168,222,${intensity * 0.22})`;
+        } else if (angle < -1 && Math.abs(ddm) > 0.02) {
+          // 아래쪽: 노랑
+          ctx.fillStyle = `rgba(255,200,87,${intensity * 0.22})`;
+        } else {
+          continue;
+        }
+        ctx.fillRect(px, py, fieldRes, fieldRes);
+      }
+    }
+
+    // Find course boundary angles
+    function findAngleAtDDM(target, sign) {
+      for (let a = 0.5; a < 30; a += 0.1) {
+        const v = DDM(sign * a);
+        if (Math.abs(v) >= Math.abs(target)) return sign * a;
+      }
+      return sign * 8;
+    }
+    const upperBoundary = findAngleAtDDM(0.155, 1);
+    const lowerBoundary = findAngleAtDDM(0.155, -1);
+    const courseWidth = upperBoundary - lowerBoundary;
+
+    function drawAngleRay(angleDeg, color, dash, width, alpha) {
+      ctx.strokeStyle = color;
+      ctx.lineWidth = width;
+      ctx.globalAlpha = alpha || 1;
+      if (dash) ctx.setLineDash(dash);
+      ctx.beginPath();
+      ctx.moveTo(locX, locY);
+      const rad = angleDeg * Math.PI / 180;
+      ctx.lineTo(locX + range * Math.cos(rad), locY - range * Math.sin(rad));
+      ctx.stroke();
+      ctx.setLineDash([]);
+      ctx.globalAlpha = 1;
+    }
+
+    function rayEnd(angleDeg, r) {
+      const rad = angleDeg * Math.PI / 180;
+      return [locX + r * Math.cos(rad), locY - r * Math.sin(rad)];
+    }
+
+    // === Sector regions ===
+    // 1) ±35° clearance limit (outermost) - very faint
+    ctx.fillStyle = 'rgba(108, 122, 147, 0.06)';
+    ctx.beginPath();
+    ctx.moveTo(locX, locY);
+    for (let a = -35; a <= 35; a += 2) {
+      const [px, py] = rayEnd(a, range);
+      ctx.lineTo(px, py);
+    }
+    ctx.closePath();
+    ctx.fill();
+
+    // 2) ±10° course sector - slightly more visible
+    ctx.fillStyle = 'rgba(168, 181, 204, 0.05)';
+    ctx.beginPath();
+    ctx.moveTo(locX, locY);
+    for (let a = -10; a <= 10; a += 1) {
+      const [px, py] = rayEnd(a, range);
+      ctx.lineTo(px, py);
+    }
+    ctx.closePath();
+    ctx.fill();
+
+    // 3) Course zone (±0.155 DDM) - emphasis
+    ctx.fillStyle = 'rgba(108, 196, 255, 0.08)';
+    ctx.beginPath();
+    ctx.moveTo(locX, locY);
+    for (let a = lowerBoundary; a <= upperBoundary; a += 0.2) {
+      const [px, py] = rayEnd(a, range);
+      ctx.lineTo(px, py);
+    }
+    ctx.closePath();
+    ctx.fill();
+
+    // === Reference rays ===
+    // ±35° clearance limit
+    drawAngleRay(35, 'rgba(168,181,204,0.4)', [2, 4], 1, 1);
+    drawAngleRay(-35, 'rgba(168,181,204,0.4)', [2, 4], 1, 1);
+    // ±10° course sector
+    drawAngleRay(10, 'rgba(168,181,204,0.6)', [6, 4], 1.2, 1);
+    drawAngleRay(-10, 'rgba(168,181,204,0.6)', [6, 4], 1.2, 1);
+    // Course boundaries
+    drawAngleRay(upperBoundary, '#ff8c42', [6, 4], 1.5, 1);
+    drawAngleRay(lowerBoundary, '#ff8c42', [6, 4], 1.5, 1);
+    // Course line
+    drawAngleRay(0, '#6cc4ff', null, 2.2, 1);
+
+    // === Angle labels at edges ===
+    ctx.font = '10px JetBrains Mono';
+    
+    // ±35°
+    let [px35, py35] = rayEnd(35, range - 12);
+    ctx.fillStyle = '#a8b5cc';
+    ctx.textAlign = 'right';
+    ctx.fillText('+35°', px35, py35);
+    [px35, py35] = rayEnd(-35, range - 12);
+    ctx.fillText('−35°', px35, py35 + 4);
+    
+    // ±10°
+    let [px10, py10] = rayEnd(10, range - 12);
+    ctx.fillStyle = '#a8b5cc';
+    ctx.textAlign = 'right';
+    ctx.fillText('+10°', px10, py10);
+    [px10, py10] = rayEnd(-10, range - 12);
+    ctx.fillText('−10°', px10, py10 + 4);
+
+    // Course boundary angles
+    let [pxUB, pyUB] = rayEnd(upperBoundary, range - 12);
+    ctx.fillStyle = '#ff8c42';
+    ctx.font = 'bold 10px JetBrains Mono';
+    ctx.textAlign = 'right';
+    ctx.fillText(`+${upperBoundary.toFixed(1)}° 경계`, pxUB, pyUB - 2);
+    let [pxLB, pyLB] = rayEnd(lowerBoundary, range - 12);
+    ctx.fillText(`${lowerBoundary.toFixed(1)}° 경계`, pxLB, pyLB + 11);
+    
+    // === COURSE WIDTH 양방향 화살표 + 라벨 ===
+    // 양 경계 사이를 호(arc)로 연결, 가운데에 라벨
+    const arcR = range * 0.78;
+    const upperRad = upperBoundary * Math.PI / 180;
+    const lowerRad = lowerBoundary * Math.PI / 180;
+    
+    // 호 그리기 (캔버스 arc: 각도 반대 방향)
+    ctx.strokeStyle = '#ff8c42';
+    ctx.lineWidth = 1.5;
+    ctx.setLineDash([]);
+    ctx.beginPath();
+    // canvas arc는 시계방향이 양수이므로 -sin 변환 필요. 우리 좌표: rad가 양수=위쪽
+    ctx.arc(locX, locY, arcR, -upperRad, -lowerRad, false);
+    ctx.stroke();
+    
+    // 호 양 끝 화살표
+    function drawArrowHead(angleDeg, isUp) {
+      const [tipX, tipY] = rayEnd(angleDeg, arcR);
+      const tangentAngle = (angleDeg + (isUp ? -90 : 90)) * Math.PI / 180;
+      const arrowSize = 6;
+      ctx.fillStyle = '#ff8c42';
+      ctx.beginPath();
+      ctx.moveTo(tipX, tipY);
+      ctx.lineTo(tipX + arrowSize * Math.cos(tangentAngle) + arrowSize * 0.6 * Math.sin(angleDeg*Math.PI/180), 
+                 tipY - arrowSize * Math.sin(tangentAngle) + arrowSize * 0.6 * Math.cos(angleDeg*Math.PI/180));
+      ctx.lineTo(tipX + arrowSize * Math.cos(tangentAngle) - arrowSize * 0.6 * Math.sin(angleDeg*Math.PI/180), 
+                 tipY - arrowSize * Math.sin(tangentAngle) - arrowSize * 0.6 * Math.cos(angleDeg*Math.PI/180));
+      ctx.closePath();
+      ctx.fill();
+    }
+    drawArrowHead(upperBoundary, true);
+    drawArrowHead(lowerBoundary, false);
+    
+    // COURSE WIDTH 라벨 - 호 중앙(0°)에 배치
+    const [cwLabelX, cwLabelY] = rayEnd(0, arcR);
+    // 라벨 배경 박스
+    const cwText = 'COURSE WIDTH';
+    const cwSubText = `${courseWidth.toFixed(2)}°`;
+    ctx.font = 'bold 11px JetBrains Mono';
+    const cwTextW = ctx.measureText(cwText).width;
+    ctx.fillStyle = '#11161f';
+    ctx.fillRect(cwLabelX + 8, cwLabelY - 8, cwTextW + 14, 32);
+    ctx.strokeStyle = '#ff8c42';
+    ctx.lineWidth = 1;
+    ctx.strokeRect(cwLabelX + 8, cwLabelY - 8, cwTextW + 14, 32);
+    ctx.fillStyle = '#ff8c42';
+    ctx.textAlign = 'left';
+    ctx.fillText(cwText, cwLabelX + 15, cwLabelY + 4);
+    ctx.font = 'bold 10px JetBrains Mono';
+    ctx.fillStyle = '#a8b5cc';
+    ctx.fillText(cwSubText, cwLabelX + 15, cwLabelY + 18);
+    
+    // === 캡쳐 포인트 (CE 모드일 때만) ===
+    // 코스 |CSB|와 클리어런스 |CSB|가 만나는 각도
+    if (state.mode === 'CE') {
+      function findCapturePoint(sign) {
+        let prevDiff = null;
+        const step = 0.1;
+        for (let d = 0.5; d <= 35; d += step) {
+          const ang = sign * d;
+          const cseC = Math.abs(E_csb_total(ang));
+          const clrC = Math.abs(E_csb_clear_total(ang));
+          const diff = cseC - clrC;
+          if (prevDiff !== null && Math.sign(prevDiff) !== Math.sign(diff)) {
+            // 부호 바뀜 - 캡쳐 포인트
+            const ratio = Math.abs(prevDiff) / (Math.abs(prevDiff) + Math.abs(diff));
+            return sign * (d - step + step * ratio);
+          }
+          prevDiff = diff;
+        }
+        return null;
+      }
+      
+      const capUpper = findCapturePoint(1);
+      const capLower = findCapturePoint(-1);
+      
+      [capUpper, capLower].forEach((cap, idx) => {
+        if (cap === null) return;
+        const capR = range * 0.62;
+        const [capX, capY] = rayEnd(cap, capR);
+        
+        // 캡쳐 포인트 마커 (육각형 같은 강조 마커)
+        ctx.fillStyle = '#9affff';
+        ctx.beginPath();
+        ctx.arc(capX, capY, 7, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.strokeStyle = '#0a0e14';
+        ctx.lineWidth = 2;
+        ctx.stroke();
+        // 내부 점
+        ctx.fillStyle = '#0a0e14';
+        ctx.beginPath();
+        ctx.arc(capX, capY, 2.5, 0, Math.PI * 2);
+        ctx.fill();
+        
+        // 라벨 (캡쳐 포인트 옆에)
+        const labelOffsetX = cap > 0 ? 12 : 12;
+        const labelOffsetY = cap > 0 ? -8 : 12;
+        ctx.fillStyle = '#9affff';
+        ctx.font = 'bold 10px JetBrains Mono';
+        ctx.textAlign = 'left';
+        const sign = cap > 0 ? '+' : '';
+        ctx.fillText(`CAPTURE`, capX + labelOffsetX, capY + labelOffsetY);
+        ctx.font = '9px JetBrains Mono';
+        ctx.fillStyle = '#a8b5cc';
+        ctx.fillText(`${sign}${cap.toFixed(1)}°`, capX + labelOffsetX, capY + labelOffsetY + 12);
+      });
+    }
+
+    // === Course line label at center ===
+    const courseLabelX = locX + range * 0.55;
+    ctx.fillStyle = '#6cc4ff';
+    ctx.font = 'bold 13px JetBrains Mono';
+    ctx.textAlign = 'center';
+    ctx.fillText('COURSE LINE  (DDM = 0)', courseLabelX, locY - 8);
+    ctx.fillStyle = '#6cc4ff';
+    ctx.font = '10px JetBrains Mono';
+    ctx.fillText('활주로 중심선 연장', courseLabelX, locY + 16);
+
+    // === Zone labels ===
+    // Course Zone label
+    const czLabelAng = (upperBoundary + 10) / 2;
+    const [czX, czY] = rayEnd(czLabelAng, range * 0.45);
+    ctx.fillStyle = '#6cc4ff';
+    ctx.font = 'bold 12px JetBrains Mono';
+    ctx.textAlign = 'center';
+    ctx.fillText('COURSE ZONE', czX, czY);
+    ctx.font = '10px JetBrains Mono';
+    ctx.fillStyle = '#a8b5cc';
+    ctx.fillText('(코스 폭 내)', czX, czY + 14);
+
+    // Clearance Zone labels
+    // 위쪽: 파랑 색칠 영역 = 150Hz
+    // 아래쪽: 노랑 색칠 영역 = 90Hz
+    
+    // 위쪽: 150Hz 우세 (파랑 글씨) - 활주로 우측
+    const [clL_X, clL_Y] = rayEnd(22, range * 0.58);
+    ctx.fillStyle = '#4ea8de';
+    ctx.font = 'bold 13px JetBrains Mono';
+    ctx.textAlign = 'center';
+    ctx.fillText('CLEARANCE ZONE', clL_X, clL_Y);
+    ctx.font = '10px JetBrains Mono';
+    ctx.fillStyle = '#4ea8de';
+    ctx.fillText('150Hz 우세 (Blue)', clL_X, clL_Y + 15);
+    ctx.fillStyle = '#6c7a93';
+    ctx.fillText('(우측 / 활주로 우)', clL_X, clL_Y + 28);
+
+    // 아래쪽: 90Hz 우세 (노랑 글씨) - 활주로 좌측
+    const [clR_X, clR_Y] = rayEnd(-22, range * 0.58);
+    ctx.fillStyle = '#ffc857';
+    ctx.font = 'bold 13px JetBrains Mono';
+    ctx.textAlign = 'center';
+    ctx.fillText('CLEARANCE ZONE', clR_X, clR_Y);
+    ctx.font = '10px JetBrains Mono';
+    ctx.fillStyle = '#ffc857';
+    ctx.fillText('90Hz 우세 (Yellow)', clR_X, clR_Y + 15);
+    ctx.fillStyle = '#6c7a93';
+    ctx.fillText('(좌측 / 활주로 좌)', clR_X, clR_Y + 28);
+
+    // === Runway ===
+    const rwLen = 100;
+    const rwWidth = 14;
+    const rwStart = locX + 50;
+    ctx.fillStyle = '#1a2230';
+    ctx.strokeStyle = '#2a3548';
+    ctx.lineWidth = 1;
+    ctx.fillRect(rwStart, locY - rwWidth/2, rwLen, rwWidth);
+    ctx.strokeRect(rwStart, locY - rwWidth/2, rwLen, rwWidth);
+
+    ctx.strokeStyle = '#e6ecf5';
+    ctx.setLineDash([3, 4]);
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(rwStart, locY);
+    ctx.lineTo(rwStart + rwLen, locY);
+    ctx.stroke();
+    ctx.setLineDash([]);
+
+    // Threshold
+    ctx.fillStyle = '#e6ecf5';
+    for (let i = 0; i < 3; i++) {
+      ctx.fillRect(rwStart + rwLen - 3, locY - rwWidth/2 + 2 + i * 4, 2, 2);
+    }
+
+    // === LOC antenna array ===
+    const arraySpan = state.nPairs > 6 ? 130 : 90;
+    const maxA = Math.max(...state.a);
+    for (let p = 0; p < state.nPairs; p++) {
+      const dist = (state.a[p] / maxA) * arraySpan;
+      const intensity = state.enabled[p] ? state.I[p] : 0.1;
+      const size = state.enabled[p] ? (3 + state.I[p] * 3) : 2.5;
+      const color = state.enabled[p] ? PAIR_COLORS[p] : '#3d4d68';
+      
+      [-1, 1].forEach(side => {
+        const y = locY + side * dist;
+        ctx.fillStyle = color;
+        ctx.globalAlpha = state.enabled[p] ? (0.4 + intensity * 0.6) : 0.3;
+        ctx.beginPath();
+        ctx.arc(locX, y, size, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.globalAlpha = 1;
+        // Pair label - 10쌍이면 너무 빽빽해서 외곽만 라벨
+        if (state.nPairs <= 7 || p === 0 || p === state.nPairs - 1 || p % 2 === 1) {
+          ctx.fillStyle = state.enabled[p] ? '#a8b5cc' : '#3d4d68';
+          ctx.font = '8px JetBrains Mono';
+          const lbl = (p+1) + (side === -1 ? 'L' : 'R');
+          ctx.textAlign = side === -1 ? 'right' : 'left';
+          ctx.fillText(lbl, locX + side * (size + 6), y + 3);
+        }
+      });
+    }
+
+    // LOC label
+    ctx.fillStyle = '#6cc4ff';
+    ctx.font = 'bold 11px JetBrains Mono';
+    ctx.textAlign = 'center';
+    ctx.fillText('LOC ARRAY', locX, h - 22);
+    ctx.fillStyle = '#6c7a93';
+    ctx.font = '9px JetBrains Mono';
+    ctx.fillText(`${state.N}-element LPDA`, locX, h - 10);
+
+    // Direction arrow
+    ctx.strokeStyle = '#6cc4ff';
+    ctx.fillStyle = '#6cc4ff';
+    ctx.lineWidth = 1.5;
+    const arrowY = 30;
+    ctx.beginPath();
+    ctx.moveTo(rwStart + rwLen + 4, arrowY);
+    ctx.lineTo(rwStart + rwLen + 28, arrowY);
+    ctx.lineTo(rwStart + rwLen + 22, arrowY - 4);
+    ctx.moveTo(rwStart + rwLen + 28, arrowY);
+    ctx.lineTo(rwStart + rwLen + 22, arrowY + 4);
+    ctx.stroke();
+    ctx.font = '9px JetBrains Mono';
+    ctx.textAlign = 'right';
+    ctx.fillText('항공기 진입 →', rwStart + rwLen + 1, arrowY + 3);
+
+    // Course width display (bottom of plot)
+    ctx.fillStyle = '#ff8c42';
+    ctx.font = 'bold 11px JetBrains Mono';
+    ctx.textAlign = 'left';
+    ctx.fillText(`코스 폭 ≈ ${courseWidth.toFixed(2)}°`, 16, h - 16);
+    ctx.fillStyle = '#6c7a93';
+    ctx.font = '9px JetBrains Mono';
+    ctx.fillText(`(±0.155 DDM 사이)`, 16, h - 4);
+    
+    // === 방사패턴 오버레이 (맨 위에 그려서 모든 요소 위로) ===
+    if (state.showPatternOverlay) {
+      const isCE = state.mode === 'CE';
+      let peakVal = 0;
+      for (let d = -90; d <= 90; d += 1) {
+        peakVal = Math.max(peakVal, 
+          Math.abs(E_csb_total(d)),
+          Math.abs(E_sbo_total(d))
+        );
+        if (isCE) {
+          peakVal = Math.max(peakVal,
+            Math.abs(E_csb_clear_total(d)),
+            Math.abs(E_sbo_clear_total(d))
+          );
+        }
+      }
+      if (peakVal < 0.1) peakVal = 1;
+      const patternRange = range * 0.85;
+      const rScale = patternRange / peakVal;
+      
+      function plotPatternOnConcept(fn, color, lineWidth, dash) {
+        ctx.strokeStyle = color;
+        ctx.lineWidth = lineWidth;
+        if (dash) ctx.setLineDash(dash);
+        ctx.beginPath();
+        let first = true;
+        const step = 0.5;
+        for (let deg = -90; deg <= 90; deg += step) {
+          const val = Math.abs(fn(deg));
+          const r = Math.min(val * rScale, patternRange);
+          const rad = deg * Math.PI / 180;
+          const px = locX + r * Math.cos(rad);
+          const py = locY - r * Math.sin(rad);
+          if (first) { ctx.moveTo(px, py); first = false; }
+          else ctx.lineTo(px, py);
+        }
+        ctx.stroke();
+        if (dash) ctx.setLineDash([]);
+      }
+      
+      function fillPatternOnConcept(fn, color) {
+        ctx.fillStyle = color;
+        ctx.beginPath();
+        ctx.moveTo(locX, locY);
+        const step = 0.5;
+        for (let deg = -90; deg <= 90; deg += step) {
+          const val = Math.abs(fn(deg));
+          const r = Math.min(val * rScale, patternRange);
+          const rad = deg * Math.PI / 180;
+          const px = locX + r * Math.cos(rad);
+          const py = locY - r * Math.sin(rad);
+          ctx.lineTo(px, py);
+        }
+        ctx.lineTo(locX, locY);
+        ctx.closePath();
+        ctx.fill();
+      }
+      
+      // 그리기 순서: 채움(약함) → 외곽선(진함). 모든 요소 위에 그려짐
+      fillPatternOnConcept(E_csb_total, 'rgba(255,200,87,0.12)');
+      plotPatternOnConcept(E_csb_total, 'rgba(255,200,87,0.95)', 2.4);
+      plotPatternOnConcept(E_sbo_total, 'rgba(179,136,255,0.9)', 2.0);
+      
+      if (isCE) {
+        plotPatternOnConcept(E_csb_clear_total, 'rgba(108,196,255,0.85)', 2.0, [6, 4]);
+        plotPatternOnConcept(E_sbo_clear_total, 'rgba(255,111,168,0.85)', 1.8, [6, 4]);
+      }
+      
+      // 오버레이 정보 라벨 (좌상단, 시설 라벨과 겹치지 않게)
+      const infoX = 16;
+      const infoY = 100;
+      ctx.fillStyle = 'rgba(20,28,42,0.92)';
+      ctx.fillRect(infoX, infoY, 180, isCE ? 78 : 52);
+      ctx.strokeStyle = 'rgba(255,255,255,0.2)';
+      ctx.lineWidth = 1;
+      ctx.strokeRect(infoX, infoY, 180, isCE ? 78 : 52);
+      
+      ctx.font = 'bold 10px JetBrains Mono';
+      ctx.textAlign = 'left';
+      ctx.fillStyle = '#a8b5cc';
+      ctx.fillText('PATTERN OVERLAY', infoX + 10, infoY + 16);
+      
+      let ly = infoY + 30;
+      ctx.font = '10px JetBrains Mono';
+      ctx.fillStyle = '#ffc857';
+      ctx.fillText('━ 코스 |Ecst|', infoX + 10, ly); ly += 13;
+      ctx.fillStyle = '#b388ff';
+      ctx.fillText('━ 코스 |Esst|', infoX + 10, ly); ly += 13;
+      if (isCE) {
+        ctx.fillStyle = '#6cc4ff';
+        ctx.fillText('┄ CLR |Ecst|', infoX + 10, ly); ly += 13;
+        ctx.fillStyle = '#ff6fa8';
+        ctx.fillText('┄ CLR |Esst|', infoX + 10, ly);
+      }
+    }
+  }
+
+  /* ============ Stats ============ */
+  
+  // ±90° 범위에서 함수 fn의 모든 zero-crossing 찾기
+  function findNulls(fn) {
+    const nulls = [];
+    const step = 0.1;
+    let prev = fn(-90);
+    for (let deg = -90 + step; deg <= 90; deg += step) {
+      const cur = fn(deg);
+      // Zero crossing (sign change), or value very close to zero
+      if ((prev > 0 && cur < 0) || (prev < 0 && cur > 0)) {
+        // Linear interpolation for accurate zero
+        const t = prev / (prev - cur);
+        const zeroDeg = (deg - step) + step * t;
+        // Avoid duplicates within 0.5°
+        if (nulls.length === 0 || Math.abs(nulls[nulls.length-1] - zeroDeg) > 0.5) {
+          nulls.push(zeroDeg);
+        }
+      }
+      prev = cur;
+    }
+    return nulls;
+  }
+
+  function updateStats() {
+    // 코스 경계 (±0.155 DDM 도달 각도)
+    let leftB = 0, rightB = 0;
+    for (let a = 0.1; a < 15; a += 0.05) {
+      if (DDM(-a) <= -0.155 && leftB === 0) leftB = -a;
+      if (DDM(a) >= 0.155 && rightB === 0) rightB = a;
+    }
+    const cw = (rightB - leftB);
+    const halfCW = cw / 2;  // half course width
+    
+    // ICAO 기준: 활주로 시단(THLD)에서 코스 폭이 ±107m (=350ft, 총 폭 213m=700ft)
+    // tan(halfCW) = 107m / D  →  D = 107 / tan(halfCW)
+    const halfCwRad = halfCW * Math.PI / 180;
+    const distance = halfCwRad > 0.0001 ? (107 / Math.tan(halfCwRad)) : 0;
+    
+    document.getElementById('stat-cw').innerHTML = `${cw.toFixed(2)}<span class="unit">°</span>`;
+    document.getElementById('stat-cw-sub').innerHTML = 
+      distance > 0 ? `시단거리 ≈ <strong style="color:var(--text-1);">${Math.round(distance).toLocaleString()}m</strong> (±107m 폭)` 
+                   : '시단거리 ─';
+
+    // CSB Nulls
+    const csbNulls = findNulls(E_csb_total);
+    document.getElementById('stat-null-csb').innerHTML = 
+      `<span style="color:var(--csb);">${csbNulls.length}</span><span class="unit">개</span>`;
+    document.getElementById('null-list-csb').innerHTML = 
+      csbNulls.length > 0 
+        ? csbNulls.map(d => `<span class="null-item">${d > 0 ? '+' : ''}${d.toFixed(1)}°</span>`).join('')
+        : '<span style="color:var(--text-2);">(범위 내 Null 없음)</span>';
+    // 미리보기 (가장 작은 각도 2개)
+    document.getElementById('stat-null-csb-preview').textContent = 
+      csbNulls.length === 0 ? '─' 
+        : csbNulls.length <= 2 
+          ? csbNulls.map(d => `${d > 0 ? '+' : ''}${d.toFixed(1)}°`).join(', ')
+          : (() => {
+              const sorted = [...csbNulls].sort((a,b) => Math.abs(a) - Math.abs(b)).slice(0, 2);
+              return sorted.map(d => `${d > 0 ? '+' : ''}${d.toFixed(1)}°`).join(', ') + ' ⋯';
+            })();
+    
+    // SBO Nulls
+    const sboNulls = findNulls(E_sbo_total);
+    document.getElementById('stat-null-sbo').innerHTML = 
+      `<span style="color:var(--sbo);">${sboNulls.length}</span><span class="unit">개</span>`;
+    document.getElementById('null-list-sbo').innerHTML = 
+      sboNulls.length > 0 
+        ? sboNulls.map(d => `<span class="null-item">${d > 0 ? '+' : ''}${d.toFixed(1)}°</span>`).join('')
+        : '<span style="color:var(--text-2);">(범위 내 Null 없음)</span>';
+    document.getElementById('stat-null-sbo-preview').textContent = 
+      sboNulls.length === 0 ? '─' 
+        : sboNulls.length <= 2 
+          ? sboNulls.map(d => `${d > 0 ? '+' : ''}${d.toFixed(1)}°`).join(', ')
+          : (() => {
+              const sorted = [...sboNulls].sort((a,b) => Math.abs(a) - Math.abs(b)).slice(0, 2);
+              return sorted.map(d => `${d > 0 ? '+' : ''}${d.toFixed(1)}°`).join(', ') + ' ⋯';
+            })();
+
+    const activeCount = state.enabled.filter(x => x).length;
+    document.getElementById('stat-active').innerHTML = `${activeCount}<span class="unit">/${state.nPairs}</span>`;
+    document.getElementById('stat-active-sub').textContent = 
+      `${state.N}소자 ${state.mode === 'CE' ? 'Capture Effect' : '단일주파수'}`;
+  }
+
+  /* ============ Render ============ */
+  function renderAll() {
+    // 활성 뷰 확인
+    const view2D = document.getElementById('view-2d').classList.contains('active');
+    const viewConcept = document.getElementById('view-concept').classList.contains('active');
+    const view3D = document.getElementById('view-3d').classList.contains('active');
+    
+    if (view2D) {
+      drawCombined();
+      drawDDM();
+      drawCDI();
+    }
+    if (viewConcept) {
+      drawConcept();
+    }
+    if (view3D) {
+      draw3D();
+    }
+    // 통계는 항상 업데이트
+    updateStats();
+    updateCaptureMargin();
+  }
+  
+  // CE 모드의 캡쳐 포인트(10°)에서 클리어런스/코스 비율 (dB) 계산
+  function updateCaptureMargin() {
+    const elem = document.getElementById('capture-margin-info');
+    if (!elem) return;
+    if (state.mode !== 'CE') { elem.textContent = ''; return; }
+    
+    const courseCSB10 = Math.abs(E_csb_total(10));
+    const clearCSB10 = Math.abs(E_csb_clear_total(10));
+    if (courseCSB10 < 0.001) { elem.textContent = ''; return; }
+    
+    const ratio = clearCSB10 / courseCSB10;
+    const dB = 20 * Math.log10(ratio);
+    const sign = dB > 0 ? '+' : '';
+    const color = dB >= 10 ? '#00b4a0' : (dB >= 6 ? '#ffc857' : '#ff8c42');
+    elem.innerHTML = `· 캡쳐 마진 @10°: <span style="color:${color};font-weight:600;">${sign}${dB.toFixed(1)} dB</span> <span style="color:var(--text-2);">(목표: +10 dB↑)</span>`;
+  }
+
+  /* ============ Wire up ============ */
+  document.getElementById('g-k').addEventListener('input', e => {
+    state.useK = parseFloat(e.target.value);
+    document.getElementById('g-k-val').textContent = state.useK > 0.95 ? 'on' : state.useK < 0.05 ? 'off' : state.useK.toFixed(2);
+    renderAll();
+  });
+  
+  // 주파수 변경 - λ가 바뀌니까 m 표시도 다 갱신
+  document.getElementById('g-freq').addEventListener('input', e => {
+    state.frequency = parseFloat(e.target.value);
+    document.getElementById('g-freq-val').textContent = state.frequency.toFixed(2);
+    document.getElementById('lambda-val').textContent = lambda().toFixed(3);
+    // 모든 a 슬라이더의 m 표시 갱신
+    for (let p = 0; p < state.nPairs; p++) {
+      const meters = (state.a[p] * lambda()).toFixed(2);
+      const cell = document.querySelector(`[data-a-val="${p}"]`);
+      if (cell) cell.innerHTML = `${state.a[p].toFixed(2)}λ<br><span style="color:var(--text-2);font-weight:400;">${meters}m</span>`;
+    }
+    renderAll();
+  });
+
+  // 프리셋 - 8/14/20 소자별로 가변적 패턴 함수
+  // narrow: 외곽 강조 (좁은 코스), wide: 중심 강조 (넓은 코스), fault: 중간 쌍 약화
+  function getPresetValues(name, N) {
+    const def = DEFAULTS[N];
+    const n = N / 2;
+    if (name === 'textbook') {
+      return { I: [...def.I_course], I_clear: [...def.I_clearance], a: [...def.a] };
+    }
+    if (name === 'narrow') {
+      const I = def.I_course.map((v, i) => Math.min(1.5, v + 0.15 * (i / (n-1))));
+      const a = def.a.map((v) => v * 1.15);
+      return { I, I_clear: [...def.I_clearance], a };
+    }
+    if (name === 'wide') {
+      const I = def.I_course.map((v, i) => v * (1 - 0.4 * (i / (n-1))));
+      const a = def.a.map((v) => v * 0.78);
+      return { I, I_clear: [...def.I_clearance], a };
+    }
+    if (name === 'fault') {
+      const faultIdx = Math.floor(n / 2);
+      const I = [...def.I_course];
+      I[faultIdx] = 0.10;
+      return { I, I_clear: [...def.I_clearance], a: [...def.a] };
+    }
+    return { I: [...def.I_course], I_clear: [...def.I_clearance], a: [...def.a] };
+  }
+  
+  function applyPreset(name) {
+    const v = getPresetValues(name, state.N);
+    state.I = v.I.slice(0, state.nPairs);
+    state.I_clear = v.I_clear.slice(0, state.nPairs);
+    state.a = v.a.slice(0, state.nPairs);
+    state.enabled = new Array(state.nPairs).fill(true);
+    buildSliders();
+    renderAll();
+  }
+  
+  document.querySelectorAll('.preset-btn').forEach(b => {
+    b.addEventListener('click', () => applyPreset(b.dataset.preset));
+  });
+  document.getElementById('reset-btn').addEventListener('click', () => applyPreset('textbook'));
+
+  // 배열 크기 드롭다운
+  document.getElementById('array-size').addEventListener('change', e => {
+    const N = parseInt(e.target.value);
+    setArraySize(N);
+  });
+
+  document.querySelectorAll('.chart-toggle').forEach(tgl => {
+    tgl.addEventListener('click', () => {
+      const key = tgl.dataset.tgl;
+      if (!key) return;
+      state[key] = !state[key];
+      tgl.classList.toggle('on', state[key]);
+      renderAll();
+    });
+  });
+
+  // SF/CE 모드 전환
+  document.querySelectorAll('.mode-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const newMode = btn.dataset.mode;
+      state.mode = newMode;
+      document.querySelectorAll('.mode-btn').forEach(b => b.classList.toggle('active', b.dataset.mode === newMode));
+      document.body.classList.toggle('mode-SF', newMode === 'SF');
+      document.body.classList.toggle('mode-CE', newMode === 'CE');
+      // SF 모드로 돌아가면 자동으로 코스 탭으로 (클리어런스는 숨겨지므로)
+      if (newMode === 'SF' && state.editTab === 'clearance') {
+        state.editTab = 'course';
+        document.querySelectorAll('.edit-tab').forEach(t => t.classList.toggle('active', t.dataset.editTab === 'course'));
+        buildSliders();
+      }
+      renderAll();
+    });
+  });
+
+  // 코스/클리어런스 편집 탭
+  document.querySelectorAll('.edit-tab').forEach(tab => {
+    tab.addEventListener('click', () => {
+      const which = tab.dataset.editTab;
+      state.editTab = which;
+      document.querySelectorAll('.edit-tab').forEach(t => t.classList.toggle('active', t.dataset.editTab === which));
+      buildSliders();
+    });
+  });
+  
+  // 안테나 높이 슬라이더 (3D 지면 반사용)
+  const hSlider = document.getElementById('antenna-height-3d');
+  if (hSlider) {
+    hSlider.addEventListener('input', (e) => {
+      state.antennaHeight = parseFloat(e.target.value);
+      document.getElementById('height-3d-val').textContent = state.antennaHeight.toFixed(1) + 'm';
+      if (document.getElementById('view-3d').classList.contains('active')) {
+        draw3D();
+      }
+    });
+  }
+
+  // Null 카드 펼치기/접기
+  ['stat-null-csb-card', 'stat-null-sbo-card'].forEach(id => {
+    const card = document.getElementById(id);
+    const list = card.querySelector('.null-list');
+    card.addEventListener('click', () => {
+      card.classList.toggle('expanded');
+      list.classList.toggle('show');
+    });
+  });
+
+  document.querySelectorAll('.tab').forEach(t => {
+    t.addEventListener('click', () => {
+      document.querySelectorAll('.tab').forEach(x => x.classList.remove('active'));
+      document.querySelectorAll('.view').forEach(x => x.classList.remove('active'));
+      t.classList.add('active');
+      document.getElementById(t.dataset.view).classList.add('active');
+      setTimeout(renderAll, 30);
+    });
+  });
+
+  window.addEventListener('resize', () => {
+    clearTimeout(window._rsz);
+    window._rsz = setTimeout(renderAll, 150);
+  });
+
+  window.addEventListener('load', () => {
+    buildSliders();
+    setTimeout(() => {
+      renderAll();
+      setupDDMHover();
+      setup3DControls();
+    }, 50);
+  });
+</script>
+</body>
+</html>

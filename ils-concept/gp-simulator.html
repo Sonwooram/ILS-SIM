@@ -1,0 +1,2966 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>GP 글라이드패스 시뮬레이터 — Null Reference</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg-0: #0a0e14;
+    --bg-1: #11161f;
+    --bg-2: #1a2230;
+    --bg-3: #232c3e;
+    --line: #2a3548;
+    --line-bright: #3a4a66;
+    --text-0: #e6ecf5;
+    --text-1: #a8b5cc;
+    --text-2: #6c7a93;
+    --accent: #4ea8de;
+    --accent-bright: #6cc4ff;
+    --warn: #ff8c42;
+    --good: #00b4a0;
+    --csb: #ffc857;       /* CSB - 노랑 */
+    --sbo: #b388ff;       /* SBO - 보라 */
+    --path: #6cc4ff;      /* 활공각 라인 - 청 */
+    --mono: 'JetBrains Mono', monospace;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { height: 100%; }
+  body {
+    font-family: 'Noto Sans KR', sans-serif;
+    background: var(--bg-0);
+    color: var(--text-0);
+    overflow-x: hidden;
+  }
+
+  /* ========== Layout ========== */
+  .topbar {
+    background: var(--bg-1);
+    border-bottom: 1px solid var(--line);
+    padding: 14px 28px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+  .brand { display: flex; align-items: baseline; gap: 14px; }
+  .brand-mark {
+    font-family: var(--mono);
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--accent-bright);
+    letter-spacing: 0.1em;
+    background: rgba(78,168,222,0.1);
+    border: 1px solid rgba(78,168,222,0.3);
+    padding: 4px 8px;
+    border-radius: 2px;
+  }
+  .brand-title { font-size: 16px; font-weight: 600; color: var(--text-0); }
+  .brand-sub { font-family: var(--mono); font-size: 11px; color: var(--text-2); }
+  .topbar-meta { font-family: var(--mono); font-size: 11px; color: var(--text-2); }
+  .topbar-meta strong { color: var(--text-1); font-weight: 500; }
+
+  .tabs {
+    background: var(--bg-1);
+    border-bottom: 1px solid var(--line);
+    padding: 0 28px;
+    display: flex;
+    gap: 0;
+  }
+  .tab {
+    background: transparent;
+    border: none;
+    color: var(--text-2);
+    padding: 10px 20px;
+    font-family: var(--mono);
+    font-size: 12px;
+    font-weight: 500;
+    letter-spacing: 0.05em;
+    cursor: pointer;
+    border-bottom: 2px solid transparent;
+    transition: all 0.15s;
+  }
+  .tab:hover { color: var(--text-1); }
+  .tab.active {
+    color: var(--accent-bright);
+    border-bottom-color: var(--accent);
+  }
+
+  .main {
+    display: grid;
+    grid-template-columns: 320px 1fr;
+    min-height: calc(100vh - 109px);
+  }
+
+  /* ========== Sidebar ========== */
+  .controls {
+    background: var(--bg-1);
+    padding: 22px 20px;
+    overflow-y: auto;
+    max-height: calc(100vh - 108px);
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+  }
+  .controls::-webkit-scrollbar { display: none; width: 0; height: 0; }
+
+  .section { margin-bottom: 22px; }
+  .section-label {
+    font-family: var(--mono);
+    font-size: 10px;
+    font-weight: 600;
+    color: var(--text-2);
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    padding-bottom: 8px;
+    border-bottom: 1px solid var(--line);
+    margin-bottom: 12px;
+  }
+
+  /* Form controls */
+  .array-select {
+    width: 100%;
+    background: var(--bg-2);
+    border: 1px solid var(--line);
+    color: var(--text-0);
+    padding: 8px 10px;
+    font-family: var(--mono);
+    font-size: 12px;
+    border-radius: 2px;
+    cursor: pointer;
+  }
+  .array-select option {
+    background: var(--bg-2);
+    color: var(--text-0);
+  }
+
+  .global-row {
+    display: grid;
+    grid-template-columns: 88px 1fr 56px;
+    gap: 10px;
+    align-items: center;
+    font-family: var(--mono);
+    font-size: 11px;
+    margin-bottom: 8px;
+  }
+  .global-row label { color: var(--text-1); font-size: 11px; }
+  .value-readout {
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--accent-bright);
+    font-weight: 600;
+    text-align: right;
+  }
+  .help-note {
+    font-family: var(--mono);
+    font-size: 10px;
+    color: var(--text-2);
+    margin-top: 4px;
+    line-height: 1.4;
+  }
+
+  input[type="range"] {
+    -webkit-appearance: none;
+    width: 100%;
+    height: 16px;
+    background: transparent;
+    cursor: pointer;
+  }
+  input[type="range"]::-webkit-slider-runnable-track {
+    height: 2px;
+    background: var(--line-bright);
+    border-radius: 1px;
+  }
+  input[type="range"]::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    width: 12px;
+    height: 12px;
+    background: var(--accent-bright);
+    border-radius: 50%;
+    margin-top: -5px;
+    box-shadow: 0 0 0 2px var(--bg-1);
+  }
+  input[type="range"]::-moz-range-track {
+    height: 2px;
+    background: var(--line-bright);
+    border-radius: 1px;
+  }
+  input[type="range"]::-moz-range-thumb {
+    width: 12px;
+    height: 12px;
+    background: var(--accent-bright);
+    border-radius: 50%;
+    border: 2px solid var(--bg-1);
+  }
+
+  .preset-btns {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 6px;
+  }
+  .preset-btn {
+    background: var(--bg-2);
+    border: 1px solid var(--line);
+    color: var(--text-1);
+    padding: 7px 10px;
+    font-family: var(--mono);
+    font-size: 10px;
+    cursor: pointer;
+    border-radius: 2px;
+    transition: all 0.15s;
+  }
+  .preset-btn:hover {
+    border-color: var(--line-bright);
+    color: var(--text-0);
+    background: var(--bg-3);
+  }
+  .reset-btn {
+    width: 100%;
+    background: transparent;
+    border: 1px solid var(--warn);
+    color: var(--warn);
+    padding: 7px;
+    font-family: var(--mono);
+    font-size: 10px;
+    cursor: pointer;
+    border-radius: 2px;
+    transition: all 0.15s;
+  }
+  .reset-btn:hover { background: rgba(255,140,66,0.1); }
+
+  /* Type toggle */
+  .type-toggle-group {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 4px;
+  }
+  .type-btn {
+    background: var(--bg-2);
+    border: 1px solid var(--line);
+    color: var(--text-2);
+    padding: 10px 6px;
+    font-family: var(--mono);
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.05em;
+    cursor: pointer;
+    border-radius: 2px;
+    transition: all 0.15s;
+  }
+  .type-btn small {
+    display: block;
+    font-size: 8px;
+    font-weight: 400;
+    color: inherit;
+    opacity: 0.7;
+    margin-top: 2px;
+  }
+  .type-btn:hover {
+    border-color: var(--line-bright);
+    color: var(--text-1);
+  }
+  .type-btn.active {
+    background: rgba(78,168,222,0.1);
+    border-color: var(--accent);
+    color: var(--accent-bright);
+  }
+  
+  /* CE 전용 컨트롤 - NRGP 모드일 때 숨김 */
+  body.type-NRGP .ce-only { display: none !important; }
+
+  /* ========== Display ========== */
+  .display {
+    background: var(--bg-0);
+    padding: 22px 26px 40px;
+    overflow-y: auto;
+    max-height: calc(100vh - 108px);
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+  }
+  .display::-webkit-scrollbar { display: none; width: 0; height: 0; }
+
+  .view { display: none; }
+  .view.active { display: block; }
+
+  /* Stat cards */
+  .stat-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 14px;
+    margin-bottom: 18px;
+  }
+  .stat-card {
+    background: var(--bg-1);
+    border: 1px solid var(--line);
+    border-radius: 3px;
+    padding: 14px 16px;
+  }
+  .stat-label {
+    font-family: var(--mono);
+    font-size: 10px;
+    color: var(--text-2);
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    margin-bottom: 6px;
+  }
+  .stat-value {
+    font-family: var(--mono);
+    font-size: 22px;
+    font-weight: 600;
+    color: var(--text-0);
+    letter-spacing: -0.02em;
+    line-height: 1.0;
+  }
+  .stat-value .unit { font-size: 11px; color: var(--text-2); margin-left: 3px; font-weight: 400; }
+  .stat-sub {
+    margin-top: 4px;
+    font-family: var(--mono);
+    font-size: 10px;
+    color: var(--text-2);
+    letter-spacing: 0.02em;
+  }
+
+  /* Chart card */
+  .chart-card {
+    background: var(--bg-1);
+    border: 1px solid var(--line);
+    border-radius: 3px;
+    padding: 16px 18px;
+    margin-bottom: 18px;
+  }
+  .chart-title {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 4px;
+  }
+  .chart-title-main {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text-0);
+    font-family: 'Noto Sans KR', sans-serif;
+  }
+  .chart-subtitle {
+    font-family: var(--mono);
+    font-size: 10px;
+    color: var(--text-2);
+    margin-bottom: 10px;
+  }
+  .chart-canvas {
+    width: 100%;
+    height: 280px;
+    display: block;
+  }
+  .chart-canvas.tall { height: 360px; }
+
+  /* Chart toggles */
+  .chart-toggle {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 4px 8px;
+    background: var(--bg-2);
+    border: 1px solid var(--line);
+    border-radius: 2px;
+    font-family: var(--mono);
+    font-size: 10px;
+    color: var(--text-1);
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  .chart-toggle:hover {
+    border-color: var(--line-bright);
+    color: var(--text-0);
+  }
+  .chart-toggle .tgl-box {
+    width: 9px;
+    height: 9px;
+    background: var(--bg-3);
+    border: 1px solid var(--line-bright);
+    border-radius: 1px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .chart-toggle.on .tgl-box {
+    background: var(--accent);
+    border-color: var(--accent);
+  }
+  .chart-toggle.on .tgl-box::after {
+    content: '';
+    width: 3px;
+    height: 5px;
+    border: solid var(--bg-0);
+    border-width: 0 1.5px 1.5px 0;
+    transform: rotate(45deg) translate(-1px, -1px);
+  }
+
+  /* Info card */
+  .info-card {
+    background: rgba(78,168,222,0.04);
+    border-left: 2px solid var(--accent);
+    padding: 12px 14px;
+    font-size: 11px;
+    color: var(--text-1);
+    line-height: 1.7;
+    border-radius: 0 2px 2px 0;
+  }
+  .info-card strong { color: var(--text-0); font-weight: 600; }
+  
+  /* Placeholder for future tabs */
+  .placeholder {
+    background: var(--bg-1);
+    border: 1px dashed var(--line-bright);
+    border-radius: 4px;
+    padding: 80px 20px;
+    text-align: center;
+    color: var(--text-2);
+    font-family: var(--mono);
+    font-size: 13px;
+  }
+  
+  /* DDM + CDI 그리드 */
+  .ddm-cdi-grid {
+    display: grid;
+    grid-template-columns: 1fr 320px;
+    gap: 18px;
+    margin-bottom: 18px;
+  }
+  .cdi-card { display: flex; flex-direction: column; }
+  .cdi-wrap {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: radial-gradient(ellipse at center, #1a2230 0%, #0a0e14 70%);
+    border-radius: 4px;
+    padding: 8px;
+    min-height: 320px;
+  }
+  #cdi-canvas {
+    width: 100%;
+    max-width: 280px;
+    aspect-ratio: 1;
+    display: block;
+  }
+  #cdi-readout {
+    font-family: var(--mono);
+    font-size: 11px;
+    transition: color 0.15s;
+  }
+  
+  /* 3D Canvas */
+  #canvas-3d {
+    width: 100%;
+    height: 600px;
+    display: block;
+    cursor: grab;
+    background: radial-gradient(ellipse at center, #0e1623 0%, #0a0e14 80%);
+    border-radius: 4px;
+  }
+  #canvas-3d:active { cursor: grabbing; }
+</style>
+</head>
+<body class="type-NRGP">
+
+<header class="topbar">
+  <div class="brand">
+    <span class="brand-mark">GP-SIM</span>
+    <span class="brand-title">글라이드패스 방사패턴 시뮬레이터</span>
+    <span class="brand-sub" id="brand-sub">Null Reference Glide Path</span>
+  </div>
+  <div class="topbar-meta">
+    <span><strong>교재</strong> CH11-13</span> · <span><strong>KAC</strong> 항공기술훈련원</span>
+  </div>
+</header>
+
+<nav class="tabs">
+  <button class="tab active" data-view="view-vertical">수직 방사패턴</button>
+  <button class="tab" data-view="view-approach">접근 단면도</button>
+  <button class="tab" data-view="view-3d">3D 공간 패턴</button>
+</nav>
+
+<main class="main">
+  <aside class="controls">
+    <div class="section">
+      <div class="section-label">GP 형식</div>
+      <div class="type-toggle-group">
+        <button class="type-btn active" data-type="NRGP">NRGP<small>Null Reference</small></button>
+        <button class="type-btn" data-type="CEGP">CEGP<small>Capture Effect</small></button>
+      </div>
+    </div>
+
+    <div class="section">
+      <div class="section-label">활공각 (Glide Angle)</div>
+      <div class="global-row">
+        <label>θ</label>
+        <input type="range" id="g-theta" min="2.0" max="4.5" step="0.05" value="3.0">
+        <span class="value-readout" id="g-theta-val">3.00°</span>
+      </div>
+      <div class="help-note">ICAO 표준: 3.0° (대부분 공항)</div>
+    </div>
+
+    <div class="section">
+      <div class="section-label">주파수 · 파장</div>
+      <div class="global-row">
+        <label>F (MHz)</label>
+        <input type="range" id="g-freq" min="329.15" max="335.00" step="0.05" value="332.0">
+        <span class="value-readout" id="g-freq-val">332.00</span>
+      </div>
+      <div class="help-note" style="text-align:right;">
+        λ = <span id="lambda-val" style="color:var(--accent-bright);">0.903</span> m
+      </div>
+    </div>
+
+    <div class="section">
+      <div class="section-label">안테나 높이</div>
+      <div class="global-row">
+        <label>h (하단)</label>
+        <input type="range" id="g-h-lower" min="2.0" max="12.0" step="0.05" value="4.31">
+        <span class="value-readout" id="g-h-lower-val">4.31</span>
+      </div>
+      <div class="help-note" style="margin-bottom:8px;">
+        Carrier 안테나 — λ/(4·sin θ)
+      </div>
+      <div class="global-row">
+        <label>H (상단)</label>
+        <input type="range" id="g-h-upper" min="4.0" max="24.0" step="0.05" value="8.63">
+        <span class="value-readout" id="g-h-upper-val">8.63</span>
+      </div>
+      <div class="help-note" style="margin-bottom:8px;">
+        Sideband 안테나 — 보통 H = 2h
+      </div>
+      <div class="global-row ce-only">
+        <label>M (중단)</label>
+        <input type="range" id="g-h-middle" min="3.0" max="18.0" step="0.05" value="6.47">
+        <span class="value-readout" id="g-h-middle-val">6.47</span>
+      </div>
+      <div class="help-note ce-only">
+        CE 전용 — Clearance 안테나
+      </div>
+      <button class="reset-btn" style="margin-top:8px;background:var(--bg-2);border-color:var(--line);color:var(--text-1);" id="auto-height-btn">
+        자동 계산 (활공각 기준)
+      </button>
+    </div>
+
+    <div class="section">
+      <div class="section-label">측파대 진폭비 (A)</div>
+      <div class="global-row">
+        <label>A ratio</label>
+        <input type="range" id="g-aratio" min="0.10" max="0.60" step="0.01" value="0.31">
+        <span class="value-readout" id="g-aratio-val">0.31</span>
+      </div>
+      <div class="help-note">
+        SBO 측파대 / CSB 반송파 비 — A=0.31 @ 3° → 패스폭 1.4°
+      </div>
+    </div>
+
+    <div class="section">
+      <div class="section-label">안테나별 전류 (I)</div>
+      <div class="global-row">
+        <label>I 하단 (L)</label>
+        <input type="range" id="g-i-lower" min="0.0" max="2.0" step="0.01" value="1.00">
+        <span class="value-readout" id="g-i-lower-val" style="color:#ffc857;">1.00</span>
+      </div>
+      <div class="global-row">
+        <label>I 상단 (U)</label>
+        <input type="range" id="g-i-upper" min="0.0" max="2.0" step="0.01" value="1.00">
+        <span class="value-readout" id="g-i-upper-val" style="color:#b388ff;">1.00</span>
+      </div>
+      <div class="global-row ce-only">
+        <label>I 중단 (M)</label>
+        <input type="range" id="g-i-middle" min="0.0" max="2.0" step="0.01" value="1.00">
+        <span class="value-readout" id="g-i-middle-val" style="color:#6cc4ff;">1.00</span>
+      </div>
+      <div class="help-note">
+        각 안테나의 RF 전류 진폭 (기준=1.0)
+      </div>
+    </div>
+
+    <div class="section ce-only">
+      <div class="section-label">CEGP 클리어런스</div>
+      <div class="global-row">
+        <label>CLR 진폭</label>
+        <input type="range" id="g-clr-amp" min="0.0" max="0.6" step="0.005" value="0.387">
+        <span class="value-readout" id="g-clr-amp-val">0.387</span>
+      </div>
+      <div class="help-note">
+        Upper+Lower 동위상 공급 — FAA: 코스의 15% 이하
+      </div>
+    </div>
+
+    <div class="section">
+      <div class="section-label">환경 변수</div>
+      <div class="global-row">
+        <label>지면 높이</label>
+        <input type="range" id="g-ground" min="-1.5" max="1.5" step="0.05" value="0">
+        <span class="value-readout" id="g-ground-val">0.0</span>
+      </div>
+      <div class="help-note">지면 침하(-) / 돌출(+) 시뮬레이션 (m)</div>
+    </div>
+
+    <div class="section">
+      <div class="section-label">프리셋</div>
+      <div class="preset-btns">
+        <button class="preset-btn" data-preset="standard">표준 3°</button>
+        <button class="preset-btn" data-preset="steep">급강하 3.5°</button>
+        <button class="preset-btn" data-preset="shallow">완만 2.5°</button>
+        <button class="preset-btn" data-preset="ground-low">지면 침하</button>
+      </div>
+      <button class="reset-btn" style="margin-top: 8px;" id="reset-btn">초기화</button>
+    </div>
+  </aside>
+
+  <section class="display">
+
+    <!-- ====================== Tab 1: 수직 방사패턴 ====================== -->
+    <div class="view active" id="view-vertical">
+
+      <div class="stat-grid">
+        <div class="stat-card">
+          <div class="stat-label">활공각 (θ)</div>
+          <div class="stat-value" id="stat-theta">3.00<span class="unit">°</span></div>
+          <div class="stat-sub" id="stat-theta-sub">SBO Null 위치</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">패스폭 (Path Width)</div>
+          <div class="stat-value" id="stat-pw">1.40<span class="unit">°</span></div>
+          <div class="stat-sub" id="stat-pw-sub">±0.175 DDM</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">SBO Null 개수</div>
+          <div class="stat-value" id="stat-nulls"><span style="color:var(--sbo);">0</span><span class="unit">개</span></div>
+          <div class="stat-sub" id="stat-nulls-preview">─</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">시설 형식</div>
+          <div class="stat-value" id="stat-type" style="font-size:18px;">NRGP</div>
+          <div class="stat-sub" id="stat-type-sub">Null Reference</div>
+        </div>
+      </div>
+
+      <div class="chart-card">
+        <div class="chart-title">
+          <span class="chart-title-main">수직 방사패턴</span>
+        </div>
+        <div class="chart-subtitle" style="display:flex;flex-wrap:wrap;gap:14px;align-items:center;margin-bottom:8px;">
+          <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;">
+            <span style="color:var(--text-2);font-weight:600;">개별 안테나:</span>
+            <div class="chart-toggle on" data-tgl="showLower"><div class="tgl-box"></div><span style="color:#ffc857;">LOWER</span></div>
+            <div class="chart-toggle on" data-tgl="showUpper"><div class="tgl-box"></div><span style="color:#b388ff;">UPPER</span></div>
+            <div class="chart-toggle on ce-only" data-tgl="showMiddle"><div class="tgl-box"></div><span style="color:#6cc4ff;">MIDDLE</span></div>
+          </div>
+          <div class="ce-only" style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;">
+            <span style="color:var(--text-2);font-weight:600;">합성 신호:</span>
+            <div class="chart-toggle" data-tgl="showCSB"><div class="tgl-box"></div><span style="color:#ffaa00;">CSB</span></div>
+            <div class="chart-toggle" data-tgl="showSBO"><div class="tgl-box"></div><span style="color:#ff6fa8;">SBO</span></div>
+            <div class="chart-toggle" data-tgl="showCLR"><div class="tgl-box"></div><span style="color:#a0e060;">CLR</span></div>
+          </div>
+          <div class="chart-toggle" data-tgl="absMode" style="margin-left:auto;"><div class="tgl-box"></div><span>절대값</span></div>
+        </div>
+        <div class="chart-subtitle" id="chart-subtitle">
+          개별 안테나: E = I·sin(2π·h·sinθ/λ) · 합성 신호 (CEGP): 교재 13장 공식
+        </div>
+        <canvas class="chart-canvas tall" id="vertical-chart"></canvas>
+      </div>
+
+      <div class="ddm-cdi-grid">
+        <div class="chart-card">
+          <div class="chart-title">
+            <span class="chart-title-main">DDM 분포 — 수직 평면 (활공각 위/아래)</span>
+            <span style="font-family:var(--mono);font-size:10px;color:var(--text-2);">활공각 = DDM 0, 경계 = ±0.175</span>
+          </div>
+          <div class="chart-subtitle">마우스를 그래프 위에 올리면 항공기 위치 시뮬레이션</div>
+          <div style="position:relative;">
+            <canvas class="chart-canvas tall" id="ddm-chart"></canvas>
+            <div class="ddm-tooltip" id="ddm-tooltip"></div>
+          </div>
+        </div>
+        
+        <div class="chart-card cdi-card">
+          <div class="chart-title">
+            <span class="chart-title-main">CDI · 항공기 계기판</span>
+            <span style="font-family:var(--mono);font-size:10px;color:var(--text-2);">Glide Slope</span>
+          </div>
+          <div class="chart-subtitle" id="cdi-readout">마우스를 DDM 차트 위로 ←</div>
+          <div class="cdi-wrap">
+            <canvas id="cdi-canvas"></canvas>
+          </div>
+        </div>
+      </div>
+
+      <div class="info-card">
+        <strong>📐 Null Reference GP 원리</strong><br>
+        • <strong>하단 안테나 (h)</strong>: 변조된 반송파 신호(CSB) 방사. 높이 h = λ/(4·sinθ) — 활공각에 최대값<br>
+        • <strong>상단 안테나 (H = 2h)</strong>: 측파대만(SBO) 방사. 활공각에 <strong>Null</strong> 형성<br>
+        • 두 신호가 공간에서 합쳐져 활공각 위/아래로 대칭적 DDM 분포 형성<br>
+        • <strong>CDI 동작</strong>: 활공각 위 → 니들 아래 (FLY DOWN) / 활공각 아래 → 니들 위 (FLY UP)
+      </div>
+
+    </div>
+
+    <!-- ====================== Tab 2: 접근 단면도 ====================== -->
+    <div class="view" id="view-approach">
+      
+      <div class="chart-card">
+        <div class="chart-title">
+          <span class="chart-title-main">활주로 접근 단면도 (Side View)</span>
+          <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
+            <div class="chart-toggle on" data-tgl="showApproachPathLine"><div class="tgl-box"></div><span>활공각 라인</span></div>
+            <div class="chart-toggle on" data-tgl="showApproachWidth"><div class="tgl-box"></div><span>패스폭 영역</span></div>
+            <div class="chart-toggle on" data-tgl="showApproachFalsePaths"><div class="tgl-box"></div><span style="color:#ff8c42;">False Paths (6/9/12°)</span></div>
+            <div class="chart-toggle on" data-tgl="showApproachZones"><div class="tgl-box"></div><span style="color:#a0e060;">존 라벨</span></div>
+            <div class="chart-toggle on" data-tgl="showApproachAircraft"><div class="tgl-box"></div><span>항공기</span></div>
+            <div class="chart-toggle" data-tgl="showApproachPattern"><div class="tgl-box"></div><span>방사패턴 오버레이</span></div>
+          </div>
+        </div>
+        <div class="chart-subtitle">활주로 종단에서 본 활공경사 형성 — 마우스를 그래프 위로 올리면 항공기 위치</div>
+        <canvas class="chart-canvas" id="approach-canvas" style="height:520px;"></canvas>
+      </div>
+      
+      <div class="info-card">
+        <strong>🛬 접근 단면도 해설</strong><br>
+        • <strong>GP 안테나 마스트</strong> — 활주로 시단 측면 (250~600ft), Lower/Middle/Upper 안테나 위치<br>
+        • <strong style="color:#6cc4ff;">● ON PATH</strong> — DDM=0, 정상 활공각 (3°) 라인 위<br>
+        • <strong style="color:#ff8c42;">▼ FLY DOWN 영역</strong> — 90Hz 우세, 활공각 위쪽 (고도 낮춰야 함)<br>
+        • <strong style="color:#00b4a0;">▲ FLY UP 영역</strong> — 150Hz 우세, 활공각 아래쪽 (고도 높여야 함)<br>
+        • <strong style="color:#ff5a5f;">⚠ FALSE PATH (6°/9°/12°)</strong> — SBO Null이 정수배(2θ, 3θ, 4θ)에 형성 → 잘못된 활공각<br>
+        • <strong>TCH</strong> (Threshold Crossing Height) — 활주로 시단 통과 고도, 일반 50ft<br>
+        • 항공기 수신기는 코스 신호의 위상 반전을 인식해서 False Path 회피 (Flag Alarm)
+      </div>
+      
+    </div>
+    <div class="view" id="view-3d">
+      <div class="chart-card">
+        <div class="chart-title">
+          <span class="chart-title-main">3D 공간 방사패턴</span>
+          <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
+            <div class="chart-toggle on" data-tgl="show3D_Lower"><div class="tgl-box"></div><span style="color:#ffc857;">LOWER</span></div>
+            <div class="chart-toggle on" data-tgl="show3D_Upper"><div class="tgl-box"></div><span style="color:#b388ff;">UPPER</span></div>
+            <div class="chart-toggle on ce-only" data-tgl="show3D_Middle"><div class="tgl-box"></div><span style="color:#6cc4ff;">MIDDLE</span></div>
+            <div class="chart-toggle" data-tgl="show3D_CSB"><div class="tgl-box"></div><span style="color:#ffaa00;">합성 CSB</span></div>
+            <div class="chart-toggle" data-tgl="show3D_SBO"><div class="tgl-box"></div><span style="color:#ff6fa8;">합성 SBO</span></div>
+            <div class="chart-toggle ce-only" data-tgl="show3D_CLR"><div class="tgl-box"></div><span style="color:#a0e060;">합성 CLR</span></div>
+            <div class="chart-toggle on" data-tgl="show3D_Wireframe"><div class="tgl-box"></div><span>와이어프레임</span></div>
+            <div class="chart-toggle on" data-tgl="show3D_Runway"><div class="tgl-box"></div><span>활주로</span></div>
+            <div class="chart-toggle on" data-tgl="show3D_PathLine"><div class="tgl-box"></div><span>활공각 라인</span></div>
+          </div>
+        </div>
+        <div class="chart-subtitle">
+          마우스 드래그 회전 · 휠 줌 · 우클릭 드래그 이동 · 빔의 표면 거리 = 해당 방향의 전계강도 |E|
+        </div>
+        <canvas id="canvas-3d"></canvas>
+        <div style="margin-top: 14px;" class="info-card">
+          <strong>🌐 GP 3D 패턴 해설</strong><br>
+          • <strong>패턴 원점 = 지면</strong>: 이미지 안테나 효과로 안테나+반사파가 이미 합성된 결과 → lobe는 지면에서부터 펼쳐짐<br>
+          • <strong>수직면 lobing</strong>: 활공각(3°), 6°, 9°에 lobe/null 형성 → 얇은 부채꼴 모양이 정상<br>
+          • <strong>LOWER (h)</strong>: 활공각에 첫 lobe peak — CSB 최대점<br>
+          • <strong>UPPER (2h/3h)</strong>: 활공각에 null — SBO 형성의 핵심<br>
+          • <strong>수평면</strong>: 활주로 방향(+X)으로 광대역 방사 (좌우 ±60°)<br>
+          • <strong>합성 신호 토글</strong> 시 실제 CSB/SBO/CLR 3D 형상 표시
+        </div>
+      </div>
+    </div>
+
+  </section>
+</main>
+
+<script>
+  /* ============================================================
+   * GP 시뮬레이터 핵심 물리
+   * 
+   * Null Reference GP:
+   *   - 하단 안테나 (h, carrier+sideband): CSB 방사
+   *     E_csb(el) = sin(2π·h·sin(el)/λ)
+   *   - 상단 안테나 (H, sideband only): SBO 방사
+   *     E_sbo(el) = A · sin(2π·H·sin(el)/λ)
+   *
+   * h = λ/(4·sin θ) → 활공각에서 CSB 최대 (위상 π/2)
+   * H = 2h         → 활공각에서 SBO Null (위상 π)
+   *
+   * DDM = 측파대 신호의 상대적 위상으로 계산
+   *   = (2 · SBO/CSB) when SBO와 CSB 신호 위상이 일치할 때
+   *   = saturated by tanh in this sim
+   * ============================================================ */
+  
+  const state = {
+    type: 'NRGP',      // NRGP | CEGP
+    theta: 3.0,        // 활공각 (degrees)
+    freq: 332.0,       // GP 주파수 (MHz)
+    h_lower: 4.31,     // 하단 안테나 높이 (m) - 둘 다 동일
+    h_upper: 8.63,     // 상단 안테나 높이 - NRGP: 2h, CEGP: 3h
+    h_middle: 6.47,    // 중단 안테나 높이 - CEGP에서만 사용, NRGP의 상단(2h)
+    // 안테나별 전류 진폭 (각 안테나의 RF 출력 전류, 1.0 = 기준)
+    I_lower: 1.00,
+    I_upper: 1.00,
+    I_middle: 1.00,
+    // 측파대 진폭비 (A) - 측파대 전류 / 반송파 전류 = 패스폭 결정
+    aratio: 0.31,
+    groundOffset: 0,
+    autoHeight: true,
+    // CEGP 클리어런스 진폭 (Upper, Lower 안테나로 동위상 공급)
+    clr_amp: 0.387,
+    // 표시 토글 - 개별 안테나
+    showLower: true,
+    showUpper: true,
+    showMiddle: true,
+    absMode: false,
+    // CEGP 합성 신호 토글 - 개별 안테나와 동시 표시 가능
+    showCSB: false,    // 합성 CSB (코스 반송파+측파대 분모항)
+    showSBO: false,    // 합성 SBO (코스 측파대 분자항)
+    showCLR: false,    // 합성 CLR (클리어런스 Upper+Lower)
+    // 접근 단면도 토글
+    showApproachPathLine: true,
+    showApproachWidth: true,
+    showApproachFalsePaths: true,
+    showApproachZones: true,
+    showApproachAircraft: true,
+    showApproachPattern: false,
+    // 3D 토글
+    show3D_Lower: true,
+    show3D_Upper: true,
+    show3D_Middle: true,
+    show3D_CSB: false,
+    show3D_SBO: false,
+    show3D_CLR: false,
+    show3D_Wireframe: true,
+    show3D_Runway: true,
+    show3D_PathLine: true,
+    // 3D 카메라
+    cam3D: {
+      distance: 8.5,
+      azimuth: -Math.PI * 0.65,    // 항공기 후방에서 보는 각도
+      elevation: 0.35,              // 약간 위에서
+      panX: 0,
+      panY: 0,
+    },
+    // 접근 단면도 hover (마우스 위치 → 항공기 위치)
+    approachAircraft: null,  // {distNm, altFt}
+    // hover
+    hoverEl: null,
+  };
+  
+  // 파장 (m) = c / f
+  function lambda() { return 299.792458 / state.freq; }
+  
+  // 활공각 기준 자동 안테나 높이 계산
+  function autoCalcHeights() {
+    const lam = lambda();
+    const thRad = state.theta * Math.PI / 180;
+    state.h_lower = lam / (4 * Math.sin(thRad));
+    if (state.type === 'CEGP') {
+      // CEGP: 1 : 2 : 3 비율
+      state.h_middle = 2 * state.h_lower;
+      state.h_upper = 3 * state.h_lower;
+    } else {
+      // NRGP: 1 : 2 비율 (Middle은 사용 안 함)
+      state.h_upper = 2 * state.h_lower;
+      state.h_middle = 1.5 * state.h_lower;  // 사용 안 하지만 유지
+    }
+  }
+  
+  /* === 단일 안테나의 수직 방사 패턴 (이미지 안테나 효과) ===
+   * 안테나가 지면 위 h, 이미지 안테나는 -h (반대 위상 가정)
+   * 직접파 + 반사파 합성 → E(el) ∝ 2·sin(2π·h·sin(el)/λ)
+   * 계수 2는 정규화 시 제거 가능
+   */
+  function E_antenna(el_deg, h_eff) {
+    if (el_deg < 0) return 0;
+    const elRad = el_deg * Math.PI / 180;
+    const phase = 2 * Math.PI * h_eff * Math.sin(elRad) / lambda();
+    return Math.sin(phase);
+  }
+  
+  // 효과적 높이
+  function effectiveHeight(h) { return h - state.groundOffset; }
+  
+  // === 개별 안테나의 "raw" 방사패턴 (이미지 안테나만 적용) ===
+  // 안테나 자체 진폭은 곱하지 않은 원시 패턴
+  function P_lower(el) { return E_antenna(el, effectiveHeight(state.h_lower)); }
+  function P_middle(el) { return E_antenna(el, effectiveHeight(state.h_middle)); }
+  function P_upper(el) { return E_antenna(el, effectiveHeight(state.h_upper)); }
+  
+  /* ============================================================
+   * NRGP 신호 (2 안테나)
+   *   Lower: CSB (변조된 반송파, 90+150Hz 측파대 포함)
+   *   Upper: SBO (측파대만, 90-150Hz 역위상)
+   * ============================================================ */
+  function E_csb_NRGP(el) { return state.I_lower * P_lower(el); }
+  function E_sbo_NRGP(el) { return state.aratio * state.I_upper * P_upper(el); }
+  
+  /* ============================================================
+   * CEGP 신호 (3 안테나, 교재 13장)
+   *
+   * 코스 신호 분배:
+   *   Lower : SBO 측파대 (-0.5A 위상, ECM 즉 CSB에는 +1.0)
+   *   Middle: CSB+SBO 둘 다 (CSB +1.0, SBO 측파대 +A)... 실제로는 좀 복잡함
+   *   Upper : SBO 측파대 (-0.5A 위상)
+   *
+   * 교재 DDM 공식:
+   *   DDM = 2m · [-0.5A·sin(h_L·sinα) + A·sin(h_M·sinα) - 0.5A·sin(h_U·sinα)]
+   *           / [sin(h_L·sinα) - 0.5·sin(h_M·sinα)]
+   *
+   * → CSB(분모) = E_lower - 0.5·E_middle  (Lower는 carrier 위상, Middle은 -0.5)
+   * → SBO(분자) = A · (-0.5·E_lower + E_middle - 0.5·E_upper)
+   *
+   * 클리어런스 신호 (별도 RF, 8kHz 차이):
+   *   Upper + Lower 동위상 동크기 (0.387 ratio)
+   *   E_clr = 0.387 · (E_lower + E_upper)
+   * ============================================================ */
+  function E_csb_CEGP(el) {
+    // CSB 합성: Lower (정위상) + Middle (역위상 -0.5)
+    return state.I_lower * P_lower(el) - 0.5 * state.I_middle * P_middle(el);
+  }
+  function E_sbo_CEGP(el) {
+    // SBO 합성: -0.5L + M - 0.5U (모두 측파대 A 배수)
+    return state.aratio * (
+      -0.5 * state.I_lower * P_lower(el)
+      + state.I_middle * P_middle(el)
+      - 0.5 * state.I_upper * P_upper(el)
+    );
+  }
+  function E_clr_CEGP(el) {
+    // 클리어런스: Upper + Lower 동위상 (0.387 ratio)
+    return state.clr_amp * (state.I_lower * P_lower(el) + state.I_upper * P_upper(el));
+  }
+  
+  /* ============================================================
+   * 통합 인터페이스 (NRGP/CEGP 분기)
+   * ============================================================ */
+  function E_csb_total(el) {
+    return state.type === 'CEGP' ? E_csb_CEGP(el) : E_csb_NRGP(el);
+  }
+  function E_sbo_total(el) {
+    return state.type === 'CEGP' ? E_sbo_CEGP(el) : E_sbo_NRGP(el);
+  }
+  function E_clr_total(el) {
+    return state.type === 'CEGP' ? E_clr_CEGP(el) : 0;
+  }
+  
+  // 개별 안테나에서 방사되는 "측파대만" 신호 (절댓값) — 차트 표시용
+  // NRGP: Lower=CSB(반송파+측파대), Upper=SBO(측파대만)
+  // CEGP: 각 안테나의 효과를 별도로 그리려면 분리해야 함
+  //       여기서는 단순히 각 안테나가 "기여하는 측파대 신호의 크기"를 표시
+  function E_lower_signal(el) {
+    if (state.type === 'NRGP') return state.I_lower * P_lower(el);  // CSB 그대로
+    // CEGP에서 Lower는 CSB+SBO 측파대 둘 다 기여 (위상 다름)
+    // 시각화는 RF 전체 진폭으로
+    return state.I_lower * P_lower(el);
+  }
+  function E_upper_signal(el) {
+    if (state.type === 'NRGP') return state.aratio * state.I_upper * P_upper(el);  // SBO
+    // CEGP에서 Upper도 측파대 + 클리어런스 둘 다
+    return state.I_upper * P_upper(el);
+  }
+  function E_middle_signal(el) {
+    if (state.type !== 'CEGP') return 0;
+    return state.I_middle * P_middle(el);
+  }
+  
+  /* === DDM 계산 ===
+   * GP에서 DDM = (M_90 - M_150) 비율
+   * SBO 신호의 부호가 90/150 우세 결정:
+   *   - SBO 양수 (활공각 아래) → 150Hz 우세 → 양의 DDM → FLY UP
+   *   - SBO 음수 (활공각 위)   → 90Hz 우세  → 음의 DDM → FLY DOWN
+   * 
+   * 모델: DDM = K_GP · A · sin(2π·H·sin(el)/λ) / |sin(2π·h·sin(el)/λ)|
+   *       K_GP ≈ 0.5 (변조도 50% 기준 = LOC의 0.4보다 강함)
+   * 
+   * A=0.31, θ=3°, θ+0.7° → DDM ≈ -0.175 (스펙 패스폭 1.4°)
+   * 실측 모델 보정: K_GP를 시뮬에서 조정
+   */
+  function DDM(el_deg) {
+    const csb = E_csb_total(el_deg);
+    const sbo = E_sbo_total(el_deg);
+    const csbAbs = Math.abs(csb);
+    
+    const csbPeak = Math.abs(E_csb_total(state.theta));
+    const csbRef = Math.max(csbAbs, 0.1 * csbPeak);
+    if (csbRef < 0.001) return 0;
+    
+    const K_GP = 0.5;
+    const ratio = sbo / csbRef;
+    return K_GP * Math.tanh(1.6 * ratio);
+  }
+  
+  /* ============================================================
+   * Canvas helpers
+   * ============================================================ */
+  function setupCanvas(canvas) {
+    const dpr = window.devicePixelRatio || 1;
+    const rect = canvas.getBoundingClientRect();
+    canvas.width = rect.width * dpr;
+    canvas.height = rect.height * dpr;
+    const ctx = canvas.getContext('2d');
+    ctx.scale(dpr, dpr);
+    return { ctx, w: rect.width, h: rect.height };
+  }
+  
+  function drawGrid(ctx, w, h, opts) {
+    const { xMin, xMax, yMin, yMax, xStep, yStep, padding } = opts;
+    const padL = padding.l, padR = padding.r, padT = padding.t, padB = padding.b;
+    const plotW = w - padL - padR;
+    const plotH = h - padT - padB;
+    
+    // 배경
+    ctx.fillStyle = 'rgba(255,255,255,0.015)';
+    ctx.fillRect(padL, padT, plotW, plotH);
+    
+    // grid lines
+    ctx.strokeStyle = 'rgba(255,255,255,0.06)';
+    ctx.lineWidth = 1;
+    ctx.font = '9px JetBrains Mono';
+    ctx.fillStyle = 'rgba(168,181,204,0.6)';
+    
+    // X axis (vertical grid lines)
+    for (let x = xMin; x <= xMax + 0.001; x += xStep) {
+      const px = padL + ((x - xMin) / (xMax - xMin)) * plotW;
+      ctx.beginPath();
+      ctx.moveTo(px, padT);
+      ctx.lineTo(px, padT + plotH);
+      ctx.stroke();
+      ctx.textAlign = 'center';
+      // X label (각도)
+      const label = x === 0 ? '0°' : (x > 0 ? '+' : '') + x.toFixed(1) + '°';
+      ctx.fillText(label, px, padT + plotH + 14);
+    }
+    
+    // Y axis (horizontal grid lines)
+    for (let y = yMin; y <= yMax + 0.001; y += yStep) {
+      const py = padT + plotH - ((y - yMin) / (yMax - yMin)) * plotH;
+      ctx.beginPath();
+      ctx.moveTo(padL, py);
+      ctx.lineTo(padL + plotW, py);
+      ctx.stroke();
+      ctx.textAlign = 'right';
+      const label = y.toFixed(yStep < 0.05 ? 3 : (yStep < 0.5 ? 2 : 1));
+      ctx.fillText(label, padL - 6, py + 3);
+    }
+    
+    // axes (강조)
+    ctx.strokeStyle = 'rgba(168,181,204,0.4)';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(padL, padT);
+    ctx.lineTo(padL, padT + plotH);
+    ctx.lineTo(padL + plotW, padT + plotH);
+    ctx.stroke();
+    
+    // Y=0 line if visible
+    if (yMin < 0 && yMax > 0) {
+      const py0 = padT + plotH - ((0 - yMin) / (yMax - yMin)) * plotH;
+      ctx.strokeStyle = 'rgba(168,181,204,0.25)';
+      ctx.setLineDash([2, 3]);
+      ctx.beginPath();
+      ctx.moveTo(padL, py0);
+      ctx.lineTo(padL + plotW, py0);
+      ctx.stroke();
+      ctx.setLineDash([]);
+    }
+    
+    return {
+      padL, padR, padT, padB, plotW, plotH,
+      x2px: (x) => padL + ((x - xMin) / (xMax - xMin)) * plotW,
+      y2py: (y) => padT + plotH - ((y - yMin) / (yMax - yMin)) * plotH,
+      xMin, xMax, yMin, yMax,
+    };
+  }
+  
+  function plotLine(ctx, scale, fn, xMin, xMax, color, lineWidth, alpha) {
+    ctx.strokeStyle = color;
+    ctx.lineWidth = lineWidth;
+    ctx.globalAlpha = alpha || 1;
+    ctx.beginPath();
+    const step = (xMax - xMin) / 400;
+    let first = true;
+    for (let x = xMin; x <= xMax; x += step) {
+      const y = fn(x);
+      const py = scale.y2py(y);
+      const px = scale.x2px(x);
+      if (first) { ctx.moveTo(px, py); first = false; }
+      else ctx.lineTo(px, py);
+    }
+    ctx.stroke();
+    ctx.globalAlpha = 1;
+  }
+  
+  /* ============================================================
+   * Vertical pattern chart (개별 안테나)
+   * ============================================================ */
+  function drawVerticalChart() {
+    const canvas = document.getElementById('vertical-chart');
+    if (!canvas) return;
+    const { ctx, w, h } = setupCanvas(canvas);
+    ctx.clearRect(0, 0, w, h);
+    
+    const abs = state.absMode;
+    const yMax = 1.2;
+    const yMin = abs ? 0 : -1.2;
+    
+    const scale = drawGrid(ctx, w, h, {
+      xMin: 0, xMax: 10,
+      yMin, yMax,
+      xStep: 1, yStep: 0.2,
+      padding: { l: 48, r: 16, t: 24, b: 28 }
+    });
+    
+    ctx.save();
+    ctx.beginPath();
+    ctx.rect(scale.padL, scale.padT, scale.plotW, scale.plotH);
+    ctx.clip();
+    
+    const transform = abs ? Math.abs : (v) => v;
+    const isCE = state.type === 'CEGP';
+    
+    // === 개별 안테나 (얇은 실선) ===
+    if (state.showLower) {
+      plotLine(ctx, scale, (el) => transform(E_lower_signal(el)), 0, 10, '#ffc857', 2.0, 0.85);
+    }
+    if (state.showUpper) {
+      plotLine(ctx, scale, (el) => transform(E_upper_signal(el)), 0, 10, '#b388ff', 2.0, 0.85);
+    }
+    if (isCE && state.showMiddle) {
+      plotLine(ctx, scale, (el) => transform(E_middle_signal(el)), 0, 10, '#6cc4ff', 2.0, 0.85);
+    }
+    
+    // === 합성 신호 (CEGP 전용, 굵은선) ===
+    if (isCE) {
+      if (state.showCSB) {
+        plotLine(ctx, scale, (el) => transform(E_csb_total(el)), 0, 10, '#ffaa00', 3.0, 1);
+      }
+      if (state.showSBO) {
+        plotLine(ctx, scale, (el) => transform(E_sbo_total(el)), 0, 10, '#ff6fa8', 3.0, 1);
+      }
+      if (state.showCLR) {
+        ctx.setLineDash([6, 4]);
+        plotLine(ctx, scale, (el) => transform(E_clr_total(el)), 0, 10, '#a0e060', 2.8, 0.95);
+        ctx.setLineDash([]);
+      }
+    }
+    
+    ctx.restore();
+    
+    // 활공각 수직선
+    ctx.strokeStyle = 'rgba(108,196,255,0.7)';
+    ctx.lineWidth = 1.5;
+    ctx.setLineDash([4, 4]);
+    ctx.beginPath();
+    ctx.moveTo(scale.x2px(state.theta), scale.padT);
+    ctx.lineTo(scale.x2px(state.theta), scale.padT + scale.plotH);
+    ctx.stroke();
+    ctx.setLineDash([]);
+    
+    ctx.fillStyle = '#6cc4ff';
+    ctx.font = 'bold 11px JetBrains Mono';
+    ctx.textAlign = 'center';
+    ctx.fillText(`θ = ${state.theta.toFixed(2)}°`, scale.x2px(state.theta), scale.padT + 14);
+    
+    // Legend - 개별 안테나 (얇게)
+    let lx = scale.padL + 8;
+    let ly = scale.padT + 28;
+    ctx.font = '10px JetBrains Mono';
+    ctx.textAlign = 'left';
+    
+    if (state.showLower) {
+      ctx.fillStyle = '#ffc857';
+      ctx.fillText(`━ LOWER  I=${state.I_lower.toFixed(2)}  h=${state.h_lower.toFixed(2)}m`, lx, ly); ly += 13;
+    }
+    if (state.showUpper) {
+      ctx.fillStyle = '#b388ff';
+      const hLabel = isCE ? '3h' : '2h';
+      ctx.fillText(`━ UPPER  I=${state.I_upper.toFixed(2)}  ${hLabel}=${state.h_upper.toFixed(2)}m`, lx, ly); ly += 13;
+    }
+    if (isCE && state.showMiddle) {
+      ctx.fillStyle = '#6cc4ff';
+      ctx.fillText(`━ MIDDLE I=${state.I_middle.toFixed(2)}  2h=${state.h_middle.toFixed(2)}m`, lx, ly); ly += 13;
+    }
+    // 합성 신호 (구분선 + 굵게)
+    if (isCE && (state.showCSB || state.showSBO || state.showCLR)) {
+      ly += 4;
+      ctx.fillStyle = 'rgba(168,181,204,0.4)';
+      ctx.fillText('─ 합성 신호 ─', lx, ly); ly += 13;
+      if (state.showCSB) {
+        ctx.fillStyle = '#ffaa00';
+        ctx.fillText('━━ CSB (L − 0.5·M)', lx, ly); ly += 13;
+      }
+      if (state.showSBO) {
+        ctx.fillStyle = '#ff6fa8';
+        ctx.fillText('━━ SBO (−0.5L + M − 0.5U)·A', lx, ly); ly += 13;
+      }
+      if (state.showCLR) {
+        ctx.fillStyle = '#a0e060';
+        ctx.fillText('┄┄ CLR (L + U)·0.387', lx, ly); ly += 13;
+      }
+    }
+    
+    // X axis title
+    ctx.fillStyle = '#6c7a93';
+    ctx.font = '9px JetBrains Mono';
+    ctx.textAlign = 'center';
+    ctx.fillText('Elevation Angle (°)', scale.padL + scale.plotW / 2, scale.padT + scale.plotH + 26);
+  }
+  
+  /* ============================================================
+   * DDM chart
+   * ============================================================ */
+  function drawDDMChart() {
+    const canvas = document.getElementById('ddm-chart');
+    if (!canvas) return;
+    const { ctx, w, h } = setupCanvas(canvas);
+    ctx.clearRect(0, 0, w, h);
+    
+    // X축: 활공각 ±1.5° 범위 (디테일 확대)
+    const xMin = state.theta - 1.5;
+    const xMax = state.theta + 1.5;
+    const yMin = -0.4;
+    const yMax = 0.4;
+    
+    const scale = drawGrid(ctx, w, h, {
+      xMin, xMax,
+      yMin, yMax,
+      xStep: 0.5, yStep: 0.1,
+      padding: { l: 48, r: 16, t: 24, b: 28 }
+    });
+    
+    ctx.save();
+    ctx.beginPath();
+    ctx.rect(scale.padL, scale.padT, scale.plotW, scale.plotH);
+    ctx.clip();
+    
+    // Color gradient background (위쪽 = 음수 DDM = 90Hz Fly Down)
+    const grad = ctx.createLinearGradient(0, scale.padT, 0, scale.padT + scale.plotH);
+    grad.addColorStop(0, 'rgba(255,140,66,0.07)');     // 위 (Fly Down)
+    grad.addColorStop(0.5, 'rgba(255,255,255,0.0)');
+    grad.addColorStop(1, 'rgba(0,180,160,0.07)');      // 아래 (Fly Up)
+    ctx.fillStyle = grad;
+    ctx.fillRect(scale.padL, scale.padT, scale.plotW, scale.plotH);
+    
+    // DDM 경계선 (±0.175)
+    ctx.strokeStyle = 'rgba(255,140,66,0.4)';
+    ctx.lineWidth = 1;
+    ctx.setLineDash([4, 4]);
+    [0.175, -0.175].forEach(d => {
+      const py = scale.y2py(d);
+      ctx.beginPath();
+      ctx.moveTo(scale.padL, py);
+      ctx.lineTo(scale.padL + scale.plotW, py);
+      ctx.stroke();
+    });
+    ctx.setLineDash([]);
+    
+    // DDM 곡선
+    plotLine(ctx, scale, DDM, xMin, xMax, '#6cc4ff', 2.6, 1);
+    
+    ctx.restore();
+    
+    // 활공각 수직선
+    ctx.strokeStyle = 'rgba(108,196,255,0.5)';
+    ctx.lineWidth = 1;
+    ctx.setLineDash([2, 3]);
+    ctx.beginPath();
+    ctx.moveTo(scale.x2px(state.theta), scale.padT);
+    ctx.lineTo(scale.x2px(state.theta), scale.padT + scale.plotH);
+    ctx.stroke();
+    ctx.setLineDash([]);
+    
+    // 경계 라벨
+    ctx.fillStyle = '#ff8c42';
+    ctx.font = '9px JetBrains Mono';
+    ctx.textAlign = 'left';
+    ctx.fillText('+0.175 (Fly Up 경계)', scale.padL + 6, scale.y2py(0.175) - 3);
+    ctx.fillText('−0.175 (Fly Down 경계)', scale.padL + 6, scale.y2py(-0.175) + 11);
+    
+    // 영역 라벨
+    ctx.font = 'bold 11px JetBrains Mono';
+    ctx.textAlign = 'right';
+    ctx.fillStyle = 'rgba(255,140,66,0.7)';
+    ctx.fillText('↑ 90Hz 우세 (Fly Down)', scale.padL + scale.plotW - 6, scale.padT + 16);
+    ctx.fillStyle = 'rgba(0,180,160,0.7)';
+    ctx.fillText('↓ 150Hz 우세 (Fly Up)', scale.padL + scale.plotW - 6, scale.padT + scale.plotH - 6);
+    
+    // Width Points (±0.175 도달 각도)
+    let upperWP = null, lowerWP = null;
+    for (let d = 0.01; d < 1.5; d += 0.005) {
+      if (lowerWP === null && DDM(state.theta - d) >= 0.175) lowerWP = state.theta - d;
+      if (upperWP === null && DDM(state.theta + d) <= -0.175) upperWP = state.theta + d;
+    }
+    
+    [upperWP, lowerWP].forEach((wp, idx) => {
+      if (wp === null) return;
+      const ddmAtWP = DDM(wp);
+      ctx.strokeStyle = 'rgba(255,140,66,0.6)';
+      ctx.lineWidth = 1.2;
+      ctx.setLineDash([5, 3]);
+      ctx.beginPath();
+      ctx.moveTo(scale.x2px(wp), scale.padT);
+      ctx.lineTo(scale.x2px(wp), scale.padT + scale.plotH);
+      ctx.stroke();
+      ctx.setLineDash([]);
+      
+      ctx.fillStyle = '#ff8c42';
+      ctx.beginPath();
+      ctx.arc(scale.x2px(wp), scale.y2py(ddmAtWP), 4, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.strokeStyle = '#fff';
+      ctx.lineWidth = 1;
+      ctx.stroke();
+      
+      ctx.fillStyle = '#ff8c42';
+      ctx.font = 'bold 9px JetBrains Mono';
+      ctx.textAlign = idx === 0 ? 'left' : 'right';
+      const offX = idx === 0 ? 5 : -5;
+      ctx.fillText(`PW: ${wp.toFixed(2)}°`, scale.x2px(wp) + offX, scale.padT + 30);
+    });
+    
+    // hover marker
+    if (state.hoverEl !== null) {
+      const hx = scale.x2px(state.hoverEl);
+      const hDDM = DDM(state.hoverEl);
+      const hy = scale.y2py(hDDM);
+      ctx.strokeStyle = 'rgba(255,255,255,0.5)';
+      ctx.lineWidth = 1;
+      ctx.setLineDash([2, 3]);
+      ctx.beginPath();
+      ctx.moveTo(hx, scale.padT);
+      ctx.lineTo(hx, scale.padT + scale.plotH);
+      ctx.stroke();
+      ctx.setLineDash([]);
+      
+      ctx.fillStyle = '#6cc4ff';
+      ctx.beginPath();
+      ctx.arc(hx, hy, 5, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.strokeStyle = '#fff';
+      ctx.lineWidth = 1.5;
+      ctx.stroke();
+    }
+    
+    // X axis title
+    ctx.fillStyle = '#6c7a93';
+    ctx.font = '9px JetBrains Mono';
+    ctx.textAlign = 'center';
+    ctx.fillText('Elevation Angle (°)', scale.padL + scale.plotW / 2, scale.padT + scale.plotH + 26);
+  }
+  
+  /* ============================================================
+   * Stats
+   * ============================================================ */
+  function findSBONulls() {
+    const nulls = [];
+    let prev = E_sbo_total(0.01);
+    for (let el = 0.05; el < 12; el += 0.02) {
+      const v = E_sbo_total(el);
+      if ((prev > 0 && v < 0) || (prev < 0 && v > 0) || Math.abs(v) < 0.005) {
+        if (Math.abs(v) < 0.05) nulls.push(el);
+      }
+      prev = v;
+    }
+    const unique = [];
+    nulls.forEach(n => {
+      if (!unique.some(u => Math.abs(u - n) < 0.5)) unique.push(n);
+    });
+    return unique;
+  }
+  
+  function updateStats() {
+    // 활공각
+    document.getElementById('stat-theta').innerHTML = `${state.theta.toFixed(2)}<span class="unit">°</span>`;
+    
+    // 패스폭 (±0.175 도달 각도 차이)
+    let upperWP = null, lowerWP = null;
+    for (let d = 0.01; d < 1.5; d += 0.005) {
+      if (lowerWP === null && DDM(state.theta - d) >= 0.175) lowerWP = state.theta - d;
+      if (upperWP === null && DDM(state.theta + d) <= -0.175) upperWP = state.theta + d;
+    }
+    const pw = (upperWP !== null && lowerWP !== null) ? (upperWP - lowerWP) : 0;
+    document.getElementById('stat-pw').innerHTML = `${pw.toFixed(2)}<span class="unit">°</span>`;
+    document.getElementById('stat-pw-sub').textContent = 
+      (lowerWP !== null && upperWP !== null) 
+        ? `${lowerWP.toFixed(2)}° ~ ${upperWP.toFixed(2)}°` 
+        : '─';
+    
+    // SBO Null 개수
+    const nulls = findSBONulls();
+    document.getElementById('stat-nulls').innerHTML = 
+      `<span style="color:var(--sbo);">${nulls.length}</span><span class="unit">개</span>`;
+    document.getElementById('stat-nulls-preview').textContent = 
+      nulls.length === 0 ? '─' 
+        : nulls.slice(0, 3).map(n => n.toFixed(2) + '°').join(', ') + (nulls.length > 3 ? ' ⋯' : '');
+    
+    // 시설 형식
+    document.getElementById('stat-type').textContent = state.type;
+    document.getElementById('stat-type-sub').textContent = 
+      state.type === 'NRGP' ? 'Null Reference' : 'Capture Effect';
+  }
+  
+  /* ============================================================
+   * Tab 2: DDM Chart (계기 탭) - Tab 1과 같은 내용이지만 별도 canvas
+   * ============================================================ */
+  function drawDDMChart2() {
+    const canvas = document.getElementById('ddm-chart-2');
+    if (!canvas) return;
+    const { ctx, w, h } = setupCanvas(canvas);
+    ctx.clearRect(0, 0, w, h);
+    
+    const xMin = state.theta - 1.5, xMax = state.theta + 1.5;
+    const yMin = -0.4, yMax = 0.4;
+    
+    const scale = drawGrid(ctx, w, h, {
+      xMin, xMax, yMin, yMax,
+      xStep: 0.5, yStep: 0.1,
+      padding: { l: 48, r: 16, t: 24, b: 28 }
+    });
+    
+    ctx.save();
+    ctx.beginPath();
+    ctx.rect(scale.padL, scale.padT, scale.plotW, scale.plotH);
+    ctx.clip();
+    
+    const grad = ctx.createLinearGradient(0, scale.padT, 0, scale.padT + scale.plotH);
+    grad.addColorStop(0, 'rgba(255,140,66,0.07)');
+    grad.addColorStop(0.5, 'rgba(255,255,255,0.0)');
+    grad.addColorStop(1, 'rgba(0,180,160,0.07)');
+    ctx.fillStyle = grad;
+    ctx.fillRect(scale.padL, scale.padT, scale.plotW, scale.plotH);
+    
+    ctx.strokeStyle = 'rgba(255,140,66,0.4)';
+    ctx.lineWidth = 1;
+    ctx.setLineDash([4, 4]);
+    [0.175, -0.175].forEach(d => {
+      const py = scale.y2py(d);
+      ctx.beginPath();
+      ctx.moveTo(scale.padL, py);
+      ctx.lineTo(scale.padL + scale.plotW, py);
+      ctx.stroke();
+    });
+    ctx.setLineDash([]);
+    
+    plotLine(ctx, scale, DDM, xMin, xMax, '#6cc4ff', 2.6, 1);
+    
+    ctx.restore();
+    
+    ctx.strokeStyle = 'rgba(108,196,255,0.5)';
+    ctx.lineWidth = 1;
+    ctx.setLineDash([2, 3]);
+    ctx.beginPath();
+    ctx.moveTo(scale.x2px(state.theta), scale.padT);
+    ctx.lineTo(scale.x2px(state.theta), scale.padT + scale.plotH);
+    ctx.stroke();
+    ctx.setLineDash([]);
+    
+    ctx.fillStyle = '#ff8c42';
+    ctx.font = '9px JetBrains Mono';
+    ctx.textAlign = 'left';
+    ctx.fillText('+0.175', scale.padL + 6, scale.y2py(0.175) - 3);
+    ctx.fillText('−0.175', scale.padL + 6, scale.y2py(-0.175) + 11);
+    
+    ctx.font = 'bold 11px JetBrains Mono';
+    ctx.textAlign = 'right';
+    ctx.fillStyle = 'rgba(255,140,66,0.7)';
+    ctx.fillText('↑ 90Hz (Fly Down)', scale.padL + scale.plotW - 6, scale.padT + 16);
+    ctx.fillStyle = 'rgba(0,180,160,0.7)';
+    ctx.fillText('↓ 150Hz (Fly Up)', scale.padL + scale.plotW - 6, scale.padT + scale.plotH - 6);
+    
+    if (state.hoverEl !== null) {
+      const hx = scale.x2px(state.hoverEl);
+      const hy = scale.y2py(DDM(state.hoverEl));
+      ctx.strokeStyle = 'rgba(255,255,255,0.5)';
+      ctx.lineWidth = 1;
+      ctx.setLineDash([2, 3]);
+      ctx.beginPath();
+      ctx.moveTo(hx, scale.padT);
+      ctx.lineTo(hx, scale.padT + scale.plotH);
+      ctx.stroke();
+      ctx.setLineDash([]);
+      
+      ctx.fillStyle = '#6cc4ff';
+      ctx.beginPath();
+      ctx.arc(hx, hy, 5, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.strokeStyle = '#fff';
+      ctx.lineWidth = 1.5;
+      ctx.stroke();
+    }
+    
+    ctx.fillStyle = '#6c7a93';
+    ctx.font = '9px JetBrains Mono';
+    ctx.textAlign = 'center';
+    ctx.fillText('Elevation Angle (°)', scale.padL + scale.plotW / 2, scale.padT + scale.plotH + 26);
+  }
+  
+  /* ============================================================
+   * CDI (Glide Slope Indicator) - GP: 수평 니들
+   * ============================================================ */
+  function drawCDI() {
+    const canvas = document.getElementById('cdi-canvas');
+    if (!canvas) return;
+    const { ctx, w, h } = setupCanvas(canvas);
+    ctx.clearRect(0, 0, w, h);
+    
+    const cx = w / 2;
+    const cy = h / 2;
+    const radius = Math.min(w, h) * 0.45;
+    
+    const bezelGrad = ctx.createRadialGradient(cx, cy - radius * 0.3, radius * 0.4, cx, cy, radius);
+    bezelGrad.addColorStop(0, '#3a4458');
+    bezelGrad.addColorStop(0.7, '#1f2733');
+    bezelGrad.addColorStop(1, '#0a0e14');
+    ctx.fillStyle = bezelGrad;
+    ctx.beginPath();
+    ctx.arc(cx, cy, radius + 6, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.strokeStyle = '#4a5568';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.arc(cx, cy, radius + 6, 0, Math.PI * 2);
+    ctx.stroke();
+    
+    ctx.fillStyle = '#0a0e14';
+    ctx.beginPath();
+    ctx.arc(cx, cy, radius, 0, Math.PI * 2);
+    ctx.fill();
+    
+    // 5개 도트 (위/아래 2개씩) - 수직 배치
+    const dotSpacing = radius * 0.32;
+    ctx.fillStyle = '#e6ecf5';
+    for (let i = -2; i <= 2; i++) {
+      if (i === 0) continue;
+      ctx.beginPath();
+      ctx.arc(cx, cy + i * dotSpacing, 5, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    // 중앙 십자
+    ctx.strokeStyle = '#e6ecf5';
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    ctx.moveTo(cx - 8, cy);
+    ctx.lineTo(cx + 8, cy);
+    ctx.moveTo(cx, cy - 8);
+    ctx.lineTo(cx, cy + 8);
+    ctx.stroke();
+    
+    // G/S 텍스트
+    ctx.fillStyle = '#a8b5cc';
+    ctx.font = 'bold 10px JetBrains Mono';
+    ctx.textAlign = 'center';
+    ctx.fillText('G/S', cx, cy - radius * 0.75);
+    
+    // U/D 라벨
+    ctx.fillStyle = '#6c7a93';
+    ctx.font = '9px JetBrains Mono';
+    ctx.textAlign = 'left';
+    ctx.fillText('U', cx + radius * 0.78 - 4, cy - radius * 0.78 + 12);
+    ctx.fillText('D', cx + radius * 0.78 - 4, cy + radius * 0.78 - 4);
+    
+    // 90Hz / 150Hz 라벨
+    ctx.font = '7px JetBrains Mono';
+    ctx.fillStyle = 'rgba(255,140,66,0.6)';
+    ctx.fillText('90Hz', cx + radius * 0.78 - 4, cy - radius * 0.78 + 22);
+    ctx.fillStyle = 'rgba(0,180,160,0.6)';
+    ctx.fillText('150Hz', cx + radius * 0.78 - 4, cy + radius * 0.78 - 14);
+    
+    // CDI 니들 (수평!)
+    const currentDDM = state.hoverEl !== null ? DDM(state.hoverEl) : 0;
+    const FULL_SCALE = 0.175;
+    let deflection = currentDDM / FULL_SCALE;
+    deflection = Math.max(-1.2, Math.min(1.2, deflection));
+    
+    // DDM > 0 (FLY UP) → 니들이 위로 (cy 감소)
+    const needleY = cy - deflection * 2 * dotSpacing;
+    
+    // 니들 그림자
+    ctx.strokeStyle = 'rgba(0,0,0,0.5)';
+    ctx.lineWidth = 5;
+    ctx.beginPath();
+    ctx.moveTo(cx - radius * 0.55, needleY + 1);
+    ctx.lineTo(cx + radius * 0.55, needleY + 1);
+    ctx.stroke();
+    
+    // 메인 니들 (노랑)
+    const needleColor = '#ffc857';
+    ctx.strokeStyle = needleColor;
+    ctx.lineWidth = 3;
+    ctx.lineCap = 'round';
+    ctx.beginPath();
+    ctx.moveTo(cx - radius * 0.55, needleY);
+    ctx.lineTo(cx + radius * 0.55, needleY);
+    ctx.stroke();
+    ctx.lineCap = 'butt';
+    
+    // 니들 중앙 캡
+    ctx.fillStyle = needleColor;
+    ctx.beginPath();
+    ctx.arc(cx, needleY, 4, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.strokeStyle = '#0a0e14';
+    ctx.lineWidth = 1;
+    ctx.stroke();
+    
+    // 상단 중앙: GS 플래그 (신호 없을 때)
+    const topY = cy - radius * 0.42;
+    const showNAV = (state.hoverEl === null);
+    if (showNAV) {
+      ctx.fillStyle = 'rgba(255,90,95,0.95)';
+      ctx.fillRect(cx - 24, topY - 8, 48, 16);
+      ctx.fillStyle = '#0a0e14';
+      ctx.font = 'bold 10px JetBrains Mono';
+      ctx.textAlign = 'center';
+      ctx.fillText('GS', cx, topY + 3);
+    }
+    
+    // 풀편향 시 위/아래 화살표
+    if (state.hoverEl !== null && Math.abs(deflection) > 1.0) {
+      const arrowDir = deflection > 0 ? -1 : 1;
+      const arrowEndY = cy + arrowDir * radius * 0.55;
+      const triW = 7, triH = 8;
+      ctx.fillStyle = needleColor;
+      ctx.strokeStyle = '#0a0e14';
+      ctx.lineWidth = 1;
+      
+      ctx.beginPath();
+      ctx.moveTo(cx, arrowEndY);
+      ctx.lineTo(cx - triW, arrowEndY - arrowDir * triH);
+      ctx.lineTo(cx + triW, arrowEndY - arrowDir * triH);
+      ctx.closePath();
+      ctx.fill();
+      ctx.stroke();
+      
+      const tri2Y = arrowEndY - arrowDir * (triH + 3);
+      ctx.beginPath();
+      ctx.moveTo(cx, tri2Y);
+      ctx.lineTo(cx - triW, tri2Y - arrowDir * triH);
+      ctx.lineTo(cx + triW, tri2Y - arrowDir * triH);
+      ctx.closePath();
+      ctx.fill();
+      ctx.stroke();
+    }
+    
+    ctx.fillStyle = '#6c7a93';
+    ctx.font = '8px JetBrains Mono';
+    ctx.textAlign = 'center';
+    ctx.fillText('FULL SCALE = ±0.175 DDM', cx, cy + radius * 0.82);
+  }
+  
+  /* ============================================================
+   * Tab 3: 접근 단면도
+   * ============================================================ */
+  function drawApproach() {
+    const canvas = document.getElementById('approach-canvas');
+    if (!canvas) return;
+    const { ctx, w, h } = setupCanvas(canvas);
+    ctx.clearRect(0, 0, w, h);
+    
+    const sky = ctx.createLinearGradient(0, 0, 0, h);
+    sky.addColorStop(0, '#0d1419');
+    sky.addColorStop(0.6, '#0a0e14');
+    sky.addColorStop(0.65, '#0a0e14');
+    ctx.fillStyle = sky;
+    ctx.fillRect(0, 0, w, h);
+    
+    const xMinM = -3000, xMaxM = 500;
+    const yMinM = 0, yMaxM = 300;
+    const padL = 60, padR = 30, padT = 30, padB = 50;
+    const plotW = w - padL - padR;
+    const plotH = h - padT - padB;
+    
+    function x2px(xm) { return padL + ((xm - xMinM) / (xMaxM - xMinM)) * plotW; }
+    function y2py(ym) { return padT + plotH - ((ym - yMinM) / (yMaxM - yMinM)) * plotH; }
+    
+    // 거리 눈금 (먼저, 가장 뒤로)
+    ctx.strokeStyle = 'rgba(255,255,255,0.04)';
+    ctx.lineWidth = 1;
+    ctx.fillStyle = 'rgba(168,181,204,0.5)';
+    ctx.font = '9px JetBrains Mono';
+    ctx.textAlign = 'center';
+    for (let d = -3000; d <= 500; d += 500) {
+      const px = x2px(d);
+      ctx.beginPath();
+      ctx.moveTo(px, padT);
+      ctx.lineTo(px, padT + plotH);
+      ctx.stroke();
+      const lbl = d === 0 ? '시단' : `${(d/1000).toFixed(1)}km`;
+      ctx.fillText(lbl, px, padT + plotH + 14);
+      if (d < 0) {
+        const nm = (Math.abs(d) / 1852).toFixed(1);
+        ctx.fillStyle = 'rgba(168,181,204,0.3)';
+        ctx.fillText(`${nm}NM`, px, padT + plotH + 26);
+        ctx.fillStyle = 'rgba(168,181,204,0.5)';
+      }
+    }
+    
+    // 고도 눈금
+    ctx.textAlign = 'right';
+    for (let alt = 0; alt <= yMaxM; alt += 50) {
+      const py = y2py(alt);
+      ctx.beginPath();
+      ctx.moveTo(padL, py);
+      ctx.lineTo(padL + plotW, py);
+      ctx.stroke();
+      const ft = Math.round(alt * 3.281);
+      ctx.fillText(`${alt}m`, padL - 6, py + 3);
+      ctx.fillStyle = 'rgba(168,181,204,0.3)';
+      ctx.fillText(`${ft}ft`, padL - 6, py + 14);
+      ctx.fillStyle = 'rgba(168,181,204,0.5)';
+    }
+    
+    // 지면
+    const groundY = y2py(0);
+    ctx.fillStyle = '#1a1410';
+    ctx.fillRect(padL, groundY, plotW, padT + plotH - groundY);
+    ctx.strokeStyle = '#3a3028';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(padL, groundY);
+    ctx.lineTo(padL + plotW, groundY);
+    ctx.stroke();
+    
+    // 활주로 (X = 0 ~ 500m)
+    const rwTop = groundY - 4;
+    ctx.fillStyle = '#2a2520';
+    ctx.fillRect(x2px(0), rwTop, x2px(500) - x2px(0), 8);
+    ctx.strokeStyle = '#5a5048';
+    ctx.lineWidth = 1;
+    ctx.strokeRect(x2px(0), rwTop, x2px(500) - x2px(0), 8);
+    
+    // 활주로 시단 마커
+    ctx.fillStyle = '#fff';
+    for (let i = 0; i < 3; i++) {
+      ctx.fillRect(x2px(0) - 2, rwTop + 1 + i * 3, 2, 1.5);
+    }
+    
+    // 활공각 라인 (DDM=0)
+    const TCH = 15;
+    const tanT = Math.tan(state.theta * Math.PI / 180);
+    
+    if (state.showApproachPathLine) {
+      ctx.strokeStyle = '#6cc4ff';
+      ctx.lineWidth = 2.5;
+      ctx.beginPath();
+      const startY = TCH + tanT * (-xMinM);
+      ctx.moveTo(x2px(xMinM), y2py(startY));
+      ctx.lineTo(x2px(0), y2py(TCH));
+      ctx.stroke();
+      
+      ctx.fillStyle = '#6cc4ff';
+      ctx.font = 'bold 11px JetBrains Mono';
+      ctx.textAlign = 'left';
+      ctx.fillText(`θ = ${state.theta.toFixed(2)}° (활공각)`, x2px(-2500), y2py(TCH + tanT * 2500) - 8);
+      
+      ctx.fillStyle = '#a8b5cc';
+      ctx.font = '9px JetBrains Mono';
+      ctx.fillText(`TCH = ${TCH}m (${Math.round(TCH*3.281)}ft)`, x2px(20), y2py(TCH) - 5);
+      
+      ctx.strokeStyle = 'rgba(168,181,204,0.4)';
+      ctx.lineWidth = 1;
+      ctx.setLineDash([3, 3]);
+      ctx.beginPath();
+      ctx.moveTo(x2px(0), groundY);
+      ctx.lineTo(x2px(0), y2py(TCH));
+      ctx.stroke();
+      ctx.setLineDash([]);
+    }
+    
+    // 패스폭 영역
+    if (state.showApproachWidth) {
+      const halfPW = 0.7;
+      const tanUp = Math.tan((state.theta + halfPW) * Math.PI / 180);
+      const tanDn = Math.tan((state.theta - halfPW) * Math.PI / 180);
+      
+      ctx.fillStyle = 'rgba(255,140,66,0.12)';
+      ctx.beginPath();
+      ctx.moveTo(x2px(0), y2py(TCH));
+      ctx.lineTo(x2px(xMinM), y2py(TCH + tanUp * (-xMinM)));
+      ctx.lineTo(x2px(xMinM), y2py(Math.max(0, TCH + tanDn * (-xMinM))));
+      ctx.lineTo(x2px(0), y2py(TCH));
+      ctx.closePath();
+      ctx.fill();
+      
+      ctx.strokeStyle = 'rgba(255,140,66,0.5)';
+      ctx.lineWidth = 1;
+      ctx.setLineDash([4, 3]);
+      ctx.beginPath();
+      ctx.moveTo(x2px(0), y2py(TCH));
+      ctx.lineTo(x2px(xMinM), y2py(TCH + tanUp * (-xMinM)));
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.moveTo(x2px(0), y2py(TCH));
+      ctx.lineTo(x2px(xMinM), y2py(Math.max(0, TCH + tanDn * (-xMinM))));
+      ctx.stroke();
+      ctx.setLineDash([]);
+      
+      ctx.fillStyle = '#ff8c42';
+      ctx.font = '9px JetBrains Mono';
+      ctx.textAlign = 'left';
+      ctx.fillText(`+0.7° (FLY DOWN)`, x2px(-2700), y2py(TCH + tanUp * 2700) + 10);
+      ctx.fillText(`−0.7° (FLY UP)`, x2px(-2700), y2py(Math.max(5, TCH + tanDn * 2700)) - 4);
+    }
+    
+    // False Path 라인들 (6°, 9°, 12°)
+    // Null Reference: SBO Null들이 활공각의 정수 배수에서 형성
+    //   3° (정상), 6° (1차 false), 9° (2차 false), 12° (3차 false)
+    // 각 라인은 GP 안테나 기준으로 그려야 함 (TCH가 아니라 마스트 발치 기준)
+    if (state.showApproachFalsePaths) {
+      const falseAngles = [
+        { deg: 2 * state.theta, label: '1차 False Path', alpha: 0.55, dash: [6, 4] },
+        { deg: 3 * state.theta, label: '2차 False Path', alpha: 0.40, dash: [4, 5] },
+        { deg: 4 * state.theta, label: '3차 False Path', alpha: 0.28, dash: [3, 6] },
+      ];
+      
+      falseAngles.forEach(fa => {
+        if (fa.deg > 30) return;  // 너무 가파르면 의미 없음
+        const tanFA = Math.tan(fa.deg * Math.PI / 180);
+        // 라인은 GP 안테나에서 TCH 통과하는 것과 동일한 시작점 사용
+        // 단순화: 동일한 가상 시작점 (xPath=0, y=TCH)에서 각도만 다르게
+        ctx.strokeStyle = `rgba(255,140,66,${fa.alpha})`;
+        ctx.lineWidth = 1.5;
+        ctx.setLineDash(fa.dash);
+        ctx.beginPath();
+        ctx.moveTo(x2px(0), y2py(TCH));
+        const endY = TCH + tanFA * (-xMinM);
+        if (endY <= yMaxM) {
+          ctx.lineTo(x2px(xMinM), y2py(endY));
+        } else {
+          // 윗쪽으로 튀어나가는 경우, yMaxM에서 끊기
+          const cutX = -((yMaxM - TCH) / tanFA);
+          ctx.lineTo(x2px(cutX), y2py(yMaxM));
+        }
+        ctx.stroke();
+        ctx.setLineDash([]);
+        
+        // 라벨 (라인 중간 지점)
+        const labelX = -1500;
+        const labelY = TCH + tanFA * 1500;
+        if (labelY < yMaxM - 10) {
+          ctx.fillStyle = `rgba(255,140,66,${Math.min(0.95, fa.alpha + 0.2)})`;
+          ctx.font = 'bold 9px JetBrains Mono';
+          ctx.textAlign = 'center';
+          // 회전된 텍스트
+          ctx.save();
+          ctx.translate(x2px(labelX), y2py(labelY) - 4);
+          const angleRad = -Math.atan2(
+            y2py(TCH + tanFA * 1500) - y2py(TCH + tanFA * 1550),
+            x2px(-1500) - x2px(-1550)
+          );
+          ctx.rotate(angleRad);
+          ctx.fillText(`${fa.deg.toFixed(0)}° · ${fa.label}`, 0, -2);
+          ctx.restore();
+        }
+      });
+    }
+    
+    // 존 라벨 (LOC 시설 개념도처럼)
+    if (state.showApproachZones) {
+      // 활공각 위 (90Hz 우세, FLY DOWN) - 활공각 ~ 6° 사이
+      const tanT = Math.tan(state.theta * Math.PI / 180);
+      const tan2T = Math.tan(2 * state.theta * Math.PI / 180);
+      const tanPW_up = Math.tan((state.theta + 0.7) * Math.PI / 180);
+      const tanPW_dn = Math.tan((state.theta - 0.7) * Math.PI / 180);
+      
+      // === 90Hz 우세 영역 (활공각 위, FLY DOWN) - 노랑계열 ===
+      // 활공각 라인 ~ 2θ(6°) 라인 사이 큰 영역
+      ctx.fillStyle = 'rgba(255,200,87,0.06)';
+      ctx.beginPath();
+      ctx.moveTo(x2px(0), y2py(TCH));
+      ctx.lineTo(x2px(xMinM), y2py(TCH + tanT * (-xMinM)));
+      const yAt2T = TCH + tan2T * (-xMinM);
+      const xAt2T_cap = yAt2T > yMaxM ? -((yMaxM - TCH) / tan2T) : xMinM;
+      if (yAt2T > yMaxM) {
+        ctx.lineTo(x2px(xMinM), y2py(yMaxM));
+        ctx.lineTo(x2px(xAt2T_cap), y2py(yMaxM));
+      } else {
+        ctx.lineTo(x2px(xMinM), y2py(yAt2T));
+      }
+      ctx.closePath();
+      ctx.fill();
+      
+      // === 150Hz 우세 영역 (활공각 아래, FLY UP) - 청록계열 ===
+      ctx.fillStyle = 'rgba(0,180,160,0.07)';
+      ctx.beginPath();
+      ctx.moveTo(x2px(0), y2py(TCH));
+      ctx.lineTo(x2px(xMinM), y2py(Math.max(0, TCH + tanT * (-xMinM))));
+      ctx.lineTo(x2px(xMinM), y2py(0));
+      ctx.lineTo(x2px(0), y2py(0));
+      ctx.closePath();
+      ctx.fill();
+      
+      // === 큰 라벨들 ===
+      ctx.font = 'bold 13px JetBrains Mono';
+      ctx.textAlign = 'center';
+      
+      // ON PATH (활공각 라인 위에)
+      const onPathX = -1800;
+      const onPathY = TCH + tanT * (-onPathX);
+      if (onPathY < yMaxM - 30) {
+        ctx.fillStyle = 'rgba(108,196,255,0.95)';
+        ctx.fillText('● ON PATH', x2px(onPathX), y2py(onPathY) - 22);
+        ctx.font = '9px JetBrains Mono';
+        ctx.fillStyle = 'rgba(108,196,255,0.7)';
+        ctx.fillText('DDM = 0 · 정상 활공각', x2px(onPathX), y2py(onPathY) - 10);
+      }
+      
+      // FLY DOWN (활공각 ~ 6° 사이 중간)
+      const fdX = -1800;
+      const fdAngleMid = (state.theta + 2 * state.theta) / 2;  // 4.5°
+      const fdY = TCH + Math.tan(fdAngleMid * Math.PI / 180) * (-fdX);
+      if (fdY < yMaxM - 20) {
+        ctx.fillStyle = 'rgba(255,140,66,0.9)';
+        ctx.font = 'bold 12px JetBrains Mono';
+        ctx.fillText('▼ FLY DOWN', x2px(fdX), y2py(fdY));
+        ctx.font = '9px JetBrains Mono';
+        ctx.fillStyle = 'rgba(255,140,66,0.7)';
+        ctx.fillText('90Hz 우세 (활공각 위)', x2px(fdX), y2py(fdY) + 11);
+      }
+      
+      // FLY UP (활공각 아래)
+      const fuX = -1800;
+      const fuAngleMid = state.theta * 0.4;  // 활공각의 40% 정도
+      const fuY = TCH + Math.tan(fuAngleMid * Math.PI / 180) * (-fuX);
+      ctx.fillStyle = 'rgba(0,180,160,0.9)';
+      ctx.font = 'bold 12px JetBrains Mono';
+      ctx.fillText('▲ FLY UP', x2px(fuX), y2py(Math.max(15, fuY)));
+      ctx.font = '9px JetBrains Mono';
+      ctx.fillStyle = 'rgba(0,180,160,0.7)';
+      ctx.fillText('150Hz 우세 (활공각 아래)', x2px(fuX), y2py(Math.max(15, fuY)) + 11);
+      
+      // FALSE PATH 위험 라벨 (6° 부근)
+      if (state.showApproachFalsePaths) {
+        const fpX = -1200;
+        const fpY = TCH + tan2T * (-fpX);
+        if (fpY < yMaxM - 25 && fpY > 50) {
+          ctx.fillStyle = 'rgba(255,90,95,0.95)';
+          ctx.font = 'bold 11px JetBrains Mono';
+          ctx.fillText('⚠ FALSE PATH', x2px(fpX), y2py(fpY) - 6);
+          ctx.font = '8px JetBrains Mono';
+          ctx.fillStyle = 'rgba(255,90,95,0.7)';
+          ctx.fillText('잘못된 활공각 (위험)', x2px(fpX), y2py(fpY) + 6);
+        }
+      }
+    }
+    
+    // GP 안테나 마스트
+    const gpMastX = -300;
+    
+    ctx.strokeStyle = '#5a6478';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(x2px(gpMastX), groundY);
+    ctx.lineTo(x2px(gpMastX), y2py(state.h_upper + 2));
+    ctx.stroke();
+    
+    function drawAntenna(yM, color, label) {
+      const px = x2px(gpMastX);
+      const py = y2py(yM);
+      ctx.fillStyle = color;
+      ctx.fillRect(px - 6, py - 3, 12, 6);
+      ctx.strokeStyle = '#0a0e14';
+      ctx.lineWidth = 0.5;
+      ctx.strokeRect(px - 6, py - 3, 12, 6);
+      
+      ctx.fillStyle = color;
+      ctx.font = 'bold 9px JetBrains Mono';
+      ctx.textAlign = 'right';
+      ctx.fillText(label, px - 10, py + 3);
+      ctx.font = '8px JetBrains Mono';
+      ctx.fillStyle = '#a8b5cc';
+      ctx.fillText(yM.toFixed(2) + 'm', px - 10, py + 12);
+    }
+    drawAntenna(state.h_lower, '#ffc857', 'L');
+    if (state.type === 'CEGP') {
+      drawAntenna(state.h_middle, '#6cc4ff', 'M');
+    }
+    drawAntenna(state.h_upper, '#b388ff', 'U');
+    
+    ctx.fillStyle = '#a8b5cc';
+    ctx.font = 'bold 10px JetBrains Mono';
+    ctx.textAlign = 'center';
+    ctx.fillText(`GP ${state.type}`, x2px(gpMastX), y2py(state.h_upper + 12));
+    
+    // 항공기
+    if (state.showApproachAircraft && state.approachAircraft !== null) {
+      const ac = state.approachAircraft;
+      const acX = ac.distM;
+      const acY = ac.altM;
+      const px = x2px(acX);
+      const py = y2py(acY);
+      
+      // 정상 활공각 고도
+      const targetAlt = acX >= 0 ? TCH : TCH + tanT * (-acX);
+      const altDiff = acY - targetAlt;
+      
+      ctx.save();
+      ctx.translate(px, py);
+      ctx.rotate(-state.theta * Math.PI / 180);
+      
+      ctx.fillStyle = 'rgba(0,0,0,0.5)';
+      ctx.beginPath();
+      ctx.ellipse(2, 2, 16, 4, 0, 0, Math.PI * 2);
+      ctx.fill();
+      
+      ctx.fillStyle = '#e6ecf5';
+      ctx.beginPath();
+      ctx.ellipse(0, 0, 16, 4, 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillRect(-4, -8, 8, 16);
+      ctx.beginPath();
+      ctx.moveTo(-14, 0);
+      ctx.lineTo(-18, -5);
+      ctx.lineTo(-14, -3);
+      ctx.closePath();
+      ctx.fill();
+      
+      ctx.restore();
+      
+      // 항공기 정보 박스
+      const infoX = Math.min(px + 25, w - 180);
+      const infoY = Math.max(10, py - 70);
+      ctx.fillStyle = 'rgba(20,28,42,0.92)';
+      ctx.fillRect(infoX, infoY, 170, 65);
+      ctx.strokeStyle = 'rgba(255,255,255,0.2)';
+      ctx.lineWidth = 1;
+      ctx.strokeRect(infoX, infoY, 170, 65);
+      
+      ctx.fillStyle = '#a8b5cc';
+      ctx.font = 'bold 10px JetBrains Mono';
+      ctx.textAlign = 'left';
+      ctx.fillText('AIRCRAFT', infoX + 8, infoY + 14);
+      ctx.font = '10px JetBrains Mono';
+      ctx.fillStyle = '#6cc4ff';
+      ctx.fillText(`거리 ${(Math.abs(acX)/1000).toFixed(2)}km / ${(Math.abs(acX)/1852).toFixed(2)}NM`, infoX + 8, infoY + 28);
+      ctx.fillStyle = '#ffc857';
+      ctx.fillText(`고도 ${acY.toFixed(0)}m / ${Math.round(acY*3.281)}ft`, infoX + 8, infoY + 41);
+      const diffColor = Math.abs(altDiff) < 10 ? '#00b4a0' : (altDiff > 0 ? '#ff8c42' : '#ff5a5f');
+      ctx.fillStyle = diffColor;
+      const diffSign = altDiff > 0 ? '+' : '';
+      ctx.fillText(`패스 ${diffSign}${altDiff.toFixed(0)}m (${altDiff > 0 ? '위' : '아래'})`, infoX + 8, infoY + 55);
+    }
+    
+    // 방사패턴 오버레이
+    if (state.showApproachPattern) {
+      const gpMastPx = x2px(gpMastX);
+      const gpMastPy = y2py(state.h_middle);
+      const patternRange = Math.min(plotW * 0.5, plotH * 0.85);
+      let peakVal = 0.1;
+      for (let el = 0; el <= 10; el += 0.5) {
+        peakVal = Math.max(peakVal, Math.abs(E_csb_total(el)), Math.abs(E_sbo_total(el)));
+      }
+      const rScale = patternRange / peakVal;
+      
+      function plotPatternPolar(fn, color, lw, dash) {
+        ctx.strokeStyle = color;
+        ctx.lineWidth = lw;
+        if (dash) ctx.setLineDash(dash);
+        ctx.beginPath();
+        let first = true;
+        for (let el = 0; el <= 12; el += 0.2) {
+          const r = Math.min(Math.abs(fn(el)) * rScale, patternRange);
+          const rad = el * Math.PI / 180;
+          // 항공기 접근 방향(-X)으로 방사
+          const dx = -r * Math.cos(rad);
+          const dy = -r * Math.sin(rad);
+          if (first) { ctx.moveTo(gpMastPx + dx, gpMastPy + dy); first = false; }
+          else ctx.lineTo(gpMastPx + dx, gpMastPy + dy);
+        }
+        ctx.stroke();
+        if (dash) ctx.setLineDash([]);
+      }
+      
+      plotPatternPolar(E_csb_total, 'rgba(255,200,87,0.7)', 2);
+      plotPatternPolar(E_sbo_total, 'rgba(179,136,255,0.7)', 2);
+      if (state.type === 'CEGP') {
+        plotPatternPolar(E_clr_total, 'rgba(160,224,96,0.6)', 1.8, [5, 4]);
+      }
+    }
+    
+    // 제목
+    ctx.fillStyle = '#a8b5cc';
+    ctx.font = 'bold 11px JetBrains Mono';
+    ctx.textAlign = 'left';
+    ctx.fillText('ILS APPROACH PROFILE', padL + 8, padT + 14);
+  }
+  
+  /* ============================================================
+   * Tab 2 DDM hover (CDI 연동)
+   * ============================================================ */
+  function setupDDMHover2() {
+    const canvas = document.getElementById('ddm-chart-2');
+    const tooltip = document.getElementById('ddm-tooltip-2');
+    if (!canvas || !tooltip) return;
+    
+    function getPlotArea() {
+      const rect = canvas.getBoundingClientRect();
+      const padL = 48, padR = 16, padT = 24, padB = 28;
+      return { rect, padL, padR, padT, padB, plotW: rect.width - padL - padR, plotH: rect.height - padT - padB };
+    }
+    
+    canvas.addEventListener('mousemove', (e) => {
+      const p = getPlotArea();
+      const x = e.clientX - p.rect.left;
+      const y = e.clientY - p.rect.top;
+      
+      if (x < p.padL || x > p.padL + p.plotW || y < p.padT || y > p.padT + p.plotH) {
+        if (state.hoverEl !== null) {
+          state.hoverEl = null;
+          tooltip.classList.remove('visible');
+          drawDDMChart2();
+          drawCDI();
+          updateCDIReadout(null);
+        }
+        return;
+      }
+      
+      const xMin = state.theta - 1.5, xMax = state.theta + 1.5;
+      const angle = xMin + ((x - p.padL) / p.plotW) * (xMax - xMin);
+      state.hoverEl = angle;
+      drawDDMChart2();
+      drawCDI();
+      
+      const ddm = DDM(angle);
+      let status = '';
+      if (Math.abs(ddm) <= 0.04) status = '온 패스 (정상)';
+      else if (Math.abs(ddm) <= 0.175) status = ddm > 0 ? 'FLY UP (활공각 아래)' : 'FLY DOWN (활공각 위)';
+      else status = 'FULL DEFLECTION';
+      
+      tooltip.innerHTML = `
+        <div><span class="tt-angle">elevation ${angle.toFixed(2)}°</span> <span class="tt-ddm">DDM ${ddm > 0 ? '+' : ''}${ddm.toFixed(3)}</span></div>
+        <div class="tt-status">${status}</div>
+      `;
+      tooltip.style.left = Math.min(p.rect.width - 200, x + 12) + 'px';
+      tooltip.style.top = Math.max(0, y - 50) + 'px';
+      tooltip.classList.add('visible');
+      
+      updateCDIReadout(angle);
+    });
+    
+    canvas.addEventListener('mouseleave', () => {
+      state.hoverEl = null;
+      tooltip.classList.remove('visible');
+      drawDDMChart2();
+      drawCDI();
+      updateCDIReadout(null);
+    });
+  }
+  
+  function updateCDIReadout(angle) {
+    const elem = document.getElementById('cdi-readout');
+    if (!elem) return;
+    if (angle === null) {
+      elem.innerHTML = '<span style="color:var(--text-2);">마우스를 DDM 차트 위로 ←</span>';
+      return;
+    }
+    const ddm = DDM(angle);
+    let statusColor = '#00b4a0';
+    let statusText = 'ON PATH';
+    if (Math.abs(ddm) > 0.175) {
+      statusColor = '#ff8c42';
+      statusText = ddm > 0 ? 'FULL DEFLECTION ▲▲' : 'FULL DEFLECTION ▼▼';
+    } else if (Math.abs(ddm) > 0.05) {
+      statusColor = '#ffc857';
+      statusText = ddm > 0 ? 'FLY UP' : 'FLY DOWN';
+    }
+    elem.innerHTML = `
+      <span style="color:var(--accent-bright);">${angle.toFixed(2)}°</span>
+      <span style="color:var(--text-2);">·</span>
+      <span style="color:var(--csb);">DDM ${ddm > 0 ? '+' : ''}${ddm.toFixed(3)}</span>
+      <span style="color:var(--text-2);">·</span>
+      <strong style="color:${statusColor};">${statusText}</strong>
+    `;
+  }
+  
+  /* ============================================================
+   * Tab 3 Approach hover
+   * ============================================================ */
+  function setupApproachHover() {
+    const canvas = document.getElementById('approach-canvas');
+    if (!canvas) return;
+    
+    canvas.addEventListener('mousemove', (e) => {
+      const rect = canvas.getBoundingClientRect();
+      const x = e.clientX - rect.left;
+      const y = e.clientY - rect.top;
+      
+      const padL = 60, padR = 30, padT = 30, padB = 50;
+      const plotW = rect.width - padL - padR;
+      const plotH = rect.height - padT - padB;
+      
+      if (x < padL || x > padL + plotW || y < padT || y > padT + plotH) {
+        if (state.approachAircraft !== null) {
+          state.approachAircraft = null;
+          drawApproach();
+        }
+        return;
+      }
+      
+      const xMinM = -3000, xMaxM = 500;
+      const yMinM = 0, yMaxM = 300;
+      const distM = xMinM + ((x - padL) / plotW) * (xMaxM - xMinM);
+      const altM = yMinM + ((padT + plotH - y) / plotH) * (yMaxM - yMinM);
+      
+      state.approachAircraft = { distM, altM };
+      drawApproach();
+    });
+    
+    canvas.addEventListener('mouseleave', () => {
+      state.approachAircraft = null;
+      drawApproach();
+    });
+  }
+  
+  /* ============================================================
+   * 3D Rendering
+   *
+   * 좌표계:
+   *   +X = 활주로 시단 방향 (안테나에서 시단을 보는 방향)
+   *   +Y = 위쪽
+   *   +Z = 우측
+   * 
+   * GP 안테나 패턴 모델:
+   *   E_3D(az, el) = sin(2π·h·sin(el)/λ) · H_az(az)
+   *   where H_az(az) = cos(az)^1.2  (광대역, 활주로 방향으로 퍼짐)
+   * 
+   * 표면 거리 r = |E_3D(az, el)| · scale
+   * ============================================================ */
+  
+  function project3D(x, y, z, cam, w, h) {
+    // 카메라: 구면좌표 (distance, azimuth, elevation) + pan
+    // 원점에서 거리 cam.distance, 방위각/높이각만큼 회전한 위치
+    const cosE = Math.cos(cam.elevation);
+    const sinE = Math.sin(cam.elevation);
+    const cosA = Math.cos(cam.azimuth);
+    const sinA = Math.sin(cam.azimuth);
+    
+    const cx = cam.distance * cosE * cosA;
+    const cy = cam.distance * sinE;
+    const cz = cam.distance * cosE * sinA;
+    
+    // 카메라 좌표계로 변환
+    const dx = x - cx;
+    const dy = y - cy;
+    const dz = z - cz;
+    
+    // 카메라가 원점을 바라보도록 회전 (반대 방향)
+    // forward = -normalize(cam pos)
+    const fLen = Math.sqrt(cx*cx + cy*cy + cz*cz);
+    const fx = -cx / fLen, fy = -cy / fLen, fz = -cz / fLen;
+    
+    // right = normalize(cross(up_world, forward))
+    const upX = 0, upY = 1, upZ = 0;
+    let rx = upY * fz - upZ * fy;
+    let ry = upZ * fx - upX * fz;
+    let rz = upX * fy - upY * fx;
+    const rLen = Math.sqrt(rx*rx + ry*ry + rz*rz);
+    rx /= rLen; ry /= rLen; rz /= rLen;
+    
+    // up = cross(forward, right)
+    const ux = fy * rz - fz * ry;
+    const uy = fz * rx - fx * rz;
+    const uz = fx * ry - fy * rx;
+    
+    // 카메라 좌표
+    const camX = dx * rx + dy * ry + dz * rz;
+    const camY = dx * ux + dy * uy + dz * uz;
+    const camZ = dx * fx + dy * fy + dz * fz;
+    
+    // 원근 투영
+    const focalLength = 600;
+    const depth = camZ;
+    if (depth < 0.01) {
+      return { x: w * 999, y: h * 999, depth: 0.01 };
+    }
+    const px = w / 2 + (camX / depth) * focalLength + cam.panX;
+    const py = h / 2 - (camY / depth) * focalLength + cam.panY;
+    
+    return { x: px, y: py, depth };
+  }
+  
+  /* === GP 안테나의 3D 방사 패턴 ===
+   * 각 안테나(높이 h)는:
+   *   - 수직 인자 (이미지 안테나): sin(2π·h·sin(el)/λ)
+   *   - 수평 인자: cos(az)^1.2 (활주로 방향 +X로 광대역)
+   */
+  function H_horizontal(az_deg) {
+    const t = Math.abs(az_deg);
+    if (t >= 89) return 0;
+    return Math.pow(Math.max(0, Math.cos(t * Math.PI / 180)), 1.2);
+  }
+  
+  function V_imageAntenna(el_deg, h) {
+    if (el_deg < 0) return 0;
+    return Math.sin(2 * Math.PI * h * Math.sin(el_deg * Math.PI / 180) / lambda());
+  }
+  
+  // 각 안테나의 3D 신호 (az, el)
+  function E3D_lower(az, el) { return state.I_lower * H_horizontal(az) * V_imageAntenna(el, effectiveHeight(state.h_lower)); }
+  function E3D_upper(az, el) { return state.I_upper * H_horizontal(az) * V_imageAntenna(el, effectiveHeight(state.h_upper)); }
+  function E3D_middle(az, el) { return state.I_middle * H_horizontal(az) * V_imageAntenna(el, effectiveHeight(state.h_middle)); }
+  
+  // 합성 신호 3D (수평 인자 H를 곱한 후 합성)
+  function E3D_CSB(az, el) {
+    const H = H_horizontal(az);
+    if (state.type === 'NRGP') return state.I_lower * H * V_imageAntenna(el, effectiveHeight(state.h_lower));
+    // CEGP: E_L - 0.5·E_M
+    return H * (state.I_lower * V_imageAntenna(el, effectiveHeight(state.h_lower)) 
+                - 0.5 * state.I_middle * V_imageAntenna(el, effectiveHeight(state.h_middle)));
+  }
+  function E3D_SBO(az, el) {
+    const H = H_horizontal(az);
+    if (state.type === 'NRGP') return state.aratio * state.I_upper * H * V_imageAntenna(el, effectiveHeight(state.h_upper));
+    return state.aratio * H * (
+      -0.5 * state.I_lower * V_imageAntenna(el, effectiveHeight(state.h_lower))
+      + state.I_middle * V_imageAntenna(el, effectiveHeight(state.h_middle))
+      - 0.5 * state.I_upper * V_imageAntenna(el, effectiveHeight(state.h_upper))
+    );
+  }
+  function E3D_CLR(az, el) {
+    if (state.type !== 'CEGP') return 0;
+    const H = H_horizontal(az);
+    return state.clr_amp * H * (
+      state.I_lower * V_imageAntenna(el, effectiveHeight(state.h_lower))
+      + state.I_upper * V_imageAntenna(el, effectiveHeight(state.h_upper))
+    );
+  }
+  
+  function draw3D() {
+    const canvas = document.getElementById('canvas-3d');
+    if (!canvas) return;
+    const { ctx, w, h } = setupCanvas(canvas);
+    ctx.clearRect(0, 0, w, h);
+    
+    const cam = state.cam3D;
+    
+    // === 지면 그리드 ===
+    const gridSize = 5;
+    const gridStep = 1;
+    ctx.strokeStyle = 'rgba(255,255,255,0.08)';
+    ctx.lineWidth = 1;
+    for (let i = -gridSize; i <= gridSize; i += gridStep) {
+      const p1 = project3D(i, 0, -gridSize, cam, w, h);
+      const p2 = project3D(i, 0, gridSize, cam, w, h);
+      ctx.beginPath();
+      ctx.moveTo(p1.x, p1.y);
+      ctx.lineTo(p2.x, p2.y);
+      ctx.stroke();
+      const p3 = project3D(-gridSize, 0, i, cam, w, h);
+      const p4 = project3D(gridSize, 0, i, cam, w, h);
+      ctx.beginPath();
+      ctx.moveTo(p3.x, p3.y);
+      ctx.lineTo(p4.x, p4.y);
+      ctx.stroke();
+    }
+    
+    // === 축 표시 ===
+    function drawAxis(x, y, z, color, label) {
+      const p0 = project3D(0, 0, 0, cam, w, h);
+      const p1 = project3D(x, y, z, cam, w, h);
+      ctx.strokeStyle = color;
+      ctx.lineWidth = 1.5;
+      ctx.beginPath();
+      ctx.moveTo(p0.x, p0.y);
+      ctx.lineTo(p1.x, p1.y);
+      ctx.stroke();
+      ctx.fillStyle = color;
+      ctx.font = 'bold 11px JetBrains Mono';
+      ctx.fillText(label, p1.x + 4, p1.y);
+    }
+    drawAxis(3, 0, 0, 'rgba(108,196,255,0.7)', '시단 →');
+    drawAxis(0, 2, 0, 'rgba(168,181,204,0.6)', '↑ Z');
+    drawAxis(0, 0, 2.5, 'rgba(255,140,66,0.5)', '↘ 우측');
+    drawAxis(0, 0, -2.5, 'rgba(255,140,66,0.5)', '↖ 좌측');
+    
+    // === 활주로 ===
+    if (state.show3D_Runway) {
+      // 활주로: X = 0.8 ~ 4.5 (안테나는 X=0에 있으니까 시단은 X=0.8 부근)
+      const rwPoints = [
+        [0.8, 0.01, -0.4], [4.5, 0.01, -0.4], [4.5, 0.01, 0.4], [0.8, 0.01, 0.4]
+      ].map(([x,y,z]) => project3D(x, y, z, cam, w, h));
+      ctx.fillStyle = 'rgba(30, 38, 52, 0.85)';
+      ctx.strokeStyle = 'rgba(120, 140, 170, 0.4)';
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.moveTo(rwPoints[0].x, rwPoints[0].y);
+      for (let i = 1; i < 4; i++) ctx.lineTo(rwPoints[i].x, rwPoints[i].y);
+      ctx.closePath();
+      ctx.fill();
+      ctx.stroke();
+      // 활주로 중심선 (점선)
+      ctx.strokeStyle = 'rgba(230, 236, 245, 0.65)';
+      ctx.lineWidth = 1.5;
+      ctx.setLineDash([8, 6]);
+      const cl1 = project3D(0.8, 0.02, 0, cam, w, h);
+      const cl2 = project3D(4.5, 0.02, 0, cam, w, h);
+      ctx.beginPath();
+      ctx.moveTo(cl1.x, cl1.y);
+      ctx.lineTo(cl2.x, cl2.y);
+      ctx.stroke();
+      ctx.setLineDash([]);
+    }
+    
+    // === GP 안테나 마스트 ===
+    // 단순화: 안테나는 원점 (0, h, 0)에 위치, 마스트는 Z축 따라
+    // 실제로는 활주로 옆 (Z = -0.5 정도) 이지만 시각적 단순화
+    // 실제 안테나 높이는 m 단위인데, 3D 단위는 임의 → 스케일 0.5 적용
+    const mastScale = 0.4;  // 1m = 0.4 unit
+    const mastZ = -0.6;
+    const mastBase = project3D(0, 0, mastZ, cam, w, h);
+    const mastTop = project3D(0, state.h_upper * mastScale + 0.3, mastZ, cam, w, h);
+    ctx.strokeStyle = '#5a6478';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(mastBase.x, mastBase.y);
+    ctx.lineTo(mastTop.x, mastTop.y);
+    ctx.stroke();
+    
+    // 안테나 박스들
+    function drawMastAntenna(yM, color, label) {
+      const py = project3D(0, yM * mastScale, mastZ, cam, w, h);
+      ctx.fillStyle = color;
+      ctx.fillRect(py.x - 6, py.y - 3, 12, 6);
+      ctx.strokeStyle = '#0a0e14';
+      ctx.lineWidth = 0.5;
+      ctx.strokeRect(py.x - 6, py.y - 3, 12, 6);
+      ctx.fillStyle = color;
+      ctx.font = 'bold 9px JetBrains Mono';
+      ctx.textAlign = 'left';
+      ctx.fillText(`${label} ${yM.toFixed(1)}m`, py.x + 10, py.y + 3);
+    }
+    drawMastAntenna(state.h_lower, '#ffc857', 'L');
+    if (state.type === 'CEGP') drawMastAntenna(state.h_middle, '#6cc4ff', 'M');
+    drawMastAntenna(state.h_upper, '#b388ff', 'U');
+    
+    // === 활공각 라인 ===
+    if (state.show3D_PathLine) {
+      // 패턴 원점(지면, 0,0,0)에서 +X 방향으로 활공각만큼 위로 뻗는 라인
+      const tanT = Math.tan(state.theta * Math.PI / 180);
+      const pathLen = 5;
+      const ps = project3D(0, 0, 0, cam, w, h);
+      const pe = project3D(pathLen, pathLen * tanT, 0, cam, w, h);
+      ctx.strokeStyle = 'rgba(108,196,255,0.8)';
+      ctx.lineWidth = 2;
+      ctx.setLineDash([5, 4]);
+      ctx.beginPath();
+      ctx.moveTo(ps.x, ps.y);
+      ctx.lineTo(pe.x, pe.y);
+      ctx.stroke();
+      ctx.setLineDash([]);
+      // 라벨
+      ctx.fillStyle = '#6cc4ff';
+      ctx.font = 'bold 10px JetBrains Mono';
+      ctx.textAlign = 'left';
+      ctx.fillText(`θ = ${state.theta.toFixed(2)}°`, pe.x + 4, pe.y);
+    }
+    
+    // === 방사 패턴 표면들 ===
+    // 패턴은 안테나 위치 (0, h_mid, mastZ)에서 +X 방향으로 방사
+    // az: 활주로 중심선(X축) 기준 좌우 각도 (±60° 정도)
+    // el: 수평면 기준 위쪽 각도 (0~30° 정도, lobe 다 보이게)
+    
+    const azRange = [-65, 65];
+    const elRange = [0, 30];
+    const azSteps = 22;
+    const elSteps = 26;
+    const azStep = (azRange[1] - azRange[0]) / azSteps;
+    const elStep = (elRange[1] - elRange[0]) / elSteps;
+    
+    // 패턴 정규화: 최대값 찾아서 적당한 스케일
+    let peakVal = 0.1;
+    for (let i = 0; i <= azSteps; i++) {
+      for (let j = 0; j <= elSteps; j++) {
+        const az = azRange[0] + i * azStep;
+        const el = elRange[0] + j * elStep;
+        peakVal = Math.max(peakVal,
+          state.show3D_Lower ? Math.abs(E3D_lower(az, el)) : 0,
+          state.show3D_Upper ? Math.abs(E3D_upper(az, el)) : 0,
+          (state.type === 'CEGP' && state.show3D_Middle) ? Math.abs(E3D_middle(az, el)) : 0,
+          state.show3D_CSB ? Math.abs(E3D_CSB(az, el)) : 0,
+          state.show3D_SBO ? Math.abs(E3D_SBO(az, el)) : 0,
+          (state.type === 'CEGP' && state.show3D_CLR) ? Math.abs(E3D_CLR(az, el)) : 0
+        );
+      }
+    }
+    const surfaceScale = 3.5 / peakVal;  // 최대 빔이 3.5 단위 길이가 되도록
+    
+    // 패턴 원점은 지면 (Y=0).
+    // 이미지 안테나 효과(sin(2π·h·sin(el)/λ))는 이미 직접파+반사파 합성 결과로,
+    // 패턴 자체가 지면에서부터 펼쳐지는 lobe 형상.
+    // 안테나는 신호원일 뿐, 패턴 원점은 지면이 맞음.
+    
+    function buildPatches(fn) {
+      const patches = [];
+      for (let i = 0; i < azSteps; i++) {
+        for (let j = 0; j < elSteps; j++) {
+          const az1 = azRange[0] + i * azStep;
+          const az2 = azRange[0] + (i + 1) * azStep;
+          const el1 = elRange[0] + j * elStep;
+          const el2 = elRange[0] + (j + 1) * elStep;
+          
+          function vertex(az, el) {
+            const r = Math.abs(fn(az, el)) * surfaceScale;
+            const azRad = az * Math.PI / 180;
+            const elRad = el * Math.PI / 180;
+            // 패턴 원점 = 지면 (0,0,0). 안테나 위가 아님.
+            const x = r * Math.cos(elRad) * Math.cos(azRad);
+            const z = r * Math.cos(elRad) * Math.sin(azRad);
+            const y = r * Math.sin(elRad);
+            return { x, y, z };
+          }
+          const v00 = vertex(az1, el1);
+          const v01 = vertex(az1, el2);
+          const v10 = vertex(az2, el1);
+          const v11 = vertex(az2, el2);
+          const cx = (v00.x + v01.x + v10.x + v11.x) / 4;
+          const cy = (v00.y + v01.y + v10.y + v11.y) / 4;
+          const cz = (v00.z + v01.z + v10.z + v11.z) / 4;
+          patches.push({ v00, v01, v10, v11, cx, cy, cz, az: (az1+az2)/2, el: (el1+el2)/2 });
+        }
+      }
+      return patches;
+    }
+    
+    function drawSurface(patches, colorTmpl, fillAlpha, wireframe) {
+      patches.forEach(p => {
+        const proj = project3D(p.cx, p.cy, p.cz, cam, w, h);
+        p._depth = proj.depth;
+      });
+      patches.sort((a, b) => b._depth - a._depth);
+      
+      patches.forEach(p => {
+        const p00 = project3D(p.v00.x, p.v00.y, p.v00.z, cam, w, h);
+        const p01 = project3D(p.v01.x, p.v01.y, p.v01.z, cam, w, h);
+        const p11 = project3D(p.v11.x, p.v11.y, p.v11.z, cam, w, h);
+        const p10 = project3D(p.v10.x, p.v10.y, p.v10.z, cam, w, h);
+        if (p00.depth < 0.1 || p01.depth < 0.1 || p10.depth < 0.1 || p11.depth < 0.1) return;
+        
+        const lightFactor = Math.max(0.4, 1 - Math.abs(p.el) / 50);
+        ctx.fillStyle = colorTmpl.replace('FILL_ALPHA', (fillAlpha * lightFactor).toFixed(2));
+        ctx.beginPath();
+        ctx.moveTo(p00.x, p00.y);
+        ctx.lineTo(p01.x, p01.y);
+        ctx.lineTo(p11.x, p11.y);
+        ctx.lineTo(p10.x, p10.y);
+        ctx.closePath();
+        ctx.fill();
+        
+        if (wireframe) {
+          ctx.strokeStyle = colorTmpl.replace('FILL_ALPHA', '0.35');
+          ctx.lineWidth = 0.5;
+          ctx.stroke();
+        }
+      });
+    }
+    
+    // 그릴 표면들을 결정 (개별 안테나 + 합성)
+    const surfaces = [];
+    if (state.show3D_Lower) surfaces.push({ fn: E3D_lower, color: 'rgba(255,200,87,FILL_ALPHA)', alpha: 0.30 });
+    if (state.show3D_Upper) surfaces.push({ fn: E3D_upper, color: 'rgba(179,136,255,FILL_ALPHA)', alpha: 0.30 });
+    if (state.type === 'CEGP' && state.show3D_Middle) surfaces.push({ fn: E3D_middle, color: 'rgba(108,196,255,FILL_ALPHA)', alpha: 0.30 });
+    if (state.show3D_CSB) surfaces.push({ fn: E3D_CSB, color: 'rgba(255,170,0,FILL_ALPHA)', alpha: 0.35 });
+    if (state.show3D_SBO) surfaces.push({ fn: E3D_SBO, color: 'rgba(255,111,168,FILL_ALPHA)', alpha: 0.35 });
+    if (state.type === 'CEGP' && state.show3D_CLR) surfaces.push({ fn: E3D_CLR, color: 'rgba(160,224,96,FILL_ALPHA)', alpha: 0.35 });
+    
+    // 모든 표면의 모든 패치를 모은 다음 깊이 정렬 (다른 표면끼리도 정렬)
+    const allPatches = [];
+    surfaces.forEach(s => {
+      const patches = buildPatches(s.fn);
+      patches.forEach(p => allPatches.push({ ...p, color: s.color, alpha: s.alpha }));
+    });
+    
+    // 깊이 계산 후 정렬
+    allPatches.forEach(p => {
+      const proj = project3D(p.cx, p.cy, p.cz, cam, w, h);
+      p._depth = proj.depth;
+    });
+    allPatches.sort((a, b) => b._depth - a._depth);
+    
+    // 한꺼번에 그리기
+    allPatches.forEach(p => {
+      const p00 = project3D(p.v00.x, p.v00.y, p.v00.z, cam, w, h);
+      const p01 = project3D(p.v01.x, p.v01.y, p.v01.z, cam, w, h);
+      const p11 = project3D(p.v11.x, p.v11.y, p.v11.z, cam, w, h);
+      const p10 = project3D(p.v10.x, p.v10.y, p.v10.z, cam, w, h);
+      if (p00.depth < 0.1 || p01.depth < 0.1 || p10.depth < 0.1 || p11.depth < 0.1) return;
+      
+      const lightFactor = Math.max(0.4, 1 - Math.abs(p.el) / 50);
+      ctx.fillStyle = p.color.replace('FILL_ALPHA', (p.alpha * lightFactor).toFixed(2));
+      ctx.beginPath();
+      ctx.moveTo(p00.x, p00.y);
+      ctx.lineTo(p01.x, p01.y);
+      ctx.lineTo(p11.x, p11.y);
+      ctx.lineTo(p10.x, p10.y);
+      ctx.closePath();
+      ctx.fill();
+      
+      if (state.show3D_Wireframe) {
+        ctx.strokeStyle = p.color.replace('FILL_ALPHA', '0.35');
+        ctx.lineWidth = 0.5;
+        ctx.stroke();
+      }
+    });
+    
+    // 정보 텍스트 (좌상)
+    ctx.fillStyle = '#a8b5cc';
+    ctx.font = 'bold 11px JetBrains Mono';
+    ctx.textAlign = 'left';
+    ctx.fillText('GP ' + state.type + ' · 3D Radiation Pattern', 14, 20);
+    ctx.font = '10px JetBrains Mono';
+    ctx.fillStyle = '#6c7a93';
+    ctx.fillText(`θ=${state.theta.toFixed(2)}° · h=${state.h_lower.toFixed(2)}m · ${peakVal.toFixed(2)} peak`, 14, 36);
+  }
+  
+  /* ============================================================
+   * 3D Mouse interaction
+   * ============================================================ */
+  function setup3DInteraction() {
+    const canvas = document.getElementById('canvas-3d');
+    if (!canvas) return;
+    
+    let dragging = false;
+    let dragButton = 0;
+    let lastX = 0, lastY = 0;
+    
+    canvas.addEventListener('mousedown', (e) => {
+      dragging = true;
+      dragButton = e.button;
+      lastX = e.clientX;
+      lastY = e.clientY;
+      e.preventDefault();
+    });
+    
+    canvas.addEventListener('contextmenu', (e) => e.preventDefault());
+    
+    window.addEventListener('mousemove', (e) => {
+      if (!dragging) return;
+      const dx = e.clientX - lastX;
+      const dy = e.clientY - lastY;
+      lastX = e.clientX;
+      lastY = e.clientY;
+      
+      if (dragButton === 0) {
+        // 좌클릭 드래그 = 회전
+        state.cam3D.azimuth -= dx * 0.01;
+        state.cam3D.elevation += dy * 0.01;
+        state.cam3D.elevation = Math.max(-Math.PI/2 + 0.1, Math.min(Math.PI/2 - 0.1, state.cam3D.elevation));
+      } else if (dragButton === 2) {
+        // 우클릭 드래그 = 이동
+        state.cam3D.panX += dx;
+        state.cam3D.panY += dy;
+      }
+      
+      if (document.getElementById('view-3d').classList.contains('active')) {
+        draw3D();
+      }
+    });
+    
+    window.addEventListener('mouseup', () => { dragging = false; });
+    
+    canvas.addEventListener('wheel', (e) => {
+      e.preventDefault();
+      const delta = e.deltaY > 0 ? 1.1 : 0.9;
+      state.cam3D.distance *= delta;
+      state.cam3D.distance = Math.max(2, Math.min(20, state.cam3D.distance));
+      draw3D();
+    }, { passive: false });
+  }
+  
+  /* ============================================================
+   * DDM Chart Mouse Tracking (Tab 1)
+   * ============================================================ */
+  function setupDDMHover() {
+    const canvas = document.getElementById('ddm-chart');
+    const tooltip = document.getElementById('ddm-tooltip');
+    if (!canvas || !tooltip) return;
+    
+    function getPlotArea() {
+      const rect = canvas.getBoundingClientRect();
+      const padL = 48, padR = 16, padT = 24, padB = 28;
+      return {
+        rect,
+        padL, padR, padT, padB,
+        plotW: rect.width - padL - padR,
+        plotH: rect.height - padT - padB,
+      };
+    }
+    
+    canvas.addEventListener('mousemove', (e) => {
+      const p = getPlotArea();
+      const x = e.clientX - p.rect.left;
+      const y = e.clientY - p.rect.top;
+      
+      if (x < p.padL || x > p.padL + p.plotW || y < p.padT || y > p.padT + p.plotH) {
+        if (state.hoverEl !== null) {
+          state.hoverEl = null;
+          tooltip.classList.remove('visible');
+          drawDDMChart();
+          drawCDI();
+          updateCDIReadout(null);
+        }
+        return;
+      }
+      
+      const xMin = state.theta - 1.5, xMax = state.theta + 1.5;
+      const angle = xMin + ((x - p.padL) / p.plotW) * (xMax - xMin);
+      state.hoverEl = angle;
+      drawDDMChart();
+      drawCDI();
+      
+      const ddm = DDM(angle);
+      let status = '';
+      if (Math.abs(ddm) <= 0.04) status = '온 패스 (정상)';
+      else if (Math.abs(ddm) <= 0.175) status = ddm > 0 ? 'FLY UP (활공각 아래)' : 'FLY DOWN (활공각 위)';
+      else status = 'FULL DEFLECTION';
+      
+      tooltip.innerHTML = `
+        <div><span class="tt-angle">elevation ${angle.toFixed(2)}°</span> <span class="tt-ddm">DDM ${ddm > 0 ? '+' : ''}${ddm.toFixed(3)}</span></div>
+        <div class="tt-status">${status}</div>
+      `;
+      tooltip.style.left = Math.min(p.rect.width - 200, x + 12) + 'px';
+      tooltip.style.top = Math.max(0, y - 50) + 'px';
+      tooltip.classList.add('visible');
+      
+      updateCDIReadout(angle);
+    });
+    
+    canvas.addEventListener('mouseleave', () => {
+      state.hoverEl = null;
+      tooltip.classList.remove('visible');
+      drawDDMChart();
+      drawCDI();
+      updateCDIReadout(null);
+    });
+  }
+  
+  /* ============================================================
+   * Render orchestration
+   * ============================================================ */
+  function renderAll() {
+    const vView = document.getElementById('view-vertical');
+    const aView = document.getElementById('view-approach');
+    const dView = document.getElementById('view-3d');
+    if (vView && vView.classList.contains('active')) {
+      drawVerticalChart();
+      drawDDMChart();
+      drawCDI();
+    }
+    if (aView && aView.classList.contains('active')) {
+      drawApproach();
+    }
+    if (dView && dView.classList.contains('active')) {
+      draw3D();
+    }
+    updateStats();
+  }
+  
+  /* ============================================================
+   * Event handlers
+   * ============================================================ */
+  function setupHandlers() {
+    // GP Type 토글
+    document.querySelectorAll('.type-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        state.type = btn.dataset.type;
+        document.querySelectorAll('.type-btn').forEach(b => b.classList.toggle('active', b.dataset.type === state.type));
+        document.body.classList.toggle('type-NRGP', state.type === 'NRGP');
+        document.body.classList.toggle('type-CEGP', state.type === 'CEGP');
+        document.getElementById('brand-sub').textContent = 
+          state.type === 'NRGP' ? 'Null Reference Glide Path' : 'Capture Effect Glide Path';
+        // 형식 전환 시 자동높이 재계산
+        if (state.autoHeight) {
+          autoCalcHeights();
+          syncHeightSliders();
+        }
+        renderAll();
+      });
+    });
+    
+    // Tab 전환
+    document.querySelectorAll('.tab').forEach(tab => {
+      tab.addEventListener('click', () => {
+        document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+        document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+        tab.classList.add('active');
+        document.getElementById(tab.dataset.view).classList.add('active');
+        setTimeout(renderAll, 30);
+      });
+    });
+    
+    // 활공각
+    document.getElementById('g-theta').addEventListener('input', e => {
+      state.theta = parseFloat(e.target.value);
+      document.getElementById('g-theta-val').textContent = state.theta.toFixed(2) + '°';
+      if (state.autoHeight) {
+        autoCalcHeights();
+        syncHeightSliders();
+      }
+      renderAll();
+    });
+    
+    // 주파수
+    document.getElementById('g-freq').addEventListener('input', e => {
+      state.freq = parseFloat(e.target.value);
+      document.getElementById('g-freq-val').textContent = state.freq.toFixed(2);
+      document.getElementById('lambda-val').textContent = lambda().toFixed(3);
+      if (state.autoHeight) {
+        autoCalcHeights();
+        syncHeightSliders();
+      }
+      renderAll();
+    });
+    
+    // 안테나 높이 슬라이더들
+    ['h-lower', 'h-upper', 'h-middle'].forEach(id => {
+      const slider = document.getElementById('g-' + id);
+      if (!slider) return;
+      slider.addEventListener('input', e => {
+        const val = parseFloat(e.target.value);
+        const key = id === 'h-lower' ? 'h_lower' : (id === 'h-upper' ? 'h_upper' : 'h_middle');
+        state[key] = val;
+        document.getElementById('g-' + id + '-val').textContent = val.toFixed(2);
+        state.autoHeight = false;  // 수동 조정 시 자동 모드 해제
+        renderAll();
+      });
+    });
+    
+    // 안테나별 전류 슬라이더
+    ['i-lower', 'i-upper', 'i-middle'].forEach(id => {
+      const slider = document.getElementById('g-' + id);
+      if (!slider) return;
+      slider.addEventListener('input', e => {
+        const val = parseFloat(e.target.value);
+        const key = id === 'i-lower' ? 'I_lower' : (id === 'i-upper' ? 'I_upper' : 'I_middle');
+        state[key] = val;
+        document.getElementById('g-' + id + '-val').textContent = val.toFixed(2);
+        renderAll();
+      });
+    });
+    
+    // A 비 슬라이더
+    document.getElementById('g-aratio').addEventListener('input', e => {
+      state.aratio = parseFloat(e.target.value);
+      document.getElementById('g-aratio-val').textContent = state.aratio.toFixed(2);
+      renderAll();
+    });
+    
+    // CLR 진폭 슬라이더 (CEGP 전용)
+    const clrSlider = document.getElementById('g-clr-amp');
+    if (clrSlider) {
+      clrSlider.addEventListener('input', e => {
+        state.clr_amp = parseFloat(e.target.value);
+        document.getElementById('g-clr-amp-val').textContent = state.clr_amp.toFixed(3);
+        renderAll();
+      });
+    }
+    
+    // 지면 오프셋
+    document.getElementById('g-ground').addEventListener('input', e => {
+      state.groundOffset = parseFloat(e.target.value);
+      document.getElementById('g-ground-val').textContent = state.groundOffset.toFixed(1);
+      renderAll();
+    });
+    
+    // 자동 높이 버튼
+    document.getElementById('auto-height-btn').addEventListener('click', () => {
+      state.autoHeight = true;
+      autoCalcHeights();
+      syncHeightSliders();
+      renderAll();
+    });
+    
+    // 차트 토글
+    document.querySelectorAll('.chart-toggle').forEach(tgl => {
+      tgl.addEventListener('click', () => {
+        const key = tgl.dataset.tgl;
+        if (!key) return;
+        state[key] = !state[key];
+        tgl.classList.toggle('on', state[key]);
+        renderAll();
+      });
+    });
+    
+    // 프리셋
+    document.querySelectorAll('.preset-btn').forEach(btn => {
+      btn.addEventListener('click', () => applyPreset(btn.dataset.preset));
+    });
+    
+    // 초기화
+    document.getElementById('reset-btn').addEventListener('click', () => {
+      applyPreset('standard');
+    });
+  }
+  
+  function syncHeightSliders() {
+    document.getElementById('g-h-lower').value = state.h_lower;
+    document.getElementById('g-h-lower-val').textContent = state.h_lower.toFixed(2);
+    document.getElementById('g-h-upper').value = state.h_upper;
+    document.getElementById('g-h-upper-val').textContent = state.h_upper.toFixed(2);
+    document.getElementById('g-h-middle').value = state.h_middle;
+    document.getElementById('g-h-middle-val').textContent = state.h_middle.toFixed(2);
+  }
+  
+  function applyPreset(name) {
+    state.I_lower = 1.00; state.I_upper = 1.00; state.I_middle = 1.00;
+    state.aratio = 0.31; state.clr_amp = 0.387;
+    if (name === 'standard') {
+      state.theta = 3.0; state.groundOffset = 0;
+    } else if (name === 'steep') {
+      state.theta = 3.5; state.groundOffset = 0;
+    } else if (name === 'shallow') {
+      state.theta = 2.5; state.groundOffset = 0;
+    } else if (name === 'ground-low') {
+      state.theta = 3.0; state.groundOffset = -0.5;
+    }
+    state.autoHeight = true;
+    autoCalcHeights();
+    document.getElementById('g-theta').value = state.theta;
+    document.getElementById('g-theta-val').textContent = state.theta.toFixed(2) + '°';
+    document.getElementById('g-aratio').value = state.aratio;
+    document.getElementById('g-aratio-val').textContent = state.aratio.toFixed(2);
+    document.getElementById('g-i-lower').value = state.I_lower;
+    document.getElementById('g-i-lower-val').textContent = state.I_lower.toFixed(2);
+    document.getElementById('g-i-upper').value = state.I_upper;
+    document.getElementById('g-i-upper-val').textContent = state.I_upper.toFixed(2);
+    document.getElementById('g-i-middle').value = state.I_middle;
+    document.getElementById('g-i-middle-val').textContent = state.I_middle.toFixed(2);
+    const clrEl = document.getElementById('g-clr-amp');
+    if (clrEl) { clrEl.value = state.clr_amp; document.getElementById('g-clr-amp-val').textContent = state.clr_amp.toFixed(3); }
+    document.getElementById('g-ground').value = state.groundOffset;
+    document.getElementById('g-ground-val').textContent = state.groundOffset.toFixed(1);
+    syncHeightSliders();
+    renderAll();
+  }
+  
+  /* ============================================================
+   * Init
+   * ============================================================ */
+  // ddm-tooltip 스타일 (LOC와 동일)
+  const tooltipStyle = document.createElement('style');
+  tooltipStyle.textContent = `
+    .ddm-tooltip {
+      position: absolute; pointer-events: none;
+      background: rgba(20,28,42,0.95);
+      border: 1px solid var(--line-bright);
+      padding: 8px 12px; border-radius: 3px;
+      font-family: var(--mono); font-size: 11px;
+      color: var(--text-0); opacity: 0;
+      transition: opacity 0.1s; z-index: 50;
+      white-space: nowrap; backdrop-filter: blur(6px);
+      box-shadow: 0 4px 12px rgba(0,0,0,0.4);
+    }
+    .ddm-tooltip.visible { opacity: 1; }
+    .ddm-tooltip .tt-angle { color: var(--accent-bright); font-weight: 600; }
+    .ddm-tooltip .tt-ddm { color: var(--csb); font-weight: 600; margin-left: 8px; }
+    .ddm-tooltip .tt-status { font-size: 9px; color: var(--text-2); margin-top: 2px; }
+  `;
+  document.head.appendChild(tooltipStyle);
+  
+  window.addEventListener('load', () => {
+    autoCalcHeights();
+    syncHeightSliders();
+    setupHandlers();
+    setTimeout(() => {
+      renderAll();
+      setupDDMHover();
+      setupApproachHover();
+      setup3DInteraction();
+    }, 50);
+  });
+</script>
+
+</body>
+</html>
