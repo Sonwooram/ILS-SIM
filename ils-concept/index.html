@@ -471,6 +471,7 @@ footer {
         <a class="sb-item" href="04_modulation.html"><span class="sb-num">04</span>AM 변조 · 측파대<span class="sb-check">✓</span></a>
         <a class="sb-item" href="05_spacemod.html"><span class="sb-num">05</span>공간변조 CSB·SBO<span class="sb-check">✓</span></a>
         <a class="sb-item" href="06_ddm.html"><span class="sb-num">06</span>DDM · 코스폭<span class="sb-check">✓</span></a>
+        <a class="sb-item" href="13_radiation.html"><span class="sb-num">13</span>전자기파 방사와 배열합성<span class="sb-check">✓</span></a>
       </div>
     </div>
 
@@ -499,6 +500,8 @@ footer {
       <div class="sb-items">
         <a class="sb-item" href="10_monitor.html"><span class="sb-num">10</span>모니터링 · 알람<span class="sb-check">✓</span></a>
         <a class="sb-item" href="11_flight.html"><span class="sb-num">11</span>비행검사 해석<span class="sb-check">✓</span></a>
+        <a class="sb-item" href="14_cegp_tuning.html"><span class="sb-num">14</span>CEGP 신호 조정<span class="sb-check">✓</span></a>
+        <a class="sb-item" href="15_airborne_phasing.html"><span class="sb-num">15</span>에어본 페이징 절차<span class="sb-check">✓</span></a>
       </div>
     </div>
 
@@ -622,6 +625,18 @@ footer {
           <div class="card-chapter">CH10·12 — 변조도 차·GP DDM</div>
         </a>
 
+        <a class="concept-card done" href="13_radiation.html">
+          <div class="card-top">
+          <div class="card-top-left">
+            <div class="card-num">13</div>
+            <div class="card-title-text">전자기파 방사와 배열합성</div>
+          </div>
+          <span class="card-status status-done">완성 ✓</span>
+        </div>
+          <div class="card-desc">전자→전류→장→안테나 방사→공간 합성의 흐름, 도미노·합창단·박수 비유로 배열안테나 빔 형성 원리 설명</div>
+          <div class="card-chapter">기초 개념 — 그림·비유 중심 초심자용</div>
+        </a>
+
       </div>
     </div>
 
@@ -718,6 +733,30 @@ footer {
           <div class="card-chapter">CH19 — Flight Inspection</div>
         </a>
 
+        <a class="concept-card done" href="14_cegp_tuning.html">
+          <div class="card-top">
+          <div class="card-top-left">
+            <div class="card-num">14</div>
+            <div class="card-title-text">CEGP 신호 조정</div>
+          </div>
+          <span class="card-status status-done">완성 ✓</span>
+        </div>
+          <div class="card-desc">비행검사 항목별 조정 방법, 신호↔검사 매핑, 활공각·패스폭·위상·클리어런스 조정, 7가지 진단 시나리오 + 플로차트</div>
+          <div class="card-chapter">CH13·14·19 + FAA 8200.1 — 실무 진단</div>
+        </a>
+
+        <a class="concept-card done" href="15_airborne_phasing.html">
+          <div class="card-top">
+          <div class="card-top-left">
+            <div class="card-num">15</div>
+            <div class="card-title-text">에어본 페이징 절차</div>
+          </div>
+          <span class="card-status status-done">완성 ✓</span>
+        </div>
+          <div class="card-desc">운용개시 검사 위상 조정 2가지 절차 — Quadrature Phasing(지상)과 Dephasing Check(비행)의 원리·단계별 절차·GP Calculator 사용법</div>
+          <div class="card-chapter">CH14·19 — 운용개시 위상 절차</div>
+        </a>
+
       </div>
     </div>
 
@@ -764,12 +803,15 @@ const PAGES = [
   { file: '04_modulation.html',title: 'AM 변조 · 측파대',   cat: '신호 원리' },
   { file: '05_spacemod.html',  title: '공간변조 CSB·SBO',   cat: '신호 원리' },
   { file: '06_ddm.html',       title: 'DDM · 코스폭',       cat: '신호 원리' },
+  { file: '13_radiation.html', title: '전자기파 방사와 배열합성', cat: '신호 원리' },
   { file: '07_antenna.html',   title: '안테나 페어 · 패턴', cat: '안테나' },
   { file: '08_loc.html',       title: 'LOC 배열 · 패턴',    cat: '안테나' },
   { file: '09_gp.html',        title: 'GP · Null Reference',cat: '안테나' },
   { file: '12_rfcable.html',   title: 'RF 케이블과 위상',    cat: '안테나' },
   { file: '10_monitor.html',   title: '모니터링 · 알람',    cat: '운용·점검' },
   { file: '11_flight.html',    title: '비행검사 해석',       cat: '운용·점검' },
+  { file: '14_cegp_tuning.html', title: 'CEGP 신호 조정',  cat: '운용·점검' },
+  { file: '15_airborne_phasing.html', title: '에어본 페이징 절차', cat: '운용·점검' },
 ];
 
 /* 현재 파일명 감지 */
