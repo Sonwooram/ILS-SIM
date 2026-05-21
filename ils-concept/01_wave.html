@@ -546,7 +546,7 @@ body.fullscreen .main{margin-left:0;}
     <div class="section-num">05</div>
     <div>
       <div class="section-title">편파 (Polarization)</div>
-      <div class="section-subtitle">전기장이 어느 방향을 향하는가 — ILS에서 수직편파를 쓰는 이유</div>
+      <div class="section-subtitle">전기장이 어느 방향을 향하는가 — ILS에서 수평편파를 쓰는 이유</div>
     </div>
   </div>
 
@@ -554,31 +554,30 @@ body.fullscreen .main{margin-left:0;}
 
   <div class="grid-2">
     <div class="card">
-      <div class="card-title"><span class="card-icon">↕</span> 수직편파 (Vertical Polarization)</div>
-      <p>전기장이 지표면에 <strong>수직(↕)</strong> 방향</p>
+      <div class="card-title"><span class="card-icon">↕</span> 수평편파 (Horizontal Polarization)</div>
+      <p>전기장이 지표면에 <strong>평행(↔)</strong> 방향</p>
       <ul>
         <li>지표면에서 반사 시 <span class="hl-green">위상·진폭 변화 없음</span></li>
-        <li>이미지 안테나 전류 = 실제 안테나와 <strong>동위상</strong></li>
-        <li><span class="hl-blue">LOC, GP 모두 수직편파 사용</span></li>
+        <li>이미지 안테나 전류 = 실제 안테나와 <strong>역위상</strong></li>
+        <li><span class="hl-blue">LOC, GP 모두 수평편파 사용</span></li>
         <li>지면 반사를 이용한 GP Null Reference 구성 가능</li>
       </ul>
     </div>
     <div class="card">
-      <div class="card-title"><span class="card-icon">↔</span> 수평편파 (Horizontal Polarization)</div>
-      <p>전기장이 지표면에 <strong>평행(↔)</strong> 방향</p>
+      <div class="card-title"><span class="card-icon">↔</span> 수직편파 (Vertical Polarization)</div>
+      <p>전기장이 지표면에 <strong>수직(↕)</strong> 방향</p>
       <ul>
         <li>지표면에서 반사 시 <span class="hl-orange">위상 180° 반전</span></li>
-        <li>이미지 안테나 전류 = 실제 안테나와 <strong>역위상</strong></li>
-        <li>일부 GP 시스템 분석에 사용</li>
+        <li>이미지 안테나 전류 = 실제 안테나와 <strong>동위상</strong></li>
         <li>반사에 의한 패턴 변형이 크다</li>
       </ul>
     </div>
   </div>
 
   <div class="callout orange">
-    <div class="callout-title">⚠️ 수직편파가 ILS에 중요한 이유</div>
-    <p>GP(글라이드패스)는 지면 반사를 <strong>의도적으로 활용</strong>해서 정밀한 활공각 패턴을 만든다. 수직편파를 쓰면 반사 시 위상이 보존되어 계산이 단순해지고 패턴을 정확히 제어할 수 있다.</p>
-    <p>비행검사에서도 LOC의 수직편파 성분이 없는지 확인하는 항목이 있을 만큼 편파는 ILS 성능에 직접 영향을 준다.</p>
+    <div class="callout-title">⚠️ 수평편파가 ILS에 중요한 이유</div>
+    <p>GP(글라이드패스)는 지면 반사를 <strong>의도적으로 활용</strong>해서 정밀한 활공각 패턴을 만든다. 수평편파를 쓰면 반사 시 위상이 보존되어 계산이 단순해지고 패턴을 정확히 제어할 수 있다.</p>
+    <p>비행검사에서도 LOC의 수평편파 성분이 없는지 확인하는 항목이 있을 만큼 편파는 ILS 성능에 직접 영향을 준다.</p>
   </div>
 </div>
 
@@ -680,7 +679,7 @@ body.fullscreen .main{margin-left:0;}
           <td>배열안테나 설계</td>
         </tr>
         <tr>
-          <td><span class="hl-green">수직편파</span></td>
+          <td><span class="hl-green">수평편파</span></td>
           <td>지면 반사 시 위상 보존 → GP 이미지 안테나 원리</td>
           <td>GP Null Reference</td>
         </tr>
@@ -746,8 +745,8 @@ body.fullscreen .main{margin-left:0;}
 
     <hr style="border:none;border-top:1px solid rgba(255,255,255,0.05);margin:20px 0">
 
-    <div class="quiz-q">Q4. ILS LOC와 GP가 수직편파를 사용하는 이유를 지면 반사와 연관지어 설명하라.</div>
-    <div class="quiz-a" id="qa4">수직편파로 방사된 전자기파가 지표면에서 반사될 때, 위상과 진폭이 변하지 않는다. 이는 이미지 안테나 전류가 실제 안테나와 동위상임을 의미하므로, 지면 반사파를 예측하고 활용하는 GP Null Reference 방식의 설계·분석이 단순해진다. 반대로 수평편파는 반사 시 180° 위상 반전이 생겨 패턴 계산이 복잡해지고 의도치 않은 신호 왜곡이 발생할 수 있다.</div>
+    <div class="quiz-q">Q4. ILS LOC와 GP가 수평편파를 사용하는 이유를 지면 반사와 연관지어 설명하라.</div>
+    <div class="quiz-a" id="qa4">수평편파로 방사된 전자기파가 지표면에서 반사될 때, 위상과 진폭이 변하지 않는다. 이는 이미지 안테나 전류가 실제 안테나와 동위상임을 의미하므로, 지면 반사파를 예측하고 활용하는 GP Null Reference 방식의 설계·분석이 단순해진다. 반대로 수평편파는 반사 시 180° 위상 반전이 생겨 패턴 계산이 복잡해지고 의도치 않은 신호 왜곡이 발생할 수 있다.</div>
     <button class="quiz-toggle" onclick="toggle('qa4')">정답 보기</button>
 
     <hr style="border:none;border-top:1px solid rgba(255,255,255,0.05);margin:20px 0">
@@ -769,7 +768,7 @@ body.fullscreen .main{margin-left:0;}
         <tr><td><span class="hl-blue">복사전자계</span></td><td>∝ 1/r, 저항성, 에너지 전달</td><td>ILS 신호 전파에 사용</td></tr>
         <tr><td><span class="hl-blue">자유공간 377Ω</span></td><td>E/H = 377Ω, E·H 동위상</td><td>전계강도 V/m 측정 기준</td></tr>
         <tr><td><span class="hl-blue">λ = c/f</span></td><td>파장·주파수·속도 관계</td><td>안테나 간격을 전기각으로 환산</td></tr>
-        <tr><td><span class="hl-green">수직편파</span></td><td>지면 반사 시 위상 보존</td><td>GP 이미지 안테나, Null Reference</td></tr>
+        <tr><td><span class="hl-green">수평편파</span></td><td>지면 반사 시 위상 보존</td><td>GP 이미지 안테나, Null Reference</td></tr>
         <tr><td><span class="hl-blue">방사패턴</span></td><td>방향별 신호 세기를 극좌표로 표현</td><td>CSB·SBO 패턴 설계의 기초</td></tr>
         <tr><td><span class="hl-blue">Null</span></td><td>방사패턴에서 신호 = 0인 방향</td><td>LOC 중심선, SBO 정면</td></tr>
       </tbody>
